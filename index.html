@@ -555,7 +555,7 @@
           {/* Report Modal */}
           {selectedReport && (
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="glass-panel w-full max-w-lg rounded-3xl p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+              <div className="glass-panel w-full max-w-lg rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
                 <button
                   onClick={() => setSelectedReport(null)}
@@ -564,19 +564,19 @@
                   <i data-lucide="x" className="w-5 h-5"></i>
                 </button>
 
-                <div className="relative z-10 text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mb-3 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                <div className="relative z-10 text-center mb-3 md:mb-6">
+                  <div className="hidden md:inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mb-3 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.3)]">
                     <i data-lucide="award" className="w-6 h-6"></i>
                   </div>
-                  <h3 className="text-2xl font-cinzel font-bold text-islamic-light border-b border-islamic-gold/20 pb-4">
+                  <h3 className="text-base md:text-2xl font-cinzel font-bold text-islamic-light border-b border-islamic-gold/20 pb-2 md:pb-4">
                     Daily Report
                   </h3>
-                  <p className="text-sm text-emerald-200 mt-2">
+                  <p className="text-xs md:text-sm text-emerald-200 mt-1 md:mt-2">
                     {monthNames[month]} {selectedReport.day}, {year}
                   </p>
                 </div>
 
-                <div className="space-y-2 max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 relative z-10 pb-4">
+                <div className="space-y-2 max-h-[65vh] md:max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 relative z-10 pb-4">
                   {(() => {
                     const parsed = parseReport(selectedReport.text);
                     // Filter out any accidentally lingering 'Summary' just in case
