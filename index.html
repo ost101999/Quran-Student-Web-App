@@ -180,7 +180,8 @@
       };
 
       for (let i = 0; i < lines.length; i++) {
-        let line = lines[i].replace(/\*/g, '').replace(/_/g, '').replace(/〰️/g, '').trim();
+        let line = lines[i].replace(/\*/g, '').replace(/_/g, '').replace(/〰️/g, '').replace(/ـ/g, '').trim();
+        if (/^[-]+$/.test(line)) continue;
         if (!line) continue;
 
         // Hide redundant header text
