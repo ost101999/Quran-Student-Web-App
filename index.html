@@ -432,7 +432,7 @@
             className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square`}
           >
             {statusIndicator}
-            <span className={`text-lg font-semibold ${isScheduled ? 'text-white' : 'text-slate-400'}`}>
+            <span className={`text-lg font-semibold ${isScheduled ? 'text-white' : 'text-slate-400'} ${reportText ? '-translate-y-1 md:translate-y-0' : ''}`}>
               {day}
             </span>
 
