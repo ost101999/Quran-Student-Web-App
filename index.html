@@ -327,7 +327,20 @@
       }
 
       const { students, attendance, month, year, savedReports } = data;
-      const toSlug = (name) => name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const toSlug = (name) => {
+        const arabicToLatin = {
+          'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
+          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+          'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o'
+        };
+        let transliterated = name.toLowerCase().trim();
+        for (const [ar, en] of Object.entries(arabicToLatin)) {
+          transliterated = transliterated.replace(new RegExp(ar, 'g'), en);
+        }
+        return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      };
       const student = nameSlug
         ? students.find(s => toSlug(s.name) === nameSlug)
         : students.find(s => String(s.id) === String(studentId));
