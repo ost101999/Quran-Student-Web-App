@@ -262,10 +262,12 @@
 
       const searchParams = new URLSearchParams(window.location.search);
       const studentId = searchParams.get('student');
+      // Name-based routing: /ahmed-hassan takes priority over ?student=ID
+      const nameSlug = window.location.pathname.replace(/^\//, '').toLowerCase().trim();
 
       useEffect(() => {
         const fetchData = async () => {
-          if (!studentId) {
+          if (!studentId && !nameSlug) {
             setError('Invalid student link. Please check the URL.');
             setLoading(false);
             return;
@@ -325,7 +327,10 @@
       }
 
       const { students, attendance, month, year, savedReports } = data;
-      const student = students.find(s => s.id === studentId);
+      const toSlug = (name) => name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const student = nameSlug
+        ? students.find(s => toSlug(s.name) === nameSlug)
+        : students.find(s => String(s.id) === String(studentId));
 
       if (!student) {
         return (
