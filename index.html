@@ -177,15 +177,22 @@
         return { icon: 'file-text', type: 'other' };
       };
 
+      let currentArabicSubject = null;
+
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i].replace(/\*/g, '').replace(/_/g, '').replace(/〰️/g, '').replace(/ـ/g, '').trim();
         if (/^[-]+$/.test(line)) continue;
         if (!line) continue;
 
+        // Extract subject name from 📚/📖 (SubjectName) emoji headers, then skip
+        if (line.includes('📚') || line.includes('📖')) {
+          const subjectMatch = line.match(/\(([^)]+)\)/);
+          if (subjectMatch) currentArabicSubject = subjectMatch[1].trim();
+          continue;
+        }
+
         // Hide redundant header text
         if (
-          line.includes('📖') ||
-          line.includes('📚') ||
           line.toLowerCase().includes('(arabic)') ||
           line.toLowerCase().startsWith('student:') ||
           line.startsWith('الطالب:') ||
@@ -205,6 +212,15 @@
           // Intercept specific English headers to unify them under 'Arabic'
           if (potentialTitle.toLowerCase().includes('session summary') || potentialTitle.toLowerCase().includes('next session plan')) {
             potentialTitle = 'Arabic';
+          }
+
+          // Intercept Arabic book sub-sections (إنجاز الحصة / حصتنا القادمة) → use parent subject as title
+          if (currentArabicSubject && (
+            potentialTitle.includes('إنجاز') ||
+            potentialTitle.includes('حصتنا') ||
+            potentialTitle.includes('القادمة')
+          )) {
+            potentialTitle = currentArabicSubject;
           }
 
           let isSectionHeader = false;
