@@ -153,7 +153,8 @@
         { id: 'arabic', type: 'classwork', match: ['arabic'], icon: 'book' },
         { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
         { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
-        { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' }
+        { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' },
+        { id: 'audio', type: 'audio', match: ['🎧', 'للاستماع', 'audio correction'], icon: 'headphones' }
       ];
 
       // Track repeated titles: same title twice → second becomes homework
@@ -618,6 +619,7 @@
                     const homework = validSections.filter(s => s.type === 'homework');
                     const feedback = validSections.filter(s => s.type === 'feedback');
                     const other = validSections.filter(s => s.type === 'other');
+                    const audio = validSections.filter(s => s.type === 'audio');
 
                     return (
                       <>
@@ -625,6 +627,39 @@
                         {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", "Homework & Next Class")}
                         {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", "Feedback & Notes")}
                         {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", "Other Details")}
+                        {audio.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-islamic-gold/10">
+                            <h5 className="text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 text-slate-400/60">
+                              <div className="h-px flex-1 bg-current opacity-20"></div>
+                              Audio
+                              <div className="h-px flex-1 bg-current opacity-20"></div>
+                            </h5>
+                            <div className="space-y-2">
+                              {audio.map((s, idx) => {
+                                const url = s.content?.trim();
+                                const label = s.title.replace(/🎧/g, '').trim();
+                                return url ? (
+                                  <a
+                                    key={idx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 rounded-2xl bg-slate-800/50 border border-slate-600/20 hover:border-islamic-gold/40 hover:bg-slate-700/40 transition-all duration-300 group"
+                                  >
+                                    <div className="w-9 h-9 rounded-full bg-islamic-gold/10 border border-islamic-gold/20 flex items-center justify-center text-islamic-gold group-hover:bg-islamic-gold/20 transition-colors flex-shrink-0">
+                                      <i data-lucide="headphones" className="w-4 h-4"></i>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs text-slate-300 font-medium group-hover:text-white transition-colors">{label || 'Audio Recording'}</p>
+                                      <p className="text-[11px] text-slate-500 truncate">{url}</p>
+                                    </div>
+                                    <i data-lucide="external-link" className="w-4 h-4 text-slate-500 group-hover:text-islamic-gold transition-colors flex-shrink-0"></i>
+                                  </a>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </>
                     );
                   })()}
