@@ -141,40 +141,39 @@
 
       let currentTitle = 'Summary';
       let currentContent = [];
-      let homeworkMode = false; // Once we hit a homework trigger, everything after becomes homework
 
       const keywords = [
         { id: 'new', type: 'classwork', match: ['new', 'الجديد', 'الحفظ'], icon: 'sparkles' },
         { id: 'quran', type: 'classwork', match: ['quran', 'قرآن', 'القرآن', 'recitation'], icon: 'check-circle-2' },
-        { id: 'reading', type: 'classwork', match: ['reading', 'قراءة', 'تلاوة', 'التلاوة'], icon: 'check-circle-2' },
-        { id: 'old_revision', type: 'classwork', match: ['old', 'قديم', 'الماضي البعيد', 'ماضي بعيد'], icon: 'check-circle-2' },
+        { id: 'reading', type: 'classwork', match: ['reading', 'قراءة', 'تلاوة', 'التلاوة', 'قرائية'], icon: 'check-circle-2' },
+        { id: 'old_revision', type: 'classwork', match: ['old', 'قديم', 'بعيد', 'ماضي'], icon: 'check-circle-2' },
         { id: 'revision', type: 'classwork', match: ['revision', 'مراجعة', 'المراجعة'], icon: 'check-circle-2' },
         { id: 'noor', type: 'classwork', match: ['noor', 'نور', 'bayan', 'بيان'], icon: 'check-circle-2' },
         { id: 'islamic', type: 'classwork', match: ['islamic', 'اسلامية', 'إسلامية'], icon: 'check-circle-2' },
         { id: 'arabic', type: 'classwork', match: ['arabic'], icon: 'book' },
-        // Homework trigger — activates homeworkMode for everything after
         { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
         { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
         { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' }
       ];
 
+      // Track repeated titles: same title twice → second becomes homework
+      const seenTitles = new Set();
+
       const getSectionMeta = (title) => {
-        const lowerT = title.toLowerCase();
+        const lowerT = title.toLowerCase().trim();
         for (const kw of keywords) {
           if (kw.match.some(m => lowerT.includes(m))) {
-            // If we are inside a homework block, sub-sections become homework
-            if (homeworkMode && kw.type === 'classwork') {
-              return { icon: 'pen-tool', type: 'homework' };
-            }
-            // Activate homeworkMode when we hit a homework trigger
-            if (kw.type === 'homework') {
-              homeworkMode = true;
+            if (kw.type === 'classwork') {
+              if (seenTitles.has(lowerT)) return { icon: 'pen-tool', type: 'homework' };
+              seenTitles.add(lowerT);
+              return { icon: kw.icon, type: 'classwork' };
             }
             return { icon: kw.icon, type: kw.type };
           }
         }
-        // Unknown section: if we are past a homework trigger, it's homework context
-        if (homeworkMode) return { icon: 'pen-tool', type: 'homework' };
+        // Unknown section — also tracks repetition
+        if (seenTitles.has(lowerT)) return { icon: 'pen-tool', type: 'homework' };
+        seenTitles.add(lowerT);
         return { icon: 'file-text', type: 'other' };
       };
 
