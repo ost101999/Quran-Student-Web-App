@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -21,6 +21,7 @@
           fontFamily: {
             sans: ['Outfit', 'sans-serif'],
             cinzel: ['Cinzel', 'serif'],
+            amiri: ['Amiri', 'serif'],
           },
           colors: {
             islamic: {
@@ -140,9 +141,10 @@
 
       let currentTitle = 'Summary';
       let currentContent = [];
+      let homeworkMode = false; // Once we hit a homework trigger, everything after becomes homework
 
       const keywords = [
-        { id: 'new', type: 'classwork', match: ['new', 'الجديد'], icon: 'sparkles' },
+        { id: 'new', type: 'classwork', match: ['new', 'الجديد', 'الحفظ'], icon: 'sparkles' },
         { id: 'quran', type: 'classwork', match: ['quran', 'قرآن', 'القرآن', 'recitation'], icon: 'check-circle-2' },
         { id: 'reading', type: 'classwork', match: ['reading', 'قراءة', 'تلاوة', 'التلاوة'], icon: 'check-circle-2' },
         { id: 'old_revision', type: 'classwork', match: ['old', 'قديم', 'الماضي البعيد', 'ماضي بعيد'], icon: 'check-circle-2' },
@@ -150,32 +152,29 @@
         { id: 'noor', type: 'classwork', match: ['noor', 'نور', 'bayan', 'بيان'], icon: 'check-circle-2' },
         { id: 'islamic', type: 'classwork', match: ['islamic', 'اسلامية', 'إسلامية'], icon: 'check-circle-2' },
         { id: 'arabic', type: 'classwork', match: ['arabic'], icon: 'book' },
+        // Homework trigger — activates homeworkMode for everything after
         { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
         { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
         { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' }
       ];
 
-      const seenCategories = new Set();
-
       const getSectionMeta = (title) => {
         const lowerT = title.toLowerCase();
         for (const kw of keywords) {
           if (kw.match.some(m => lowerT.includes(m))) {
-            let type = kw.type;
-            let icon = kw.icon;
-
-            if (type === 'classwork') {
-              if (seenCategories.has(kw.id)) {
-                type = 'homework';
-                icon = 'pen-tool';
-              } else {
-                seenCategories.add(kw.id);
-              }
+            // If we are inside a homework block, sub-sections become homework
+            if (homeworkMode && kw.type === 'classwork') {
+              return { icon: 'pen-tool', type: 'homework' };
             }
-
-            return { icon, type };
+            // Activate homeworkMode when we hit a homework trigger
+            if (kw.type === 'homework') {
+              homeworkMode = true;
+            }
+            return { icon: kw.icon, type: kw.type };
           }
         }
+        // Unknown section: if we are past a homework trigger, it's homework context
+        if (homeworkMode) return { icon: 'pen-tool', type: 'homework' };
         return { icon: 'file-text', type: 'other' };
       };
 
@@ -464,9 +463,17 @@
                     </div>
                     <div className="flex-1 pr-4">
                       <h4 className={`font-bold mb-1 text-[13px] uppercase tracking-widest ${titleClass}`}>{section.title}</h4>
-                      <div className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed font-sans mt-1 group-hover:text-white transition-colors">
-                        {section.content || <span className="opacity-40 italic">No details provided.</span>}
-                      </div>
+                      {(() => {
+                        const isArabic = /[\u0600-\u06FF]/.test(section.content);
+                        return (
+                          <div
+                            className={`text-slate-200 text-sm whitespace-pre-wrap leading-loose mt-1 ${isArabic ? 'font-amiri text-base text-right' : 'font-sans'}`}
+                            dir={isArabic ? 'rtl' : 'ltr'}
+                          >
+                            {section.content || <span className="opacity-40 italic">No details provided.</span>}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
