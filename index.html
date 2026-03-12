@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Portal</title>
+
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            cinzel: ['Cinzel', 'serif'],
+          },
+          colors: {
+            islamic: {
+              900: '#064e3b',
+              800: '#065f46',
+              gold: '#d97706',
+              light: '#fde68a'
+            }
+          },
+          backgroundImage: {
+            'custom-bg': "url('bg.png')"
+          }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background-color: #022c22;
+      counter-reset: my-sec-counter;
+    }
+
+    .glass-panel {
+      background: rgba(6, 78, 59, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(251, 191, 36, 0.1);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: rgba(217, 119, 6, 0.5);
+      border-radius: 20px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    .delay-1 {
+      animation-delay: 0.1s;
+      opacity: 0;
+    }
+
+    .delay-2 {
+      animation-delay: 0.2s;
+      opacity: 0;
+    }
+
+    .delay-3 {
+      animation-delay: 0.3s;
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body class="text-slate-100 font-sans min-h-screen relative">
+  <!-- Custom user-provided background layer -->
+  <div class="fixed inset-0 z-[-1] opacity-10"
+    style="background-image: url('./bg.png'); background-size: 20%; background-repeat: repeat; background-position: center;">
+  </div>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const STATUS = {
+      PRESENT: '1',
+      PAID_ABSENCE: '!',
+      DOUBLE_CLASS: '2',
+      EXTRA_DOUBLE: 'ed',
+      EXTRA_DAY: 'e',
+      ABSENCE_RED: '0',
+      UNEXCUSED_ABSENCE: '-',
+      POSTPONED: 'p',
+      EXEMPT: 'x'
+    };
+
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const parseReport = (text) => {
+      if (!text) return [];
+      const lines = text.split('\n');
+      const sections = [];
+
+      let currentTitle = 'Summary';
+      let currentContent = [];
+
+      const keywords = [
+        { id: 'new', type: 'classwork', match: ['new', 'الجديد'], icon: 'sparkles' },
+        { id: 'quran', type: 'classwork', match: ['quran', 'قرآن', 'القرآن', 'recitation'], icon: 'check-circle-2' },
+        { id: 'reading', type: 'classwork', match: ['reading', 'قراءة', 'تلاوة', 'التلاوة'], icon: 'check-circle-2' },
+        { id: 'old_revision', type: 'classwork', match: ['old', 'قديم', 'الماضي البعيد', 'ماضي بعيد'], icon: 'check-circle-2' },
+        { id: 'revision', type: 'classwork', match: ['revision', 'مراجعة', 'المراجعة'], icon: 'check-circle-2' },
+        { id: 'noor', type: 'classwork', match: ['noor', 'نور', 'bayan', 'بيان'], icon: 'check-circle-2' },
+        { id: 'islamic', type: 'classwork', match: ['islamic', 'اسلامية', 'إسلامية'], icon: 'check-circle-2' },
+        { id: 'arabic', type: 'classwork', match: ['arabic'], icon: 'book' },
+        { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
+        { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
+        { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' }
+      ];
+
+      const seenCategories = new Set();
+
+      const getSectionMeta = (title) => {
+        const lowerT = title.toLowerCase();
+        for (const kw of keywords) {
+          if (kw.match.some(m => lowerT.includes(m))) {
+            let type = kw.type;
+            let icon = kw.icon;
+
+            if (type === 'classwork') {
+              if (seenCategories.has(kw.id)) {
+                type = 'homework';
+                icon = 'pen-tool';
+              } else {
+                seenCategories.add(kw.id);
+              }
+            }
+
+            return { icon, type };
+          }
+        }
+        return { icon: 'file-text', type: 'other' };
+      };
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].replace(/\*/g, '').replace(/_/g, '').replace(/〰️/g, '').trim();
+        if (!line) continue;
+
+        // Hide redundant header text
+        if (
+          line.includes('📖') ||
+          line.includes('📚') ||
+          line.toLowerCase().includes('(arabic)') ||
+          line.toLowerCase().startsWith('student:') ||
+          line.startsWith('الطالب:') ||
+          line.toLowerCase().startsWith('date:') ||
+          line.startsWith('التاريخ:') ||
+          line.toLowerCase().includes('class report') ||
+          line.includes('تقرير الحصة')
+        ) {
+          continue;
+        }
+
+        // Section matching
+        if (line.includes(':')) {
+          const parts = line.split(':');
+          let potentialTitle = parts[0].replace(/^[•\-\s]+/, '').trim();
+
+          // Intercept specific English headers to unify them under 'Arabic'
+          if (potentialTitle.toLowerCase().includes('session summary') || potentialTitle.toLowerCase().includes('next session plan')) {
+            potentialTitle = 'Arabic';
+          }
+
+          let isSectionHeader = false;
+          for (const kw of keywords) {
+            if (kw.match.some(m => potentialTitle.toLowerCase().includes(m))) {
+              isSectionHeader = true;
+              break;
+            }
+          }
+
+          if (isSectionHeader) {
+            if (currentContent.length > 0 && currentTitle !== 'Summary') {
+              const meta = getSectionMeta(currentTitle);
+              sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
+            }
+            currentTitle = potentialTitle;
+            const contentAfter = parts.slice(1).join(':').trim();
+            currentContent = contentAfter ? [contentAfter] : [];
+            continue;
+          }
+        }
+        currentContent.push(line);
+      }
+
+      if (currentContent.length > 0 && currentTitle !== 'Summary') {
+        const meta = getSectionMeta(currentTitle);
+        sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
+      }
+
+      return sections.length > 0 ? sections : [{ title: 'Report Overview', content: text.replace(/〰️/g, ''), icon: 'file-text', type: 'other' }];
+    };
+
+    function App() {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState('');
+      const [selectedReport, setSelectedReport] = useState(null);
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const studentId = searchParams.get('student');
+
+      useEffect(() => {
+        const fetchData = async () => {
+          if (!studentId) {
+            setError('Invalid student link. Please check the URL.');
+            setLoading(false);
+            return;
+          }
+
+          try {
+            const response = await axios.get('https://quran-classes-tracker-default-rtdb.firebaseio.com/appState.json');
+            setData(response.data);
+          } catch (err) {
+            console.error(err);
+            setError('Failed to load data. Please try again later.');
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        fetchData();
+      }, [studentId]);
+
+      useEffect(() => {
+        if (!loading && window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'Escape') {
+            setSelectedReport(null);
+          }
+        };
+        if (selectedReport) {
+          window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [selectedReport]);
+
+      if (loading) {
+        return (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="animate-spin flex gap-2">
+              <div className="w-4 h-4 rounded-full bg-islamic-gold"></div>
+              <div className="w-4 h-4 rounded-full bg-islamic-gold"></div>
+            </div>
+          </div>
+        );
+      }
+
+      if (error || !data || !data.students) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade">
+            <i data-lucide="alert-circle" className="text-red-400 mb-4 w-16 h-16"></i>
+            <h1 className="text-2xl font-cinzel font-bold text-white mb-2">Error</h1>
+            <p className="text-slate-400">{error || 'No data found'}</p>
+          </div>
+        );
+      }
+
+      const { students, attendance, month, year, savedReports } = data;
+      const student = students.find(s => s.id === studentId);
+
+      if (!student) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade">
+            <i data-lucide="user-x" className="text-islamic-gold mb-4 w-16 h-16"></i>
+            <h1 className="text-2xl font-cinzel font-bold text-white mb-2">Student Not Found</h1>
+            <p className="text-slate-400">There is no record for this student in the system.</p>
+          </div>
+        );
+      }
+
+      // Calendar Calculations
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDayIndex = new Date(year, month, 1).getDay();
+
+      const paddingDays = Array.from({ length: firstDayIndex }).map((_, i) => null);
+      const monthDays = Array.from({ length: daysInMonth }).map((_, i) => i + 1);
+
+      // Calculate Stats
+      let presentCount = 0;
+      let absentCount = 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const daysInMonthCounter = new Date(year, month + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonthCounter; d++) {
+        const dateObj = new Date(year, month, d);
+        const dayOfWeek = dateObj.getDay();
+        const isSched = student.days?.includes(dayOfWeek);
+        const attendanceKey = `${student.id}_${d}_${month}_${year}`;
+        const st = attendance?.[attendanceKey];
+
+        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(st)) {
+          presentCount++;
+          if (st === STATUS.DOUBLE_CLASS || st === STATUS.EXTRA_DOUBLE) presentCount++;
+        } else if ([STATUS.UNEXCUSED_ABSENCE, STATUS.ABSENCE_RED, STATUS.PAID_ABSENCE].includes(st)) {
+          absentCount++;
+        }
+      }
+
+      const closeReport = () => setSelectedReport(null);
+
+      // Render Calendar Day
+      const renderDay = (day) => {
+        if (!day) return <div key={Math.random()} className="aspect-square opacity-0"></div>;
+
+        const dateObj = new Date(year, month, day);
+        const dayOfWeek = dateObj.getDay();
+
+        const isScheduled = student.days?.includes(dayOfWeek);
+        const attendanceKey = `${student.id}_${day}_${month}_${year}`;
+        const status = attendance?.[attendanceKey];
+        const rawReport = savedReports?.[attendanceKey];
+        // If the status was deleted/cleared via Undo, hide the report icon even if report text remains in Firebase
+        const reportText = status ? (typeof rawReport === 'string' ? rawReport : rawReport?.reportText || null) : null;
+
+        let bgColor = "bg-white/5";
+        let borderColor = "border-white/10";
+        let statusIndicator = null;
+        let opacityClass = "opacity-100";
+        let isAbsent = false;
+        let isCompensated = false;
+
+        // Present statuses
+        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(status)) {
+          bgColor = "bg-emerald-500/20";
+          borderColor = "border-emerald-500/50";
+          statusIndicator = <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>;
+        }
+        // Compensated Absences (Scroll clicks)
+        else if ([STATUS.UNEXCUSED_ABSENCE, STATUS.ABSENCE_RED].includes(status)) {
+          isCompensated = true;
+          isAbsent = true;
+        }
+        // Regular Paid Absence (Right click)
+        else if (status === STATUS.PAID_ABSENCE) {
+          isAbsent = true;
+        }
+
+        if (isCompensated) {
+          bgColor = "bg-amber-500/10";
+          borderColor = "border-amber-500/40";
+          statusIndicator = <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" title="Compensated Class"></div>;
+        } else if (isAbsent) {
+          bgColor = "bg-red-500/10";
+          borderColor = "border-red-500/30";
+          statusIndicator = <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]"></div>;
+        } else if (!status && !isScheduled) {
+          bgColor = "bg-transparent";
+          borderColor = "border-transparent";
+          opacityClass = "opacity-25 blur-[0.5px]"; // Dim days without classes
+        } else if (isScheduled && !isAbsent && !status) {
+          borderColor = "border-islamic-gold/40 border-dashed";
+        }
+
+        return (
+          <div
+            key={day}
+            className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square`}
+          >
+            {statusIndicator}
+            <span className={`text-lg font-semibold ${isScheduled ? 'text-white' : 'text-slate-400'}`}>
+              {day}
+            </span>
+
+            {reportText && (
+              <button
+                onClick={() => setSelectedReport({ day, text: reportText })}
+                className="absolute bottom-1 -mb-1 w-6 h-6 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg"
+                title="View Report"
+              >
+                <i data-lucide="file-text" className="w-3 h-3 md:w-4 md:h-4"></i>
+              </button>
+            )}
+          </div>
+        );
+      };
+
+      const renderSectionGroup = (sections, typeLabelClass, sideBorderClass, typeName) => {
+        if (sections.length === 0) return null;
+        return (
+          <div className="mb-6">
+            <h5 className={`text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 ${typeLabelClass}`}>
+              <div className="h-px flex-1 bg-current opacity-20"></div>
+              {typeName}
+              <div className="h-px flex-1 bg-current opacity-20"></div>
+            </h5>
+            <div className={`pl-4 border-l-[3px] space-y-3 ${sideBorderClass}`}>
+              {sections.map((section, idx) => {
+                let bgClass = "bg-islamic-900/40 hover:bg-islamic-900/60";
+                let borderClass = "border-islamic-gold/10 hover:border-islamic-gold/30";
+                let iconBgClass = "bg-islamic-800/80 border-islamic-gold/20 text-islamic-gold";
+                let titleClass = "text-emerald-400";
+
+                if (section.type === 'homework') {
+                  bgClass = "bg-amber-900/10 hover:bg-amber-900/20";
+                  borderClass = "border-amber-500/20 hover:border-amber-500/40";
+                  iconBgClass = "bg-amber-900/40 border-amber-500/30 text-amber-500";
+                  titleClass = "text-amber-500";
+                } else if (section.type === 'feedback') {
+                  bgClass = "bg-blue-900/10 hover:bg-blue-900/20";
+                  borderClass = "border-blue-500/20 hover:border-blue-500/40";
+                  iconBgClass = "bg-blue-900/50 border-blue-500/30 text-blue-400";
+                  titleClass = "text-blue-400";
+                }
+
+                return (
+                  <div key={idx} className={`relative rounded-2xl p-4 flex gap-4 transition-transform hover:translate-x-1 duration-300 border ${bgClass} ${borderClass}`}>
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full border flex items-center justify-center shadow-inner mt-0.5 ${iconBgClass}`}>
+                      <i data-lucide={section.icon} className="w-4 h-4"></i>
+                    </div>
+                    <div className="flex-1 pr-4">
+                      <h4 className={`font-bold mb-1 text-[13px] uppercase tracking-widest ${titleClass}`}>{section.title}</h4>
+                      <div className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed font-sans mt-1 group-hover:text-white transition-colors">
+                        {section.content || <span className="opacity-40 italic">No details provided.</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="max-w-4xl mx-auto p-4 md:p-8 pb-20">
+
+          {/* Header Section */}
+          <div className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-islamic-gold/10 rounded-full blur-3xl -mx-20 -my-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <i data-lucide="book-open" className="w-12 h-12 text-islamic-gold mx-auto mb-4 opacity-80"></i>
+            <h1 className="text-4xl md:text-5xl font-cinzel font-bold text-white">
+              {student.name}
+            </h1>
+          </div>
+
+          {/* Current Month Box Above Calendar */}
+          <div className="glass-panel rounded-2xl p-4 md:p-6 mb-4 flex flex-col items-center justify-center animate-fade delay-1">
+            <h2 className="text-2xl font-cinzel font-bold text-islamic-light flex items-center gap-3">
+              <i data-lucide="calendar-days" className="w-6 h-6 text-islamic-gold"></i>
+              {monthNames[month]} {year}
+            </h2>
+          </div>
+
+          {/* Calendar Section */}
+          <div className="glass-panel rounded-3xl p-6 md:p-8 animate-fade delay-[500ms] mb-8">
+            <h2 className="text-xl md:text-2xl font-cinzel font-semibold mb-6 text-center text-white flex items-center justify-center gap-3">
+              Monthly Schedule
+            </h2>
+
+            <div className="grid grid-cols-7 gap-2 md:gap-4 mb-2">
+              {weekDays.map(day => (
+                <div key={day} className="text-center font-cinzel font-bold text-slate-400 text-sm py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 md:gap-4">
+              {paddingDays.map((_, i) => <div key={`pad-${i}`}></div>)}
+              {monthDays.map(day => renderDay(day))}
+            </div>
+
+            <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-slate-400">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-emerald-400"></div> Present
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-400"></div> Absent
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-400"></div> Compensated
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full border border-dashed border-islamic-gold/50"></div> Scheduled
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-2.5 h-2.5"></i></div> Report Available
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Attendance Stat */}
+            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
+              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Classes Attended</p>
+              <h3 className="text-5xl font-light text-emerald-400 z-10">{presentCount}</h3>
+            </div>
+
+            {/* Absences Stat */}
+            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
+              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Missed Classes</p>
+              <h3 className="text-5xl font-light text-red-400 z-10">{absentCount}</h3>
+            </div>
+          </div>
+
+          {/* Report Modal */}
+          {selectedReport && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="glass-panel w-full max-w-lg rounded-3xl p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
+                <button
+                  onClick={() => setSelectedReport(null)}
+                  className="absolute top-3 right-3 text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg"
+                >
+                  <i data-lucide="x" className="w-5 h-5"></i>
+                </button>
+
+                <div className="relative z-10 text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mb-3 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                    <i data-lucide="award" className="w-6 h-6"></i>
+                  </div>
+                  <h3 className="text-2xl font-cinzel font-bold text-islamic-light border-b border-islamic-gold/20 pb-4">
+                    Daily Report
+                  </h3>
+                  <p className="text-sm text-emerald-200 mt-2">
+                    {monthNames[month]} {selectedReport.day}, {year}
+                  </p>
+                </div>
+
+                <div className="space-y-2 max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 relative z-10 pb-4">
+                  {(() => {
+                    const parsed = parseReport(selectedReport.text);
+                    // Filter out any accidentally lingering 'Summary' just in case
+                    const validSections = parsed.filter(s => s.title !== 'Summary');
+
+                    const classwork = validSections.filter(s => s.type === 'classwork');
+                    const homework = validSections.filter(s => s.type === 'homework');
+                    const feedback = validSections.filter(s => s.type === 'feedback');
+                    const other = validSections.filter(s => s.type === 'other');
+
+                    return (
+                      <>
+                        {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", "Completed In Class")}
+                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", "Homework & Next Class")}
+                        {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", "Feedback & Notes")}
+                        {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", "Other Details")}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    } // End App
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+
+</html>
