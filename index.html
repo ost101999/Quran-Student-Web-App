@@ -439,10 +439,10 @@
             {reportText && (
               <button
                 onClick={() => setSelectedReport({ day, text: reportText })}
-                className="absolute bottom-1 -mb-1 w-6 h-6 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg"
+                className="absolute -bottom-[18px] left-1/2 -translate-x-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center transition-all duration-300 z-10 shadow-[0_0_8px_rgba(217,119,6,0.6)] hover:scale-125"
                 title="View Report"
               >
-                <i data-lucide="file-text" className="w-3 h-3 md:w-4 md:h-4"></i>
+                <i data-lucide="file-text" className="w-3 h-3"></i>
               </button>
             )}
           </div>
@@ -550,7 +550,7 @@
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2 md:gap-4">
+            <div className="grid grid-cols-7 gap-2 md:gap-4 overflow-visible">
               {paddingDays.map((_, i) => <div key={`pad-${i}`}></div>)}
               {monthDays.map(day => renderDay(day))}
             </div>
