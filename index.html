@@ -461,7 +461,17 @@
                       <i data-lucide={section.icon} className="w-4 h-4"></i>
                     </div>
                     <div className="flex-1 pr-4">
-                      <h4 className={`font-bold mb-1 text-[13px] uppercase tracking-widest ${titleClass}`}>{section.title}</h4>
+                      {(() => {
+                        const isTitleArabic = /[\u0600-\u06FF]/.test(section.title);
+                        return (
+                          <h4
+                            className={`font-bold mb-1 ${isTitleArabic ? 'font-amiri text-lg text-right' : 'text-[13px] uppercase tracking-widest'} ${titleClass}`}
+                            dir={isTitleArabic ? 'rtl' : 'ltr'}
+                          >
+                            {section.title}
+                          </h4>
+                        );
+                      })()}
                       {(() => {
                         const isArabic = /[\u0600-\u06FF]/.test(section.content);
                         return (
