@@ -204,14 +204,27 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-12" dir="rtl">
-      {/* Help Button */}
-      <button
+      {/* Help Button - Pulse animation to stay visible & noticeable */}
+      <motion.button
         onClick={startTour}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{
+          scale: [1, 1.1, 1],
+          opacity: 1
+        }}
+        transition={{
+          scale: {
+            repeat: Infinity,
+            duration: 2,
+            ease: "easeInOut"
+          },
+          opacity: { duration: 0.5 }
+        }}
         className="fixed bottom-6 left-6 w-12 h-12 bg-white text-blue-600 rounded-full shadow-lg border border-slate-100 flex items-center justify-center z-50 hover:bg-blue-50 transition-colors"
         title="دليل المستخدم"
       >
         <HelpCircle size={28} />
-      </button>
+      </motion.button>
 
       {/* Header */}
       <motion.div
