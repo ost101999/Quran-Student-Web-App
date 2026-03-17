@@ -44,7 +44,6 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/react-joyride@2.9.3/dist/index.umd.js"></script>
 
   <style>
     body {
@@ -258,9 +257,10 @@
     function App() {
       const [data, setData] = useState(null);
       const [loading, setLoading] = useState(true);
+
       // Tour states
-      const [runTour, setRunTour] = useState(false);
       const [isTourMode, setIsTourMode] = useState(false);
+      const [tourStep, setTourStep] = useState(-1);
 
       const searchParams = new URLSearchParams(window.location.search);
       const studentId = searchParams.get('student');
@@ -312,12 +312,12 @@
         <button
           onClick={() => {
             setIsTourMode(true);
-            setTimeout(() => setRunTour(true), 100);
+            setTourStep(0);
           }}
-          className="fixed bottom-6 left-6 z-[100] bg-islamic-800 text-islamic-light p-3 md:p-4 rounded-full shadow-[0_4px_20px_rgba(217,119,6,0.5)] border border-islamic-gold/50 hover:bg-islamic-900 hover:scale-110 transition-all duration-300"
+          className="fixed bottom-6 left-6 z-[100] bg-islamic-800 text-islamic-light p-3 md:p-4 rounded-full shadow-[0_4px_20px_rgba(217,119,6,0.5)] border border-islamic-gold/50 hover:bg-islamic-900 hover:scale-110 transition-all duration-300 group"
           title="Start Tour"
         >
-          <i data-lucide="help-circle" className="w-6 h-6 md:w-8 md:h-8"></i>
+          <i data-lucide="help-circle" className="w-6 h-6 md:w-8 md:h-8 group-hover:rotate-12 transition-transform"></i>
         </button>
       );
 
@@ -574,63 +574,81 @@
         );
       };
 
-      const ReactJoyride = window.ReactJoyride?.default;
+      // Define Tour Overlays Content
+      const tourSteps = [
+        {
+          title: 'Welcome to the Portal',
+          content: 'Let us take a quick tour! At the top, you will see your name and academy details. The dynamic background makes the portal feel alive.'
+        },
+        {
+          title: 'Current Month',
+          content: 'Just below the header, you will find the current month and year for which the report and attendance are displayed.'
+        },
+        {
+          title: 'Monthly Schedule',
+          content: 'We visualize your classes using colors! Solid GREEN means Present, solid RED means Absent, and YELLOW outlines mean Compensated or Scheduled.'
+        },
+        {
+          title: 'Attendance Stats',
+          content: 'At a quick glance, the bottom panels show your total attended classes and missed classes throughout the month.'
+        },
+        {
+          title: 'Detailed Reports',
+          content: 'Noticed a small golden report icon on some days? Click it to open a comprehensive daily report showing readings, homework, and teacher feedback. Let\'s explore!'
+        }
+      ];
 
       return (
         <div className="max-w-4xl mx-auto p-4 md:p-8 pb-20 relative">
 
           {renderFloatingHelpButton()}
 
-          {ReactJoyride && (
-            <ReactJoyride
-              steps={[
-                {
-                  target: 'body',
-                  content: 'Welcome to the Student Portal! Let us take a quick tour.',
-                  placement: 'center',
-                  disableBeacon: true,
-                },
-                {
-                  target: '#tour-header',
-                  content: 'Here is the student name and profile information.',
-                },
-                {
-                  target: '#tour-month',
-                  content: 'This displays the current month and year being viewed.',
-                },
-                {
-                  target: '#tour-calendar',
-                  content: 'The monthly schedule shows attendance visually. Solid green is Present, Red is Absent, and Yellow is Compensated.',
-                },
-                {
-                  target: '#tour-stats',
-                  content: 'Summary of total attended and missed classes for the selected month.',
-                }
-              ]}
-              run={runTour}
-              continuous
-              showProgress
-              showSkipButton
-              styles={{
-                options: {
-                  primaryColor: '#065f46',
-                  zIndex: 1000,
-                  textColor: '#fff',
-                  backgroundColor: '#064e3b',
-                  arrowColor: '#064e3b',
-                  overlayColor: 'rgba(0, 0, 0, 0.7)',
-                },
-                buttonNext: { backgroundColor: '#d97706', color: '#fff' },
-                buttonSkip: { color: '#fbbf24' },
-                buttonBack: { color: '#fbbf24' }
-              }}
-              callback={(data) => {
-                if (data.status === 'finished' || data.status === 'skipped') {
-                  setRunTour(false);
-                  setIsTourMode(false);
-                }
-              }}
-            />
+          {/* Custom Tour Overlay */}
+          {tourStep >= 0 && (
+            <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="glass-panel w-full max-w-sm rounded-3xl p-6 relative animate-fade border border-islamic-gold/50 shadow-[0_0_40px_rgba(217,119,6,0.2)] text-center">
+                <div className="absolute -top-4 -right-4 bg-islamic-gold text-white font-bold w-10 h-10 rounded-full flex items-center justify-center border-2 border-islamic-900 shadow-lg">
+                  {tourStep + 1}/{tourSteps.length}
+                </div>
+
+                <div className="w-16 h-16 bg-islamic-800/80 rounded-full border border-islamic-gold/30 text-islamic-gold flex items-center justify-center mx-auto mb-4">
+                  <i data-lucide="info" className="w-8 h-8"></i>
+                </div>
+
+                <h3 className="text-xl font-cinzel font-bold text-islamic-light mb-3">
+                  {tourSteps[tourStep].title}
+                </h3>
+
+                <p className="text-slate-300 text-sm md:text-base leading-relaxed mb-6 font-sans">
+                  {tourSteps[tourStep].content}
+                </p>
+
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-islamic-gold/20">
+                  <button
+                    onClick={() => {
+                      setTourStep(-1);
+                      setIsTourMode(false);
+                    }}
+                    className="text-slate-400 hover:text-white px-3 py-2 text-sm transition-colors"
+                  >
+                    Skip Tour
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (tourStep < tourSteps.length - 1) {
+                        setTourStep(tourStep + 1);
+                      } else {
+                        setTourStep(-1);
+                        setIsTourMode(false);
+                      }
+                    }}
+                    className="bg-islamic-gold text-islamic-900 font-bold px-6 py-2 rounded-xl hover:bg-yellow-500 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                  >
+                    {tourStep < tourSteps.length - 1 ? 'Next' : 'Finish'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Header Section */}
