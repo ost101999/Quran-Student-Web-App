@@ -389,9 +389,11 @@
         }
         return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       };
-      const student = nameSlug
-        ? students.find(s => toSlug(s.name) === nameSlug)
-        : students.find(s => String(s.id) === String(studentId));
+      const student = isTourMode
+        ? mockData.students[0]
+        : (nameSlug
+          ? students.find(s => toSlug(s.name) === nameSlug)
+          : students.find(s => String(s.id) === String(studentId)));
 
       if (!student) {
         return (
