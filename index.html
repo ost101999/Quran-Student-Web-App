@@ -102,6 +102,44 @@
       animation-delay: 0.3s;
       opacity: 0;
     }
+
+    /* Joyride Custom Animations */
+    .react-joyride__spotlight {
+      animation: spotlightPulse 2s infinite !important;
+      background-color: rgba(217, 119, 6, 0.15) !important;
+      border: 2px solid rgba(217, 119, 6, 0.8) !important;
+      border-radius: 20px !important;
+    }
+
+    @keyframes spotlightPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 0 0 15px rgba(217, 119, 6, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(217, 119, 6, 0);
+      }
+    }
+
+    .react-joyride__tooltip {
+      animation: floatTooltip 3s ease-in-out infinite !important;
+    }
+
+    @keyframes floatTooltip {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
+    }
   </style>
 </head>
 
@@ -580,6 +618,36 @@
 
       const ReactJoyride = window.ReactJoyride?.default;
 
+      const CustomTooltip = ({ index, step, continuous, backProps, closeProps, primaryProps, tooltipProps }) => {
+        return (
+          <div {...tooltipProps} className="bg-islamic-900 border border-islamic-gold/50 p-6 rounded-3xl shadow-[0_10px_40px_rgba(217,119,6,0.3)] w-80 max-w-[90vw] relative animate-fade z-50 text-center">
+            {step.content}
+
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-islamic-gold/20">
+              {index > 0 ? (
+                <button {...backProps} className="text-slate-300 hover:text-islamic-gold transition-colors text-sm font-semibold px-3 py-2 rounded-lg hover:bg-islamic-gold/10">
+                  <span className="flex items-center gap-1">← Back</span>
+                </button>
+              ) : <div></div>}
+
+              <div className="flex gap-2 text-xs text-slate-400 items-center font-mono">
+                {index + 1} / {5}
+              </div>
+
+              {continuous ? (
+                <button {...primaryProps} className="bg-gradient-to-r from-islamic-gold to-yellow-500 text-islamic-900 px-5 py-2 rounded-xl font-bold hover:scale-105 shadow-lg transition-transform flex items-center gap-2">
+                  {index === 4 ? 'Finish' : 'Next'}
+                </button>
+              ) : (
+                <button {...closeProps} className="bg-islamic-gold text-islamic-900 px-5 py-2 rounded-xl font-bold hover:bg-yellow-500 transition-colors">
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      };
+
       return (
         <div className="max-w-4xl mx-auto p-4 md:p-8 pb-20 relative">
 
@@ -587,46 +655,89 @@
 
           {ReactJoyride && (
             <ReactJoyride
+              tooltipComponent={CustomTooltip}
+              floaterProps={{
+                disableAnimation: false,
+                styles: {
+                  arrow: {
+                    length: 12,
+                    spread: 24,
+                  }
+                }
+              }}
               steps={[
                 {
                   target: 'body',
-                  content: 'Welcome to the Student Portal! Let us take a quick tour.',
+                  content: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-5xl mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(217,119,6,0.5)]">👋</div>
+                      <h3 className="text-xl font-cinzel font-bold text-islamic-gold mb-2">Welcome!</h3>
+                      <p className="text-slate-200">Let us take a quick tour of the Student Portal.</p>
+                      <div className="text-2xl mt-4 animate-bounce">⬇️</div>
+                    </div>
+                  ),
                   placement: 'center',
                   disableBeacon: true,
                 },
                 {
                   target: '#tour-header',
-                  content: 'Here is the student name and profile information.',
+                  content: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-4xl mb-3 animate-bounce">👤</div>
+                      <h3 className="text-lg font-cinzel font-bold text-islamic-gold mb-2">Student Profile</h3>
+                      <p className="text-slate-200 text-sm">Here is the student name and profile information.</p>
+                      <div className="text-2xl mt-3 animate-bounce">⬇️</div>
+                    </div>
+                  ),
                 },
                 {
                   target: '#tour-month',
-                  content: 'This displays the current month and year being viewed.',
+                  content: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-4xl mb-3 animate-bounce">📅</div>
+                      <h3 className="text-lg font-cinzel font-bold text-islamic-gold mb-2">Current Month</h3>
+                      <p className="text-slate-200 text-sm">This displays the current month and year being viewed.</p>
+                      <div className="text-2xl mt-3 animate-bounce">⬇️</div>
+                    </div>
+                  ),
                 },
                 {
                   target: '#tour-calendar',
-                  content: 'The monthly schedule shows attendance visually. Solid green is Present, Red is Absent, and Yellow is Compensated.',
+                  content: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-4xl mb-3 animate-bounce">📌</div>
+                      <h3 className="text-lg font-cinzel font-bold text-islamic-gold mb-2">Schedule View</h3>
+                      <p className="text-slate-200 text-sm mb-3">The monthly schedule shows attendance visually.</p>
+                      <div className="flex flex-col gap-2 text-xs text-left w-full bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                        <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span> Present</div>
+                        <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]"></span> Absent</div>
+                        <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span> Compensated</div>
+                      </div>
+                    </div>
+                  ),
                 },
                 {
                   target: '#tour-stats',
-                  content: 'Summary of total attended and missed classes for the selected month.',
+                  content: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-4xl mb-3 animate-bounce">📊</div>
+                      <h3 className="text-lg font-cinzel font-bold text-islamic-gold mb-2">Monthly Stats</h3>
+                      <p className="text-slate-200 text-sm">Summary of total attended and missed classes for the selected month.</p>
+                    </div>
+                  ),
                 }
               ]}
               run={runTour}
               continuous
-              showProgress
-              showSkipButton
+              showProgress={false}
+              showSkipButton={false}
               styles={{
                 options: {
                   primaryColor: '#065f46',
                   zIndex: 1000,
-                  textColor: '#fff',
-                  backgroundColor: '#064e3b',
                   arrowColor: '#064e3b',
                   overlayColor: 'rgba(0, 0, 0, 0.7)',
-                },
-                buttonNext: { backgroundColor: '#d97706', color: '#fff' },
-                buttonSkip: { color: '#fbbf24' },
-                buttonBack: { color: '#fbbf24' }
+                }
               }}
               callback={(data) => {
                 if (data.status === 'finished' || data.status === 'skipped') {
