@@ -13,10 +13,6 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet">
 
-  <!-- Driver.js for Onboarding Tour -->
-  <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
-
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -48,7 +44,6 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
   <style>
     body {
@@ -119,16 +114,6 @@
 
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
-    const { motion, AnimatePresence } = FramerMotion;
-
-    // Check if text contains Arabic characters
-    const isArabic = (text) => /[\u0600-\u06FF]/.test(text || '');
-
-    // Demo data for the tour
-    const demoReportText = `الجديد (تلاوة): سورة الفاتحة من آية ١ إلى آية ٧
-المراجعة: سورة البقرة
-واجب (حفظ جديد): سورة الناس من آية ١ إلى آية ٦
-🎧 للاستماع للتصحيح: https://example.com/audio`;
 
     const STATUS = {
       PRESENT: '1',
@@ -169,7 +154,7 @@
         { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
         { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
         { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' },
-        { id: 'audio', type: 'audio', match: ['🎧', 'للاستماع', 'audio correction'], icon: 'mic' }
+        { id: 'audio', type: 'audio', match: ['🎧', 'للاستماع', 'audio correction'], icon: 'headphones' }
       ];
 
       // Track repeated titles: same title twice → second becomes homework
@@ -274,7 +259,6 @@
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState('');
       const [selectedReport, setSelectedReport] = useState(null);
-      const [isTouring, setIsTouring] = useState(false);
 
       const searchParams = new URLSearchParams(window.location.search);
       const studentId = searchParams.get('student');
@@ -320,79 +304,6 @@
         }
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [selectedReport]);
-
-      // Handle Tour Auto-Start
-      useEffect(() => {
-        if (data && !loading && !error) {
-          const student = nameSlug
-            ? data.students.find(s => toSlug(s.name) === nameSlug)
-            : data.students.find(s => String(s.id) === String(studentId));
-
-          if (student) {
-            const hasSeenTour = localStorage.getItem(`tour_seen_${student.id}`);
-            if (!hasSeenTour) {
-              setTimeout(() => startTour(student), 1000);
-            }
-          }
-        }
-      }, [data, loading, error]);
-
-      const startTour = (activeStudent) => {
-        const studentToUse = activeStudent || student;
-        if (!studentToUse) return;
-
-        const isAr = isArabic(studentToUse.name);
-        setIsTouring(true);
-
-        const driverObj = window.driver.js.driver({
-          showProgress: true,
-          nextBtnText: isAr ? 'التالي' : 'Next',
-          prevBtnText: isAr ? 'السابق' : 'Previous',
-          doneBtnText: isAr ? 'إنهاء' : 'Done',
-          allowClose: true,
-          onDeselected: () => setIsTouring(false),
-          onDestroyed: () => {
-            setIsTouring(false);
-            localStorage.setItem(`tour_seen_${studentToUse.id}`, 'true');
-          },
-          steps: [
-            {
-              element: '#student-header-box',
-              popover: {
-                title: isAr ? 'مرحباً بك!' : 'Welcome!',
-                description: isAr ? 'هنا تجد اسم الطالب.' : 'Here you can find the student name.',
-                side: "bottom", align: 'start'
-              }
-            },
-            {
-              element: '#calendar-box',
-              popover: {
-                title: isAr ? 'الجدول الشهري' : 'Monthly Schedule',
-                description: isAr ? 'هنا تظهر أيام الحضور والغياب، والأيقونة البرتقالية تعني وجود تقرير.' : 'Here you can see attendance and absence days. The orange icon means a report is available.',
-                side: "top", align: 'start'
-              }
-            },
-            {
-              element: '#stats-container',
-              popover: {
-                title: isAr ? 'الإحصائيات' : 'Statistics',
-                description: isAr ? 'ملخص لعدد الحصص والغياب خلال الشهر.' : 'Summary of classes attended and missed during the month.',
-                side: "top", align: 'start'
-              }
-            },
-            {
-              element: '#demo-report-trigger',
-              popover: {
-                title: isAr ? 'التقارير اليومية' : 'Daily Reports',
-                description: isAr ? 'عند الضغط على أيقونة التقرير، تظهر تفاصيل ما تم إنجازه والملاحظات الصوتية.' : 'When clicking the report icon, achievement details and audio notes will appear.',
-                side: "top", align: 'start'
-              }
-            },
-          ]
-        });
-
-        driverObj.drive();
-      };
 
       if (loading) {
         return (
@@ -473,19 +384,7 @@
         }
       }
 
-      const reportToUse = isTouring ? { day: 'Demo', text: demoReportText } : selectedReport;
-      const closeReport = () => {
-        setIsTouring(false);
-        setSelectedReport(null);
-      };
-
-      // Trigger demo report popup when touring starts
-      useEffect(() => {
-        if (isTouring && !selectedReport) {
-          // The tour starts, we can show a sample report popup to explain the sections
-          // We target a dummy element for the last step
-        }
-      }, [isTouring]);
+      const closeReport = () => setSelectedReport(null);
 
       // Render Calendar Day
       const renderDay = (day) => {
@@ -632,7 +531,7 @@
         <div className="max-w-4xl mx-auto p-4 md:p-8 pb-20">
 
           {/* Header Section */}
-          <div id="student-header-box" className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
+          <div className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
             <div className="absolute top-0 right-0 w-64 h-64 bg-islamic-gold/10 rounded-full blur-3xl -mx-20 -my-20 pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -640,17 +539,6 @@
             <h1 className="text-4xl md:text-5xl font-cinzel font-bold text-white">
               {student.name}
             </h1>
-
-            {/* Help Button - Pulse animation */}
-            <motion.button
-              onClick={() => startTour()}
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute top-4 left-4 w-10 h-10 bg-islamic-gold/20 text-islamic-gold rounded-full flex items-center justify-center border border-islamic-gold/30 hover:bg-islamic-gold/40 transition-colors z-30"
-              title="Help Tour"
-            >
-              <i data-lucide="help-circle" className="w-6 h-6"></i>
-            </motion.button>
           </div>
 
           {/* Current Month Box Above Calendar */}
@@ -662,7 +550,7 @@
           </div>
 
           {/* Calendar Section */}
-          <div id="calendar-box" className="glass-panel rounded-3xl p-6 md:p-8 animate-fade delay-[500ms] mb-8">
+          <div className="glass-panel rounded-3xl p-6 md:p-8 animate-fade delay-[500ms] mb-8">
             <h2 className="text-xl md:text-2xl font-cinzel font-semibold mb-6 text-center text-white flex items-center justify-center gap-3">
               Monthly Schedule
             </h2>
@@ -694,12 +582,12 @@
                 <div className="w-4 h-4 rounded-full border border-dashed border-islamic-gold/50"></div> Scheduled
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-2.5 h-2.5"></i></div> <span id="demo-report-trigger">Report Available</span>
+                <div className="w-4 h-4 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-2.5 h-2.5"></i></div> Report Available
               </div>
             </div>
           </div>
 
-          <div id="stats-container" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Attendance Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
@@ -716,12 +604,12 @@
           </div>
 
           {/* Report Modal */}
-          {(selectedReport || isTouring) && (
+          {selectedReport && (
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="glass-panel w-full max-w-lg rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
                 <button
-                  onClick={closeReport}
+                  onClick={() => setSelectedReport(null)}
                   className="absolute top-3 right-3 text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg"
                 >
                   <i data-lucide="x" className="w-5 h-5"></i>
@@ -735,13 +623,13 @@
                     Daily Report
                   </h3>
                   <p className="text-xs md:text-sm text-emerald-200 mt-1 md:mt-2">
-                    {isTouring ? 'Tour Demo' : `${monthNames[month]} ${selectedReport.day}, ${year}`}
+                    {monthNames[month]} {selectedReport.day}, {year}
                   </p>
                 </div>
 
                 <div className="space-y-2 max-h-[65vh] md:max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 relative z-10 pb-4">
                   {(() => {
-                    const parsed = parseReport(reportToUse.text);
+                    const parsed = parseReport(selectedReport.text);
                     // Filter out any accidentally lingering 'Summary' just in case
                     const validSections = parsed.filter(s => s.title !== 'Summary');
 
@@ -779,7 +667,7 @@
                                     <div className="relative w-9 h-9 flex-shrink-0">
                                       <div className="absolute inset-0 rounded-full bg-islamic-gold/25 animate-ping group-hover:animate-none"></div>
                                       <div className="relative w-full h-full rounded-full bg-islamic-gold/10 border border-islamic-gold/20 flex items-center justify-center text-islamic-gold group-hover:bg-islamic-gold/20 transition-colors">
-                                        <i data-lucide="mic" className="w-4 h-4"></i>
+                                        <i data-lucide="headphones" className="w-4 h-4"></i>
                                       </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
