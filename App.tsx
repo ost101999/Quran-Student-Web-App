@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, Mic, HelpCircle } from 'lucide-react';
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
+import { motion } from 'framer-motion';
+import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, HelpCircle } from 'lucide-react';
+import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
 
 // Interfaces matching the desktop app
 interface Student {
@@ -30,31 +29,20 @@ const toHindiDigits = (num: number | string): string => {
   return num.toString().replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[parseInt(d)]).replace(/\./g, ",");
 };
 
-// Check if text contains Arabic characters
-const isArabic = (text: string): boolean => {
-  return /[\u0600-\u06FF]/.test(text || '');
-};
-
 // Month Names in Arabic
 const arabicMonths = [
   'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
 ];
 
-// Demo data for the tour
-const demoReport = {
-  sectionToggles: { readingNew: true, readingRev: true, homeworkNew: true },
-  readingNew: { surah: 'الفاتحة', mode: 'ayah', fromAyah: '١', toAyah: '٧' },
-  readingRev: { surah: 'البقرة' },
-  homeworkNew: { surah: 'الناس', mode: 'ayah', from: '١', to: '٦' },
-  audioLink: 'https://example.com/audio'
-};
-
 function App() {
   const [data, setData] = useState<AppState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isTouring, setIsTouring] = useState(false);
+
+  // Tour states
+  const [runTour, setRunTour] = useState(false);
+  const [isTourMode, setIsTourMode] = useState(false);
 
   // Get student ID from URL
   const searchParams = new URLSearchParams(window.location.search);
@@ -82,105 +70,130 @@ function App() {
     fetchData();
   }, [studentId]);
 
-  const { students, attendance, month, year, lastReports } = data || {};
-  const student = students?.find(s => s.id === studentId);
-
-  useEffect(() => {
-    if (student && !loading && !error) {
-      const hasSeenTour = localStorage.getItem(`tour_seen_${student.id}`);
-      if (!hasSeenTour) {
-        setTimeout(() => startTour(), 1000);
+  // Mock data for Tour
+  const mockData: AppState = {
+    students: [{
+      id: "mock_student",
+      name: "أحمد بن عبد الله (حساب افتراضي)",
+      academy: "أكاديمية نور القرآن",
+      location: "مصر",
+      rate: 50
+    }],
+    attendance: {
+      "mock_student_12_5_2024": "1",
+      "mock_student_15_5_2024": "1",
+      "mock_student_18_5_2024": "1"
+    },
+    month: 5,
+    year: 2024,
+    lastReports: {
+      "mock_student": {
+        sectionToggles: { readingNew: true, readingRev: true, homeworkNew: true },
+        readingNew: { surah: "البقرة", mode: "ayah", fromAyah: 1, toAyah: 20 },
+        readingRev: { surah: "الفاتحة والناس" },
+        homeworkNew: { surah: "آل عمران", mode: "page", from: 50, to: 51 }
       }
     }
-  }, [student, loading, error]);
-
-  const startTour = () => {
-    const isAr = student ? isArabic(student.name) : true;
-    setIsTouring(true);
-
-    const driverObj = driver({
-      showProgress: true,
-      nextBtnText: isAr ? 'التالي' : 'Next',
-      prevBtnText: isAr ? 'السابق' : 'Previous',
-      doneBtnText: isAr ? 'إنهاء' : 'Done',
-      allowClose: true,
-      onDeselected: () => setIsTouring(false),
-      onDestroyed: () => {
-        setIsTouring(false);
-        if (student) localStorage.setItem(`tour_seen_${student.id}`, 'true');
-      },
-      steps: [
-        {
-          element: '#student-header',
-          popover: {
-            title: isAr ? 'مرحباً بك!' : 'Welcome!',
-            description: isAr ? 'هنا تجد اسم الطالب والأكاديمية المسجل بها.' : 'Here you can find the student name and the registered academy.',
-            side: "bottom", align: 'start'
-          }
-        },
-        {
-          element: '#stats-section',
-          popover: {
-            title: isAr ? 'الإحصائيات' : 'Statistics',
-            description: isAr ? 'هنا تظهر عدد الحصص التي حضرها الطالب في الشهر الحالي وتواريخ الحضور.' : 'Here you can see the number of classes attended this month and the attendance dates.',
-            side: "bottom", align: 'start'
-          }
-        },
-        {
-          element: '#report-section',
-          popover: {
-            title: isAr ? 'آخر تقرير' : 'Latest Report',
-            description: isAr ? 'هذا هو أهم قسم، يحتوي على تفاصيل ما تم إنجازه في آخر حصة والواجب المطلوب.' : 'This is the most important section, containing details of what was achieved in the last class and the required homework.',
-            side: "top", align: 'start'
-          }
-        },
-        {
-          element: '#audio-link',
-          popover: {
-            title: isAr ? 'التصحيح الصوتي' : 'Audio Correction',
-            description: isAr ? 'في حال وجود ملاحظات صوتية من المعلم، اضغط على هذا الزر للاستماع إليها.' : 'If there are audio notes from the teacher, click this button to listen to them.',
-            side: "top", align: 'start'
-          }
-        },
-      ]
-    });
-
-    driverObj.drive();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50" dir="rtl">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
-      </div>
-    );
-  }
+  const activeData = isTourMode ? mockData : data;
+  const student = isTourMode ? mockData.students[0] : activeData?.students?.find(s => s.id === studentId);
 
-  if (error || !data) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center" dir="rtl">
-        <AlertCircle size={64} className="text-red-500 mb-4" />
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">عذراً</h1>
-        <p className="text-slate-600">{error || 'لم يتم العثور على بيانات'}</p>
-      </div>
-    );
-  }
+  // Tour Steps
+  const tourSteps: Step[] = [
+    {
+      target: 'body',
+      content: 'مرحباً بك في تطبيق متابعة الطلاب! سنأخذك في جولة سريعة للتعرف على الميزات الأساسية للتطبيق.',
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-header',
+      content: 'هنا تجد البيانات الأساسية للطالب مثل اسمه والأكاديمية التي يدرس بها.',
+    },
+    {
+      target: '#tour-month',
+      content: 'يوضح هذا القسم الشهر والسنة الحالية التي تخص إحصائيات الحضور والغياب المعروضة.',
+    },
+    {
+      target: '#tour-stats',
+      content: 'من خلال هذا الرقم يمكنك معرفة إجمالي عدد الحصص التي حضرها الطالب بانتظام خلال الشهر المحدد المعروض.',
+    },
+    {
+      target: '#tour-present-days',
+      content: 'وهنا يمكنك الاطلاع بدقة على أيام الحضور الفعلية خلال الشهر.',
+    },
+    {
+      target: '#tour-report',
+      content: 'أخيراً، يعرض لك هذا القسم التقرير التفصيلي لآخر حصة، ويتضمن المهام المطلوبة من الطالب كالحفظ والمراجعة.',
+    }
+  ];
 
-  if (!student) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center" dir="rtl">
-        <AlertCircle size={64} className="text-amber-500 mb-4" />
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">طالب غير موجود</h1>
-        <p className="text-slate-600">لا يوجد سجل لهذا الطالب في النظام.</p>
-      </div>
-    );
+  const handleJoyrideCallback = (data: CallBackProps) => {
+    const { status } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+      setIsTourMode(false);
+    }
+  };
+
+  const startTour = () => {
+    setIsTourMode(true);
+    setTimeout(() => {
+      setRunTour(true);
+    }, 100);
+  };
+
+  const FloatingHelpButton = () => (
+    <button
+      onClick={startTour}
+      className="fixed bottom-6 left-6 bg-blue-600 text-white p-3.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-blue-700 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(37,99,235,0.4)] transition-all duration-300 z-50 flex items-center justify-center group border border-blue-500/50"
+      title="جولة تعريفية"
+    >
+      <HelpCircle size={28} className="group-hover:rotate-12 transition-transform duration-300 relative z-10" />
+      <div className="absolute inset-0 rounded-2xl bg-blue-600 blur-sm opacity-50 group-hover:opacity-100 transition-opacity"></div>
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 to-white/20"></div>
+    </button>
+  );
+
+  // Render loading or error with tour button (unless in tour mode)
+  if (!isTourMode) {
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 relative" dir="rtl">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+          <FloatingHelpButton />
+        </div>
+      );
+    }
+    if (error || !activeData) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center relative" dir="rtl">
+          <AlertCircle size={64} className="text-red-500 mb-4" />
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">عذراً</h1>
+          <p className="text-slate-600">{error || 'لم يتم العثور على بيانات'}</p>
+          <FloatingHelpButton />
+        </div>
+      );
+    }
+    if (!student) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center relative" dir="rtl">
+          <AlertCircle size={64} className="text-amber-500 mb-4" />
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">طالب غير موجود</h1>
+          <p className="text-slate-600">لا يوجد سجل لهذا الطالب في النظام.</p>
+          <FloatingHelpButton />
+        </div>
+      );
+    }
   }
 
   // Calculate stats for current month
   let visitsCount = 0;
   let presentDays: number[] = [];
+  const { attendance, month, year, lastReports } = activeData!;
 
-  if (attendance) {
+  if (attendance && student) {
     Object.entries(attendance).forEach(([key, status]) => {
       const parts = key.split('_');
       const id = parts[0];
@@ -200,35 +213,67 @@ function App() {
   }
 
   presentDays.sort((a, b) => a - b);
-  const studentReport = isTouring ? demoReport : lastReports?.[student.id];
+  const studentReport = student ? lastReports?.[student.id] : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-12" dir="rtl">
-      {/* Help Button - Pulse animation to stay visible & noticeable */}
-      <motion.button
-        onClick={startTour}
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: 1
+    <div className="min-h-screen bg-slate-50 font-sans pb-12 relative" dir="rtl">
+
+      {/* Joyride Tour Component */}
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous
+        showProgress
+        showSkipButton
+        callback={handleJoyrideCallback}
+        locale={{
+          back: 'السابق',
+          close: 'إغلاق',
+          last: 'إنهاء الجولة',
+          next: 'التالي',
+          skip: 'تخطي'
         }}
-        transition={{
-          scale: {
-            repeat: Infinity,
-            duration: 2,
-            ease: "easeInOut"
+        styles={{
+          options: {
+            primaryColor: '#2563eb',
+            textColor: '#1e293b',
+            zIndex: 1000,
+            arrowColor: '#fff',
+            backgroundColor: '#fff',
+            overlayColor: 'rgba(0, 0, 0, 0.5)',
           },
-          opacity: { duration: 0.5 }
+          tooltipContainer: {
+            textAlign: 'right',
+            direction: 'rtl',
+            fontFamily: 'inherit',
+          },
+          buttonNext: {
+            backgroundColor: '#2563eb',
+            borderRadius: '8px',
+            fontSize: '14px',
+            padding: '8px 16px',
+            fontFamily: 'inherit',
+          },
+          buttonBack: {
+            marginRight: 0,
+            marginLeft: '10px',
+            color: '#64748b',
+            fontSize: '14px',
+            fontFamily: 'inherit',
+          },
+          buttonSkip: {
+            color: '#94a3b8',
+            fontSize: '14px',
+            fontFamily: 'inherit',
+          }
         }}
-        className="fixed bottom-6 left-6 w-12 h-12 bg-white text-blue-600 rounded-full shadow-lg border border-slate-100 flex items-center justify-center z-50 hover:bg-blue-50 transition-colors"
-        title="دليل المستخدم"
-      >
-        <HelpCircle size={28} />
-      </motion.button>
+      />
+
+      <FloatingHelpButton />
 
       {/* Header */}
       <motion.div
-        id="student-header"
+        id="tour-header"
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -236,9 +281,9 @@ function App() {
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mx-20 -my-20"></div>
         <div className="relative z-10 max-w-lg mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-2 break-words">{student.name}</h1>
+          <h1 className="text-3xl font-bold mb-2 break-words">{student?.name}</h1>
           <p className="text-blue-100/90 text-lg flex items-center justify-center gap-2">
-            <BookOpen size={18} /> {student.academy}
+            <BookOpen size={18} /> {student?.academy}
           </p>
         </div>
       </motion.div>
@@ -247,6 +292,7 @@ function App() {
 
         {/* Month & Year Info */}
         <motion.div
+          id="tour-month"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.5 }}
@@ -264,8 +310,9 @@ function App() {
         </motion.div>
 
         {/* Stats Grid */}
-        <div id="stats-section" className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <motion.div
+            id="tour-stats"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
@@ -278,7 +325,9 @@ function App() {
             <p className="text-slate-500 text-sm font-medium">عدد الحصص</p>
           </motion.div>
 
+          {/* Present Days List Mini */}
           <motion.div
+            id="tour-present-days"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
@@ -301,79 +350,59 @@ function App() {
         </div>
 
         {/* Latest Report Section */}
-        {(studentReport || isTouring) && (
+        {studentReport && (
           <motion.div
-            id="report-section"
+            id="tour-report"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
             className="bg-white rounded-3xl p-1 shadow-sm border border-slate-100 overflow-hidden"
           >
-            <div className="p-5 border-b border-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                  <FileText size={20} />
-                </div>
-                <h2 className="text-lg font-bold text-slate-800">آخر تقرير (مهام اليوم)</h2>
+            <div className="p-5 border-b border-slate-50 flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                <FileText size={20} />
               </div>
-
-              {/* Audio Link UI */}
-              {studentReport?.audioLink && (
-                <a
-                  id="audio-link"
-                  href={studentReport.audioLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-red-50 text-red-600 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm"
-                  title="استماع للتصحيح الصوتي"
-                >
-                  <Mic size={20} />
-                </a>
-              )}
+              <h2 className="text-lg font-bold text-slate-800">آخر تقرير (مهام اليوم)</h2>
             </div>
 
             <div className="p-6 space-y-4">
-              <AnimatePresence mode="wait">
-                <div className="space-y-4">
-                  {/* Reading New */}
-                  {(studentReport?.sectionToggles?.readingNew || isTouring) && studentReport?.readingNew && (
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                      <h3 className="text-blue-600 font-bold mb-2">📖 الجديد (تلاوة)</h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        سورة {studentReport.readingNew.surah}
-                        {studentReport.readingNew.mode === 'ayah' && studentReport.readingNew.fromAyah && ` من آية ${toHindiDigits(studentReport.readingNew.fromAyah)}`}
-                        {studentReport.readingNew.mode === 'ayah' && studentReport.readingNew.toAyah && ` إلى آية ${toHindiDigits(studentReport.readingNew.toAyah)}`}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Reading Revision */}
-                  {(studentReport?.sectionToggles?.readingRev || isTouring) && studentReport?.readingRev && (
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                      <h3 className="text-emerald-600 font-bold mb-2">🔄 المراجعة</h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        سورة {studentReport.readingRev.surah}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Homework New */}
-                  {(studentReport?.sectionToggles?.homeworkNew || isTouring) && studentReport?.homeworkNew && (
-                    <div className="bg-orange-50 p-4 rounded-2xl">
-                      <h3 className="text-orange-600 font-bold mb-2">📝 واجب (حفظ جديد)</h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        سورة {studentReport.homeworkNew.surah}
-                        {studentReport.homeworkNew.mode === 'ayah' && studentReport.homeworkNew.from && ` من آية ${toHindiDigits(studentReport.homeworkNew.from)}`}
-                        {studentReport.homeworkNew.mode === 'ayah' && studentReport.homeworkNew.to && ` إلى آية ${toHindiDigits(studentReport.homeworkNew.to)}`}
-                      </p>
-                    </div>
-                  )}
-
-                  {!studentReport?.sectionToggles?.readingNew && !studentReport?.sectionToggles?.readingRev && !studentReport?.sectionToggles?.homeworkNew && !isTouring && (
-                    <p className="text-center text-slate-500 italic text-sm">لا يتوفر تفاصيل للتقرير الأخير</p>
-                  )}
+              {/* Reading New */}
+              {studentReport.sectionToggles?.readingNew && studentReport.readingNew && (
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <h3 className="text-blue-600 font-bold mb-2">📖 الجديد (تلاوة)</h3>
+                  <p className="text-slate-700 text-sm leading-relaxed">
+                    سورة {studentReport.readingNew.surah}
+                    {studentReport.readingNew.mode === 'ayah' && studentReport.readingNew.fromAyah && ` من آية ${toHindiDigits(studentReport.readingNew.fromAyah)}`}
+                    {studentReport.readingNew.mode === 'ayah' && studentReport.readingNew.toAyah && ` إلى آية ${toHindiDigits(studentReport.readingNew.toAyah)}`}
+                  </p>
                 </div>
-              </AnimatePresence>
+              )}
+
+              {/* Reading Revision */}
+              {studentReport.sectionToggles?.readingRev && studentReport.readingRev && (
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <h3 className="text-emerald-600 font-bold mb-2">🔄 المراجعة</h3>
+                  <p className="text-slate-700 text-sm leading-relaxed">
+                    سورة {studentReport.readingRev.surah}
+                  </p>
+                </div>
+              )}
+
+              {/* Homework New */}
+              {studentReport.sectionToggles?.homeworkNew && studentReport.homeworkNew && (
+                <div className="bg-orange-50 p-4 rounded-2xl">
+                  <h3 className="text-orange-600 font-bold mb-2">📝 واجب (حفظ جديد)</h3>
+                  <p className="text-slate-700 text-sm leading-relaxed">
+                    سورة {studentReport.homeworkNew.surah}
+                    {studentReport.homeworkNew.mode === 'ayah' && studentReport.homeworkNew.from && ` من آية ${toHindiDigits(studentReport.homeworkNew.from)}`}
+                    {studentReport.homeworkNew.mode === 'ayah' && studentReport.homeworkNew.to && ` إلى آية ${toHindiDigits(studentReport.homeworkNew.to)}`}
+                  </p>
+                </div>
+              )}
+
+              {!studentReport.sectionToggles?.readingNew && !studentReport.sectionToggles?.readingRev && !studentReport.sectionToggles?.homeworkNew && (
+                <p className="text-center text-slate-500 italic text-sm">لا يتوفر تفاصيل للتقرير الأخير</p>
+              )}
             </div>
           </motion.div>
         )}
