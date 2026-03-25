@@ -7,16 +7,39 @@
   <title>Student Portal | بوابة الطالب</title>
 
   <!-- PWA Requirements -->
-  <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <meta name="theme-color" content="#064e3b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- Catch PWA Prompt early -->
+  <!-- Dynamic PWA Manifest: sets start_url to current student path -->
   <script>
+    (function () {
+      var currentPath = window.location.pathname + window.location.search;
+      if (currentPath === '/' || currentPath === '') currentPath = '/';
+      var manifest = {
+        name: 'Quran Classes Portal',
+        short_name: 'Quran Classes',
+        description: 'Student Web Portal for Tracking Quran Classes',
+        start_url: currentPath,
+        display: 'standalone',
+        background_color: '#022c22',
+        theme_color: '#064e3b',
+        icons: [
+          { src: '/icon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any' }
+        ]
+      };
+      var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      var link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    })();
+
+    // Catch PWA Prompt early
     window.pwaDeferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
+    window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       window.pwaDeferredPrompt = e;
       window.dispatchEvent(new Event('pwaPromptReady'));
@@ -345,38 +368,15 @@
 
       useEffect(() => {
         const fetchData = async () => {
-          // Try redirect first (bonus, not relied upon)
           if (!studentId && !nameSlug) {
-            const getCookie = (name) => {
-              const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-              return match ? decodeURIComponent(match[2]) : null;
-            };
-            const savedPath = getCookie('student_path') || localStorage.getItem('student_path');
-            if (savedPath && savedPath !== '/' && savedPath !== '') {
-              window.location.replace(savedPath);
-              return; // Don't continue loading
-            }
-          }
-
-          // Save path for future PWA opens
-          if (studentId || nameSlug) {
-            const fullPath = window.location.pathname + window.location.search;
-            try {
-              document.cookie = `student_path=${encodeURIComponent(fullPath)};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
-              localStorage.setItem('student_path', fullPath);
-            } catch (e) { }
+            setError('Invalid student link. Please check the URL.');
+            setLoading(false);
+            return;
           }
 
           try {
             const response = await axios.get('https://quran-classes-tracker-default-rtdb.firebaseio.com/appState.json');
             setData(response.data);
-
-            // If no student specified, prepare the student list for picker
-            if (!studentId && !nameSlug && response.data?.students) {
-              setStudentList(response.data.students);
-              setLoading(false);
-              return;
-            }
           } catch (err) {
             console.error(err);
             setError('Failed to load data. Please try again later.');
@@ -1002,40 +1002,6 @@ https://is.gd/oL6gEO`;
           </div>
         );
       };
-
-      // Student Picker: shown when PWA opens at root URL
-      if (studentList && !studentId && !nameSlug) {
-        return (
-          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade">
-            <div className="glass-panel rounded-3xl p-8 max-w-md w-full">
-              <i data-lucide="book-open" className="w-12 h-12 text-islamic-gold mx-auto mb-4"></i>
-              <h1 className="text-2xl font-bold text-white mb-2 font-cinzel">Quran Classes</h1>
-              <p className="text-slate-400 text-sm mb-6">Select your profile</p>
-              <div className="space-y-3">
-                {studentList.map((s, idx) => {
-                  const slug = toSlug(s.name);
-                  const isAr = /[\u0600-\u06FF]/.test(s.name);
-                  return (
-                    <a
-                      key={idx}
-                      href={`/${slug}`}
-                      className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-islamic-gold/50 hover:bg-islamic-gold/10 transition-all duration-300 group"
-                      dir={isAr ? 'rtl' : 'ltr'}
-                    >
-                      <div className="w-10 h-10 rounded-full bg-islamic-gold/20 flex items-center justify-center text-islamic-gold font-bold text-lg flex-shrink-0">
-                        {s.name.charAt(0)}
-                      </div>
-                      <span className={`text-white font-medium group-hover:text-islamic-gold transition-colors ${isAr ? 'font-amiri text-lg' : ''}`}>
-                        {s.name}
-                      </span>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-      }
 
       // Render Loading Phase
       if (!isTourMode && loading) {
