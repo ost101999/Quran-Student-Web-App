@@ -702,6 +702,22 @@
             </div>
           </div>
 
+          <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Attendance Stat */}
+            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
+              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Classes Attended</p>
+              <h3 className="text-5xl font-light text-emerald-400 z-10">{presentCount}</h3>
+            </div>
+
+            {/* Absences Stat */}
+            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
+              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Missed Classes</p>
+              <h3 className="text-5xl font-light text-red-400 z-10">{absentCount}</h3>
+            </div>
+          </div>
+
           {/* Action Links */}
           {(student.zoomLink || scheduleLink) && (
             <div id="tour-actions" className={`grid gap-4 md:gap-6 mb-8 animate-fade delay-[600ms] ${student.zoomLink && scheduleLink ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
@@ -734,22 +750,6 @@
               )}
             </div>
           )}
-
-          <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Attendance Stat */}
-            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
-              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Classes Attended</p>
-              <h3 className="text-5xl font-light text-emerald-400 z-10">{presentCount}</h3>
-            </div>
-
-            {/* Absences Stat */}
-            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
-              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Missed Classes</p>
-              <h3 className="text-5xl font-light text-red-400 z-10">{absentCount}</h3>
-            </div>
-          </div>
 
           {/* Report Modal */}
           {selectedReport && (
