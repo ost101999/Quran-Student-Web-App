@@ -430,6 +430,144 @@ https://is.gd/oL6gEO`;
 
       const activeData = isTourMode ? mockData : data;
 
+      const { students, attendance, month, year, savedReports } = activeData || {};
+      const toSlug = (name) => {
+        const arabicToLatin = {
+          'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
+          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+          'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o'
+        };
+        let transliterated = name.toLowerCase().trim();
+        for (const [ar, en] of Object.entries(arabicToLatin)) {
+          transliterated = transliterated.replace(new RegExp(ar, 'g'), en);
+        }
+        return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      };
+
+      const student = activeData ? (isTourMode
+        ? students[0]
+        : (nameSlug
+          ? students.find(s => toSlug(s.name) === nameSlug)
+          : students.find(s => String(s.id) === String(studentId)))) : null;
+
+      const isArabic = student ? /[\u0600-\u06FF]/.test(student.name) : false;
+      const fontClass = isArabic ? "font-amiri" : "font-sans";
+      const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
+
+      const arabicMonthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+      const currentMonthNames = isArabic ? arabicMonthNames : monthNames;
+
+      const arabicWeekDays = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const currentWeekDays = isArabic ? arabicWeekDays : weekDays;
+
+      const t = isArabic ? {
+        studentNotFound: "لم يتم العثور على الطالب",
+        noRecord: "لا يوجد سجل لهذا الطالب في النظام.",
+        monthlySchedule: "سجل الحضور والغياب",
+        classesAttended: "حصص الحضور",
+        missedClasses: "حصص الغياب",
+        present: "حاضر",
+        absent: "غائب",
+        compensated: "تم التعويض",
+        scheduled: "مجدولة",
+        reportAvailable: "التقرير متاح",
+        joinClass: "دخول الحصة",
+        scheduleClass: "طلب جدولة",
+        dailyReport: "التقرير المفصل",
+        completedInClass: "ما تم إنجازه",
+        homeworkNextClass: "الواجب والمطلوب",
+        feedbackNotes: "ملاحظات إضافية",
+        otherDetails: "تفاصيل أخرى",
+        audio: "الصوتيات",
+        audioRecording: "تسجيل صوتي",
+        noDetails: "لا توجد تفاصيل إضافية.",
+        errorTitle: "خطأ",
+        errorLoad: "فشل تحميل البيانات. يرجى المحاولة لاحقاً.",
+
+        tourProfileTitle: "ملف الطالب",
+        tourProfileDesc: "هنا يظهر اسم الطالب وملفه الشخصي.",
+        tourMonthTitle: "الشهر الحالي",
+        tourMonthDesc: "يعرض الشهر والسنة الحالية المحددة.",
+        tourCalendarTitle: "سجل الحضور",
+        tourCalendarDesc: "يعرض التقويم سجل الحضور بشكل مرئي. دعنا نشرح الألوان.",
+        tourGreenTitle: "حاضر (أخضر)",
+        tourGreenDesc: "أخضر = حاضر. مثال على يوم حضر فيه الطالب بنجاح.",
+        tourRedTitle: "غائب (أحمر)",
+        tourRedDesc: "أحمر = غائب. الطالب تغيب عن هذه الحصة المجدولة.",
+        tourYellowTitle: "تم التعويض (أصفر)",
+        tourYellowDesc: "أصفر = تم التعويض. غياب بعذر وتم تعويضه لاحقاً.",
+        tourViewReportTitle: "عرض التقرير",
+        tourViewReportDesc: "اضغط على أيقونة المستند لعرض التقرير المفصل للحصة.",
+        tourDetailTitle: "التقرير المفصل",
+        tourDetailDesc: "يعرض كل ما تمت مناقشته في الحصة، بما في ذلك الحفظ الجديد، المراجعة، الواجبات، والملاحظات.",
+        tourCompletedTitle: "ما تم إنجازه",
+        tourCompletedDesc: "تفاصيل الحفظ الجديد والمراجعة خلال الحصة.",
+        tourHomeworkTitle: "الواجب والمطلوب",
+        tourHomeworkDesc: "الواجبات والمطلوب تحضيره للحصة القادمة.",
+        tourFeedbackTitle: "ملاحظات إضافية",
+        tourFeedbackDesc: "ملاحظات وتوجيهات هامة من المعلم.",
+        tourAudioTitle: "الصوتيات",
+        tourAudioDesc: "روابط للتسجيلات الصوتية من المعلم للمساعدة في التدريب.",
+        tourStatsTitle: "الإحصائيات",
+        tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
+        tourActionsTitle: "إجراءات سريعة",
+        tourActionsDesc: "استخدم هذه الأزرار لدخول حصة زوم أو جدولة حصة جديدة."
+      } : {
+        studentNotFound: "Student Not Found",
+        noRecord: "There is no record for this student in the system.",
+        monthlySchedule: "Monthly Schedule",
+        classesAttended: "Classes Attended",
+        missedClasses: "Missed Classes",
+        present: "Present",
+        absent: "Absent",
+        compensated: "Compensated",
+        scheduled: "Scheduled",
+        reportAvailable: "Report Available",
+        joinClass: "Join Class",
+        scheduleClass: "Schedule Class",
+        dailyReport: "Daily Report",
+        completedInClass: "Completed In Class",
+        homeworkNextClass: "Homework & Next Class",
+        feedbackNotes: "Feedback & Notes",
+        otherDetails: "Other Details",
+        audio: "Audio",
+        audioRecording: "Audio Recording",
+        noDetails: "No details provided.",
+        errorTitle: "Error",
+        errorLoad: "Failed to load data. Please try again later.",
+
+        tourProfileTitle: "Student Profile",
+        tourProfileDesc: "This is the student name and profile header.",
+        tourMonthTitle: "Current Month",
+        tourMonthDesc: "Displays the current month and year being viewed.",
+        tourCalendarTitle: "Monthly Schedule",
+        tourCalendarDesc: "The calendar shows attendance visually. We will break down the colors for you.",
+        tourGreenTitle: "Present (Green)",
+        tourGreenDesc: "Green = Present. For example, the student successfully attended class on this day.",
+        tourRedTitle: "Absent (Red)",
+        tourRedDesc: "Red = Absent. The student missed this scheduled class.",
+        tourYellowTitle: "Compensated (Yellow)",
+        tourYellowDesc: "Yellow = Compensated. This was an excused absence that has been made up for.",
+        tourViewReportTitle: "View Report",
+        tourViewReportDesc: "Click the document icon",
+        tourDetailTitle: "Detailed Report",
+        tourDetailDesc: "Displays everything discussed in the session, including new memorization, homework, notes, and audio attachments.",
+        tourCompletedTitle: "Completed In Class",
+        tourCompletedDesc: "Details about the Quran revision and new memorization.",
+        tourHomeworkTitle: "Homework & Next Class",
+        tourHomeworkDesc: "Your assignments and what to prepare for the upcoming class.",
+        tourFeedbackTitle: "Feedback & Notes",
+        tourFeedbackDesc: "Important observations and tips from your teacher.",
+        tourAudioTitle: "Audio Corrections",
+        tourAudioDesc: "Links to voice recordings from your teacher to help you practice.",
+        tourStatsTitle: "Statistics",
+        tourStatsDesc: "Summary of total attended and missed classes for the month.",
+        tourActionsTitle: "Quick Actions",
+        tourActionsDesc: "Use these buttons to join a Zoom class or schedule a new session."
+      };
+
       const startTour = () => {
         setIsTourMode(true);
         setTimeout(() => {
@@ -450,8 +588,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-header',
                   popover: {
-                    title: 'Student Profile',
-                    description: 'This is the student name and profile header.',
+                    title: t.tourProfileTitle,
+                    description: t.tourProfileDesc,
                     side: 'bottom',
                     align: 'center'
                   }
@@ -459,8 +597,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-month',
                   popover: {
-                    title: 'Current Month',
-                    description: 'Displays the current month and year being viewed.',
+                    title: t.tourMonthTitle,
+                    description: t.tourMonthDesc,
                     side: 'bottom',
                     align: 'center'
                   }
@@ -468,8 +606,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-calendar',
                   popover: {
-                    title: 'Monthly Schedule',
-                    description: 'The calendar shows attendance visually. We will break down the colors for you.',
+                    title: t.tourCalendarTitle,
+                    description: t.tourCalendarDesc,
                     side: 'top',
                     align: 'center'
                   }
@@ -477,8 +615,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-day-2',
                   popover: {
-                    title: 'Present (Green)',
-                    description: 'Green = Present. For example, the student successfully attended class on this day.',
+                    title: t.tourGreenTitle,
+                    description: t.tourGreenDesc,
                     side: 'top',
                     align: 'center'
                   }
@@ -486,8 +624,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-day-4',
                   popover: {
-                    title: 'Absent (Red)',
-                    description: 'Red = Absent. The student missed this scheduled class.',
+                    title: t.tourRedTitle,
+                    description: t.tourRedDesc,
                     side: 'top',
                     align: 'center'
                   }
@@ -495,8 +633,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-day-9',
                   popover: {
-                    title: 'Compensated (Yellow)',
-                    description: 'Yellow = Compensated. This was an excused absence that has been made up for.',
+                    title: t.tourYellowTitle,
+                    description: t.tourYellowDesc,
                     side: 'top',
                     align: 'center'
                   }
@@ -504,8 +642,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-report-btn',
                   popover: {
-                    title: 'View Report',
-                    description: 'Click the document icon',
+                    title: t.tourViewReportTitle,
+                    description: t.tourViewReportDesc,
                     side: 'top',
                     align: 'center',
                     showButtons: ['close']
@@ -514,8 +652,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-report-modal-content',
                   popover: {
-                    title: 'Detailed Report',
-                    description: 'Displays everything discussed in the session, including new memorization, homework, notes, and audio attachments.',
+                    title: t.tourDetailTitle,
+                    description: t.tourDetailDesc,
                     side: 'left',
                     align: 'center'
                   },
@@ -529,8 +667,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-completed',
                   popover: {
-                    title: 'Completed In Class',
-                    description: 'Details about the Quran revision and new memorization.',
+                    title: t.tourCompletedTitle,
+                    description: t.tourCompletedDesc,
                     side: 'right',
                     align: 'center'
                   },
@@ -542,8 +680,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-homework',
                   popover: {
-                    title: 'Homework & Next Class',
-                    description: 'Your assignments and what to prepare for the upcoming class.',
+                    title: t.tourHomeworkTitle,
+                    description: t.tourHomeworkDesc,
                     side: 'right',
                     align: 'center'
                   },
@@ -555,8 +693,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-feedback',
                   popover: {
-                    title: 'Feedback & Notes',
-                    description: 'Important observations and tips from your teacher.',
+                    title: t.tourFeedbackTitle,
+                    description: t.tourFeedbackDesc,
                     side: 'right',
                     align: 'center'
                   },
@@ -568,8 +706,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-audio',
                   popover: {
-                    title: 'Audio Corrections',
-                    description: 'Links to voice recordings from your teacher to help you practice.',
+                    title: t.tourAudioTitle,
+                    description: t.tourAudioDesc,
                     side: 'top',
                     align: 'center'
                   },
@@ -581,8 +719,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-stats',
                   popover: {
-                    title: 'Statistics',
-                    description: 'Summary of total attended and missed classes for the month.',
+                    title: t.tourStatsTitle,
+                    description: t.tourStatsDesc,
                     side: 'top',
                     align: 'center'
                   },
@@ -599,8 +737,8 @@ https://is.gd/oL6gEO`;
                 {
                   element: '#tour-actions',
                   popover: {
-                    title: 'Quick Actions',
-                    description: 'Use these buttons to join a Zoom class or schedule a new session.',
+                    title: t.tourActionsTitle,
+                    description: t.tourActionsDesc,
                     side: 'top',
                     align: 'center'
                   }
@@ -637,42 +775,10 @@ https://is.gd/oL6gEO`;
 
       if (!isTourMode && (error || !activeData || !activeData.students)) {
         return (
-          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade">
+          <div className={`min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
             <i data-lucide="alert-circle" className="text-red-400 mb-4 w-16 h-16"></i>
-            <h1 className="text-2xl font-cinzel font-bold text-white mb-2">Error</h1>
-            <p className="text-slate-400">{error || 'No data found'}</p>
-          </div>
-        );
-      }
-
-      const { students, attendance, month, year, savedReports } = activeData;
-      const toSlug = (name) => {
-        const arabicToLatin = {
-          'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
-          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
-          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
-          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
-          'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o'
-        };
-        let transliterated = name.toLowerCase().trim();
-        for (const [ar, en] of Object.entries(arabicToLatin)) {
-          transliterated = transliterated.replace(new RegExp(ar, 'g'), en);
-        }
-        return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      };
-      const student = isTourMode
-        ? students[0]
-        : (nameSlug
-          ? students.find(s => toSlug(s.name) === nameSlug)
-          : students.find(s => String(s.id) === String(studentId)));
-
-      if (!student) {
-        return (
-          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade">
-            <i data-lucide="user-x" className="text-islamic-gold mb-4 w-16 h-16"></i>
-            <h1 className="text-2xl font-cinzel font-bold text-white mb-2">Student Not Found</h1>
-            <p className="text-slate-400">There is no record for this student in the system.</p>
-            <FloatingHelpButton />
+            <h1 className={`text-2xl font-bold text-white mb-2 ${headerFontClass}`}>{t ? t.errorTitle : 'Error'}</h1>
+            <p className="text-slate-400">{error || (t ? t.errorLoad : 'No data found')}</p>
           </div>
         );
       }
@@ -685,6 +791,18 @@ https://is.gd/oL6gEO`;
         if (normalized === '60') return 'https://zcal.co/i/_yKMg4po';
         return null;
       };
+
+      if (!student) {
+        return (
+          <div className={`min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+            <i data-lucide="user-x" className="text-islamic-gold mb-4 w-16 h-16"></i>
+            <h1 className={`text-2xl font-bold text-white mb-2 ${headerFontClass}`}>{t ? t.studentNotFound : 'Student Not Found'}</h1>
+            <p className="text-slate-400">{t ? t.noRecord : 'There is no record for this student in the system.'}</p>
+            <FloatingHelpButton />
+          </div>
+        );
+      }
+
       const scheduleLink = getScheduleLink(student.duration);
 
       // Calendar Calculations
@@ -810,7 +928,7 @@ https://is.gd/oL6gEO`;
               {typeName}
               <div className="h-px flex-1 bg-current opacity-20"></div>
             </h5>
-            <div className={`pl-4 border-l-[3px] space-y-3 ${sideBorderClass}`}>
+            <div className={`${isArabic ? 'pr-4 border-r-[3px]' : 'pl-4 border-l-[3px]'} space-y-3 ${sideBorderClass}`}>
               {sections.map((section, idx) => {
                 let bgClass = "bg-islamic-900/40 hover:bg-islamic-900/60";
                 let borderClass = "border-islamic-gold/10 hover:border-islamic-gold/30";
@@ -847,13 +965,13 @@ https://is.gd/oL6gEO`;
                         );
                       })()}
                       {(() => {
-                        const isArabic = /[\u0600-\u06FF]/.test(section.content);
+                        const isContentArabic = /[\u0600-\u06FF]/.test(section.content);
                         return (
                           <div
-                            className={`text-slate-200 text-sm whitespace-pre-wrap leading-loose mt-1 ${isArabic ? 'font-amiri text-base text-right' : 'font-sans'}`}
-                            dir={isArabic ? 'rtl' : 'ltr'}
+                            className={`text-slate-200 text-sm whitespace-pre-wrap leading-loose mt-1 ${isContentArabic ? 'font-amiri text-base text-right' : 'font-sans'}`}
+                            dir={isContentArabic ? 'rtl' : 'ltr'}
                           >
-                            {section.content || <span className="opacity-40 italic">No details provided.</span>}
+                            {section.content || <span className="opacity-40 italic">{t.noDetails}</span>}
                           </div>
                         );
                       })()}
@@ -867,7 +985,7 @@ https://is.gd/oL6gEO`;
       };
 
       return (
-        <div className="max-w-4xl mx-auto p-4 md:p-8 pb-20 relative">
+        <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
 
           <FloatingHelpButton />
 
@@ -877,28 +995,28 @@ https://is.gd/oL6gEO`;
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <i data-lucide="book-open" className="w-12 h-12 text-islamic-gold mx-auto mb-4 opacity-80"></i>
-            <h1 className="text-4xl md:text-5xl font-cinzel font-bold text-white">
+            <h1 className={`text-4xl md:text-5xl font-bold text-white ${headerFontClass}`}>
               {student.name}
             </h1>
           </div>
 
           {/* Current Month Box Above Calendar */}
           <div id="tour-month" className="glass-panel rounded-2xl p-4 md:p-6 mb-4 flex flex-col items-center justify-center animate-fade delay-1">
-            <h2 className="text-2xl font-cinzel font-bold text-islamic-light flex items-center gap-3">
+            <h2 className={`text-2xl font-bold text-islamic-light flex items-center gap-3 ${headerFontClass}`}>
               <i data-lucide="calendar-days" className="w-6 h-6 text-islamic-gold"></i>
-              {monthNames[month]} {year}
+              {currentMonthNames[month]} {year}
             </h2>
           </div>
 
           {/* Calendar Section */}
           <div id="tour-calendar" className="glass-panel rounded-3xl p-6 md:p-8 animate-fade delay-[500ms] mb-8">
-            <h2 className="text-xl md:text-2xl font-cinzel font-semibold mb-6 text-center text-white flex items-center justify-center gap-3">
-              Monthly Schedule
+            <h2 className={`text-xl md:text-2xl font-semibold mb-6 text-center text-white flex items-center justify-center gap-3 ${headerFontClass}`}>
+              {t.monthlySchedule}
             </h2>
 
             <div className="grid grid-cols-7 gap-2 md:gap-4 mb-2">
-              {weekDays.map(day => (
-                <div key={day} className="text-center font-cinzel font-bold text-slate-400 text-sm py-2">
+              {currentWeekDays.map(day => (
+                <div key={day} className={`text-center font-bold text-slate-400 text-sm py-2 ${headerFontClass}`}>
                   {day}
                 </div>
               ))}
@@ -911,19 +1029,19 @@ https://is.gd/oL6gEO`;
 
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-slate-400">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-emerald-400"></div> Present
+                <div className="w-3 h-3 rounded-full bg-emerald-400"></div> {t.present}
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-400"></div> Absent
+                <div className="w-3 h-3 rounded-full bg-red-400"></div> {t.absent}
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-amber-400"></div> Compensated
+                <div className="w-3 h-3 rounded-full bg-amber-400"></div> {t.compensated}
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full border border-dashed border-islamic-gold/50"></div> Scheduled
+                <div className="w-4 h-4 rounded-full border border-dashed border-islamic-gold/50"></div> {t.scheduled}
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-2.5 h-2.5"></i></div> Report Available
+                <div className="w-4 h-4 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-2.5 h-2.5"></i></div> {t.reportAvailable}
               </div>
             </div>
           </div>
@@ -932,14 +1050,14 @@ https://is.gd/oL6gEO`;
             {/* Attendance Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
-              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Classes Attended</p>
+              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">{t.classesAttended}</p>
               <h3 className="text-5xl font-light text-emerald-400 z-10">{presentCount}</h3>
             </div>
 
             {/* Absences Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
-              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">Missed Classes</p>
+              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">{t.missedClasses}</p>
               <h3 className="text-5xl font-light text-red-400 z-10">{absentCount}</h3>
             </div>
           </div>
@@ -957,7 +1075,7 @@ https://is.gd/oL6gEO`;
                   <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-inner">
                     <i data-lucide="video" className="w-6 h-6 md:w-7 md:h-7"></i>
                   </div>
-                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">Join Class</span>
+                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">{t.joinClass}</span>
                 </a>
               )}
 
@@ -971,7 +1089,7 @@ https://is.gd/oL6gEO`;
                   <div className="w-12 h-12 md:w-14 md:h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-inner">
                     <i data-lucide="calendar-plus" className="w-6 h-6 md:w-7 md:h-7"></i>
                   </div>
-                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">Schedule Class</span>
+                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">{t.scheduleClass}</span>
                 </a>
               )}
             </div>
@@ -984,7 +1102,7 @@ https://is.gd/oL6gEO`;
                 <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
                 <button
                   onClick={() => setSelectedReport(null)}
-                  className="absolute top-3 right-3 text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg"
+                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
                 >
                   <i data-lucide="x" className="w-5 h-5"></i>
                 </button>
@@ -993,11 +1111,11 @@ https://is.gd/oL6gEO`;
                   <div className="hidden md:inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mb-3 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.3)]">
                     <i data-lucide="award" className="w-6 h-6"></i>
                   </div>
-                  <h3 className="text-base md:text-2xl font-cinzel font-bold text-islamic-light border-b border-islamic-gold/20 pb-2 md:pb-4">
-                    Daily Report
+                  <h3 className={`text-base md:text-2xl font-bold text-islamic-light border-b border-islamic-gold/20 pb-2 md:pb-4 ${headerFontClass}`}>
+                    {t.dailyReport}
                   </h3>
                   <p className="text-xs md:text-sm text-emerald-200 mt-1 md:mt-2">
-                    {monthNames[month]} {selectedReport.day}, {year}
+                    {currentMonthNames[month]} {selectedReport.day}, {year}
                   </p>
                 </div>
 
@@ -1015,15 +1133,15 @@ https://is.gd/oL6gEO`;
 
                     return (
                       <>
-                        {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", "Completed In Class", isTourMode ? "tour-completed" : undefined)}
-                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", "Homework & Next Class", isTourMode ? "tour-homework" : undefined)}
-                        {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", "Feedback & Notes", isTourMode ? "tour-feedback" : undefined)}
-                        {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", "Other Details")}
+                        {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", t.completedInClass, isTourMode ? "tour-completed" : undefined)}
+                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", t.homeworkNextClass, isTourMode ? "tour-homework" : undefined)}
+                        {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", t.feedbackNotes, isTourMode ? "tour-feedback" : undefined)}
+                        {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", t.otherDetails)}
                         {audio.length > 0 && (
                           <div id={isTourMode ? "tour-audio" : undefined} className="mt-4 pt-4 border-t border-islamic-gold/10">
                             <h5 className="text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 text-slate-400/60">
                               <div className="h-px flex-1 bg-current opacity-20"></div>
-                              Audio
+                              {t.audio}
                               <div className="h-px flex-1 bg-current opacity-20"></div>
                             </h5>
                             <div className="space-y-2">
@@ -1045,7 +1163,7 @@ https://is.gd/oL6gEO`;
                                       </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs text-slate-300 font-medium group-hover:text-white transition-colors">{label || 'Audio Recording'}</p>
+                                      <p className="text-xs text-slate-300 font-medium group-hover:text-white transition-colors" dir="ltr">{label || t.audioRecording}</p>
                                     </div>
                                     <i data-lucide="external-link" className="w-4 h-4 text-slate-500 group-hover:text-islamic-gold transition-colors flex-shrink-0"></i>
                                   </a>
