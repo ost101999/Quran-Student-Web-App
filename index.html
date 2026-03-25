@@ -404,6 +404,16 @@
         );
       }
 
+      const getScheduleLink = (durationStr) => {
+        if (!durationStr) return null;
+        const normalized = String(durationStr).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString()).trim();
+        if (normalized === '30') return 'https://zcal.co/i/tYjuo5JV';
+        if (normalized === '45') return 'https://zcal.co/i/ThNRhEes';
+        if (normalized === '60') return 'https://zcal.co/i/_yKMg4po';
+        return null;
+      };
+      const scheduleLink = getScheduleLink(student.duration);
+
       // Calendar Calculations
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const firstDayIndex = new Date(year, month, 1).getDay();
@@ -691,6 +701,39 @@
               </div>
             </div>
           </div>
+
+          {/* Action Links */}
+          {(student.zoomLink || scheduleLink) && (
+            <div id="tour-actions" className={`grid gap-4 md:gap-6 mb-8 animate-fade delay-[600ms] ${student.zoomLink && scheduleLink ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+              {student.zoomLink && (
+                <a
+                  href={student.zoomLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass-panel rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center gap-3 hover:bg-emerald-900/40 transition-all group active:scale-95 border-emerald-500/20 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                >
+                  <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-inner">
+                    <i data-lucide="video" className="w-6 h-6 md:w-7 md:h-7"></i>
+                  </div>
+                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">Join Class</span>
+                </a>
+              )}
+
+              {scheduleLink && (
+                <a
+                  href={scheduleLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass-panel rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center gap-3 hover:bg-amber-900/30 transition-all group active:scale-95 border-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                >
+                  <div className="w-12 h-12 md:w-14 md:h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-inner">
+                    <i data-lucide="calendar-plus" className="w-6 h-6 md:w-7 md:h-7"></i>
+                  </div>
+                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">Schedule Class</span>
+                </a>
+              )}
+            </div>
+          )}
 
           <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Attendance Stat */}
