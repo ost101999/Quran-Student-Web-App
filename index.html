@@ -364,9 +364,25 @@
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [selectedReport]);
 
+      const toSlug = (name) => {
+        if (!name) return '';
+        const arabicToLatin = {
+          'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
+          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+          'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o'
+        };
+        let transliterated = name.toLowerCase().trim();
+        for (const [ar, en] of Object.entries(arabicToLatin)) {
+          transliterated = transliterated.replace(new RegExp(ar, 'g'), en);
+        }
+        return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      };
+
       // First, determine the actual student from URL/ID to know the language
       const urlStudent = data?.students ? (nameSlug
-        ? data.students.find(s => toSlug(s.name) === nameSlug)
+        ? data.students.find(s => toSlug(s?.name) === nameSlug)
         : data.students.find(s => String(s.id) === String(studentId))) : null;
 
       const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
@@ -500,20 +516,7 @@ https://is.gd/oL6gEO`;
         }
       };
 
-      const toSlug = (name) => {
-        const arabicToLatin = {
-          'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
-          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
-          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
-          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
-          'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o'
-        };
-        let transliterated = name.toLowerCase().trim();
-        for (const [ar, en] of Object.entries(arabicToLatin)) {
-          transliterated = transliterated.replace(new RegExp(ar, 'g'), en);
-        }
-        return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      };
+
 
       // Now, select activeData based on tour mode and language
       const activeData = isTourMode ? (isArabic ? mockDataAr : mockDataEn) : data;
