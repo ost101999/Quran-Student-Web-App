@@ -365,6 +365,49 @@
       }, [selectedReport]);
 
       // Mock Data for Tour Mode
+      const mockReportText = `📖 *Class Report*
+
+Student: سبوح قدوس
+Date: Wednesday 25 March 2026
+Class Number: 1 of 9
+
+ــــــــــــــــــــــــــــــ
+
+📖 *(Quran)*
+
+✅ *Session Summary:*
+
+*• New:*
+From Surah Al-Imran Ayah 1 to Surah Al-Ma'idah Ayah 4
+
+*• Revision:*
+Surah Al-Baqara (From 1 to 50)
+
+*• Old Revision:*
+From Surah An-Naba to Surah Al-A'la
+
+〰️〰️〰️〰️〰️
+
+📝 *Next Session Plan:*
+
+*• New:*
+Surah Al-Ma'idah (From 5 to 15)
+
+*• Revision:*
+From Surah Al-Baqara Ayah 51 to Surah Al-Imran Ayah 30
+
+*• Old Revision:*
+From Surah Al-Ghashiyah to Surah An-Nas
+
+ــــــــــــــــــــــــــــــ
+
+✏️ *Notes:*
+Please make sure to focus on Surah An-Naba and listen to the Sheikh.
+ــــــــــــــــــــــــــــــ
+
+🎧 *Audio Corrections:*
+https://is.gd/oL6gEO`;
+
       const mockData = {
         students: [{
           id: "mock",
@@ -378,18 +421,10 @@
         attendance: {
           "mock_2_2_2026": "1", // Present
           "mock_4_2_2026": "!", // Paid Absence
-          "mock_9_2_2026": "1",
-          "mock_11_2_2026": "e", // Extra Class
-          "mock_16_2_2026": "-", // Unexcused (Compensated)
-          "mock_18_2_2026": "2", // Double
-          "mock_23_2_2026": "1",
-          "mock_25_2_2026": "1",
-          "mock_30_2_2026": "1"
+          "mock_9_2_2026": "-" // Compensated
         },
         savedReports: {
-          "mock_2_2_2026": "reading: Al-Baqarah 1-20\nrevision: Al-Fatihah",
-          "mock_9_2_2026": "new: Al-Baqarah 21-30\nold: Al-Ikhlas",
-          "mock_11_2_2026": "homework: Al-Baqarah 31-40\nbehavior: Excellent focus today"
+          "mock_2_2_2026": mockReportText
         }
       };
 
@@ -409,6 +444,7 @@
               allowClose: true,
               onDestroyed: () => {
                 setIsTourMode(false);
+                setSelectedReport(null);
               },
               steps: [
                 {
@@ -433,9 +469,72 @@
                   element: '#tour-calendar',
                   popover: {
                     title: 'Monthly Schedule',
-                    description: 'The calendar shows attendance visually. Green = Present, Red = Absent, Yellow = Compensated. Click the report icon on any day to view the class report.',
+                    description: 'The calendar shows attendance visually. We will break down the colors for you.',
                     side: 'top',
                     align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-day-2',
+                  popover: {
+                    title: 'Present (Green)',
+                    description: 'Green = Present. For example, the student successfully attended class on this day.',
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-day-4',
+                  popover: {
+                    title: 'Absent (Red)',
+                    description: 'Red = Absent. The student missed this scheduled class.',
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-day-9',
+                  popover: {
+                    title: 'Compensated (Yellow)',
+                    description: 'Yellow = Compensated. This was an excused absence that has been made up for.',
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-report-btn',
+                  popover: {
+                    title: 'View Report',
+                    description: 'Click the document icon on any attended day to view its detailed report.',
+                    side: 'top',
+                    align: 'center'
+                  },
+                  onNextClick: () => {
+                    setSelectedReport({ day: 2, text: mockReportText });
+                    setTimeout(() => {
+                      driverObj.moveNext();
+                    }, 200);
+                  }
+                },
+                {
+                  element: '#tour-report-modal-content',
+                  popover: {
+                    title: 'Detailed Report',
+                    description: 'Displays everything discussed in the session, including new memorization, homework, notes, and audio attachments.',
+                    side: 'left',
+                    align: 'center'
+                  },
+                  onNextClick: () => {
+                    setSelectedReport(null);
+                    setTimeout(() => {
+                      driverObj.moveNext();
+                    }, 150);
+                  },
+                  onPrevClick: () => {
+                    setSelectedReport(null);
+                    setTimeout(() => {
+                      driverObj.movePrevious();
+                    }, 150);
                   }
                 },
                 {
@@ -623,6 +722,7 @@
 
         return (
           <div
+            id={isTourMode && [2, 4, 9].includes(day) ? `tour-day-${day}` : undefined}
             key={day}
             className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square`}
           >
@@ -633,6 +733,7 @@
 
             {reportText && (
               <button
+                id={isTourMode && day === 2 ? 'tour-report-btn' : undefined}
                 onClick={() => setSelectedReport({ day, text: reportText })}
                 className="absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg z-10"
                 title="View Report"
@@ -823,7 +924,7 @@
           {/* Report Modal */}
           {selectedReport && (
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="glass-panel w-full max-w-lg rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+              <div id="tour-report-modal-content" className="glass-panel w-full max-w-lg rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
                 <button
                   onClick={() => setSelectedReport(null)}
