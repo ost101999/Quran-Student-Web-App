@@ -894,7 +894,7 @@ https://is.gd/oL6gEO`;
         useEffect(() => {
           // Check if already installed or dismissed
           const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-          if (isStandalone || localStorage.getItem('pwa_dismissed') === 'true') {
+          if (isStandalone || localStorage.getItem('pwa_dismissed') === 'true' || localStorage.getItem('pwa_installed') === 'true') {
             return;
           }
 
@@ -918,7 +918,17 @@ https://is.gd/oL6gEO`;
 
           window.addEventListener('pwaPromptReady', handlePwaReady);
 
-          return () => window.removeEventListener('pwaPromptReady', handlePwaReady);
+          // Listen for successful installation
+          const handleInstalled = () => {
+            localStorage.setItem('pwa_installed', 'true');
+            setIsInstallable(false);
+          };
+          window.addEventListener('appinstalled', handleInstalled);
+
+          return () => {
+            window.removeEventListener('pwaPromptReady', handlePwaReady);
+            window.removeEventListener('appinstalled', handleInstalled);
+          };
         }, []);
 
         useEffect(() => {
@@ -937,6 +947,7 @@ https://is.gd/oL6gEO`;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
+              localStorage.setItem('pwa_installed', 'true');
               setIsInstallable(false);
             }
             setDeferredPrompt(null);
