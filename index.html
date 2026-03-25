@@ -1223,7 +1223,9 @@ https://is.gd/oL6gEO`;
                     {t.dailyReport}
                   </h3>
                   <p className="text-xs md:text-sm text-emerald-200 mt-1 md:mt-2">
-                    {currentMonthNames[month]} {toArabicNums(selectedReport.day)}، {toArabicNums(year)}
+                    {isArabic
+                      ? `${toArabicNums(selectedReport.day)} ${currentMonthNames[month]} ${toArabicNums(year)}`
+                      : `${currentMonthNames[month]} ${selectedReport.day}, ${year}`}
                   </p>
                 </div>
 
