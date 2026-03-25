@@ -364,6 +364,15 @@
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [selectedReport]);
 
+      // First, determine the actual student from URL/ID to know the language
+      const urlStudent = data?.students ? (nameSlug
+        ? data.students.find(s => toSlug(s.name) === nameSlug)
+        : data.students.find(s => String(s.id) === String(studentId))) : null;
+
+      const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
+      const fontClass = isArabic ? "font-amiri" : "font-sans";
+      const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
+
       // Mock Data for Tour Mode
       const mockReportTextEn = `📖 *Class Report*
 
@@ -411,8 +420,8 @@ https://is.gd/oL6gEO`;
       const mockDataEn = {
         students: [{
           id: "mock",
-          name: "EESA (Tour Account)",
-          days: [0, 1, 2, 3, 4], // Sun to Thu
+          name: urlStudent ? `${urlStudent.name} (Tour)` : "EESA (Tour Account)",
+          days: [1, 3], // Mon and Wed
           duration: "30",
           zoomLink: "https://zoom.us/j/mock"
         }],
@@ -474,8 +483,8 @@ https://is.gd/oL6gEO`;
       const mockDataAr = {
         students: [{
           id: "mock",
-          name: "سبوح قدوس (حساب تجريبي)",
-          days: [0, 1, 2, 3, 4], // Sun to Thu
+          name: urlStudent ? `${urlStudent.name} (جولة تعريفية)` : "سبوح قدوس (جولة تعريفية)",
+          days: [1, 3], // Mon and Wed
           duration: "30",
           zoomLink: "https://zoom.us/j/mock"
         }],
@@ -505,15 +514,6 @@ https://is.gd/oL6gEO`;
         }
         return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       };
-
-      // First, determine the actual student from URL/ID to know the language
-      const urlStudent = data?.students ? (nameSlug
-        ? data.students.find(s => toSlug(s.name) === nameSlug)
-        : data.students.find(s => String(s.id) === String(studentId))) : null;
-
-      const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
-      const fontClass = isArabic ? "font-amiri" : "font-sans";
-      const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
 
       // Now, select activeData based on tour mode and language
       const activeData = isTourMode ? (isArabic ? mockDataAr : mockDataEn) : data;
@@ -652,7 +652,7 @@ https://is.gd/oL6gEO`;
           if (window.lucide) window.lucide.createIcons();
           setTimeout(() => {
             const driverObj = window.driver.js.driver({
-              showProgress: true,
+              showProgress: false,
               animate: true,
               nextBtnText: t.next,
               prevBtnText: t.prev,
@@ -1083,10 +1083,11 @@ https://is.gd/oL6gEO`;
               justify-content: flex-start !important;
             }
             .driver-rtl .driver-popover-progress-text {
-              margin-left: 10px !important;
-              margin-right: 0 !important;
+              display: none !important;
             }
             .driver-rtl .driver-popover-navigation-btns {
+              display: flex !important;
+              flex-direction: row-reverse !important;
               gap: 0.5rem !important;
             }
           `}} />
@@ -1267,7 +1268,7 @@ https://is.gd/oL6gEO`;
                                       </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs text-slate-300 font-medium group-hover:text-white transition-colors" dir="ltr">{label || t.audioRecording}</p>
+                                      <p className="text-xs text-slate-300 font-medium group-hover:text-white transition-colors">{label || t.audioRecording}</p>
                                     </div>
                                     <i data-lucide="external-link" className="w-4 h-4 text-slate-500 group-hover:text-islamic-gold transition-colors flex-shrink-0"></i>
                                   </a>
