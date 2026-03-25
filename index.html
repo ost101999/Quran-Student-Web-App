@@ -315,7 +315,9 @@
         students: [{
           id: "mock",
           name: "EESA (Tour Account)",
-          days: [0, 1, 2, 3, 4] // Sun to Thu
+          days: [0, 1, 2, 3, 4], // Sun to Thu
+          duration: "30",
+          zoomLink: "https://zoom.us/j/mock"
         }],
         month: 2, // March (0-indexed)
         year: 2026,
@@ -389,9 +391,11 @@
         }
         return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       };
-      const student = nameSlug
-        ? students.find(s => toSlug(s.name) === nameSlug)
-        : students.find(s => String(s.id) === String(studentId));
+      const student = isTourMode
+        ? students[0]
+        : (nameSlug
+          ? students.find(s => toSlug(s.name) === nameSlug)
+          : students.find(s => String(s.id) === String(studentId)));
 
       if (!student) {
         return (
