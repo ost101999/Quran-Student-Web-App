@@ -533,6 +533,10 @@ https://is.gd/oL6gEO`;
                     description: 'Details about the Quran revision and new memorization.',
                     side: 'right',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-completed');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
                 },
                 {
@@ -542,6 +546,10 @@ https://is.gd/oL6gEO`;
                     description: 'Your assignments and what to prepare for the upcoming class.',
                     side: 'right',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-homework');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
                 },
                 {
@@ -551,6 +559,10 @@ https://is.gd/oL6gEO`;
                     description: 'Important observations and tips from your teacher.',
                     side: 'right',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-feedback');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
                 },
                 {
@@ -560,6 +572,10 @@ https://is.gd/oL6gEO`;
                     description: 'Links to voice recordings from your teacher to help you practice.',
                     side: 'top',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-audio');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   },
                   onNextClick: () => {
                     setSelectedReport(null);
