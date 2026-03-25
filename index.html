@@ -861,6 +861,94 @@ https://is.gd/oL6gEO`;
         </button>
       );
 
+      const InstallPrompt = () => {
+        const [isInstallable, setIsInstallable] = useState(false);
+        const [deferredPrompt, setDeferredPrompt] = useState(null);
+        const [isIOS, setIsIOS] = useState(false);
+        const [showIOSHint, setShowIOSHint] = useState(false);
+        const [dismissed, setDismissed] = useState(false);
+
+        useEffect(() => {
+          // Check if already installed
+          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+          if (isStandalone || localStorage.getItem('pwa_dismissed') === 'true') {
+            return;
+          }
+
+          // Detect iOS
+          const objAgent = navigator.userAgent;
+          const isIOSDevice = /iPad|iPhone|iPod/.test(objAgent) && !window.MSStream;
+          setIsIOS(isIOSDevice);
+
+          if (isIOSDevice) {
+            setIsInstallable(true);
+          }
+
+          const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setIsInstallable(true);
+          };
+
+          window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+          return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        }, []);
+
+        useEffect(() => {
+          if (isInstallable && window.lucide) window.lucide.createIcons();
+        }, [isInstallable, showIOSHint]);
+
+        if (!isInstallable || dismissed) return null;
+
+        const handleInstallClick = async () => {
+          if (isIOS) {
+            setShowIOSHint(true);
+            return;
+          }
+
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+              setIsInstallable(false);
+            }
+            setDeferredPrompt(null);
+          }
+        };
+
+        const handleDismiss = () => {
+          setDismissed(true);
+          localStorage.setItem('pwa_dismissed', 'true');
+        };
+
+        return (
+          <div className={`fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 glass-panel rounded-2xl p-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-[100] border-islamic-gold/30 animate-fade-up ${fontClass}`}>
+            <button onClick={handleDismiss} className={`absolute ${isArabic ? 'left-3' : 'right-3'} top-3 text-slate-400 hover:text-white transition-colors`}>
+              <i data-lucide="x" className="w-5 h-5"></i>
+            </button>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-islamic-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-islamic-gold/20 shadow-inner">
+                <i data-lucide="download" className="w-6 h-6 text-islamic-gold"></i>
+              </div>
+              <div className="flex-1 pr-6">
+                <h4 className="text-white font-bold mb-1">{isArabic ? "تثبيت التطبيق" : "Install App"}</h4>
+                <p className="text-xs text-slate-300 mb-3 leading-relaxed">{isArabic ? "قم بتثبيت كشكول الطالب على هاتفك للوصول السريع دائماً." : "Install the student portal on your device for quick access."}</p>
+                <button onClick={handleInstallClick} className="bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-colors w-full shadow-lg border border-emerald-400/20 uppercase tracking-widest">
+                  {isArabic ? "تثبيت الآن" : "Install Now"}
+                </button>
+                {showIOSHint && (
+                  <div className="mt-3 p-3 bg-blue-900/40 border border-blue-500/30 rounded-lg text-xs text-blue-200 flex items-start gap-2 animate-fade">
+                    <i data-lucide="info" className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400"></i>
+                    <span>{isArabic ? "في سفاري: اضغط على زر المشاركة (مربع بداخله سهم) ثم اختر 'إضافة إلى الشاشة الرئيسية'." : "In Safari: Tap Share (square with arrow) and select 'Add to Home'."}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
       // Render Loading Phase
       if (!isTourMode && loading) {
         return (
@@ -1111,6 +1199,7 @@ https://is.gd/oL6gEO`;
           `}} />
 
           <FloatingHelpButton />
+          <InstallPrompt />
 
           {/* Header Section */}
           <div id="tour-header" className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
