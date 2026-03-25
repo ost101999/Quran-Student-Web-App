@@ -341,7 +341,7 @@
       // Name-based routing: /ahmed-hassan takes priority over ?student=ID
       const nameSlug = window.location.pathname.replace(/^\//, '').toLowerCase().trim();
 
-      // PWA Smart Redirect: uses cookies (shared between Safari & iOS standalone PWA)
+      // PWA Smart Redirect: uses BOTH cookies + localStorage for maximum iOS/Android compatibility
       useEffect(() => {
         const getCookie = (name) => {
           const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -352,12 +352,15 @@
         };
 
         if (!studentId && !nameSlug) {
-          const savedPath = getCookie('student_path');
-          if (savedPath && savedPath !== '/') {
-            window.location.href = savedPath;
+          // Try cookie first, then localStorage
+          const savedPath = getCookie('student_path') || localStorage.getItem('student_path');
+          if (savedPath && savedPath !== '/' && savedPath !== '') {
+            window.location.replace(savedPath);
           }
         } else {
-          setCookie('student_path', window.location.pathname + window.location.search);
+          const fullPath = window.location.pathname + window.location.search;
+          setCookie('student_path', fullPath);
+          localStorage.setItem('student_path', fullPath);
         }
       }, []);
 
