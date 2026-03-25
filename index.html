@@ -13,6 +13,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+  <!-- Catch PWA Prompt early -->
+  <script>
+    window.pwaDeferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.pwaDeferredPrompt = e;
+      window.dispatchEvent(new Event('pwaPromptReady'));
+    });
+  </script>
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -869,30 +879,33 @@ https://is.gd/oL6gEO`;
         const [dismissed, setDismissed] = useState(false);
 
         useEffect(() => {
-          // Check if already installed
+          // Check if already installed or dismissed
           const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
           if (isStandalone || localStorage.getItem('pwa_dismissed') === 'true') {
             return;
           }
+
+          // Always show the prompt if not installed (for UI visibility)
+          setIsInstallable(true);
 
           // Detect iOS
           const objAgent = navigator.userAgent;
           const isIOSDevice = /iPad|iPhone|iPod/.test(objAgent) && !window.MSStream;
           setIsIOS(isIOSDevice);
 
-          if (isIOSDevice) {
-            setIsInstallable(true);
+          // Check if prompt was caught early
+          if (window.pwaDeferredPrompt) {
+            setDeferredPrompt(window.pwaDeferredPrompt);
           }
 
-          const handleBeforeInstallPrompt = (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-            setIsInstallable(true);
+          // Listen for the prompt if it fires later
+          const handlePwaReady = () => {
+            setDeferredPrompt(window.pwaDeferredPrompt);
           };
 
-          window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+          window.addEventListener('pwaPromptReady', handlePwaReady);
 
-          return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+          return () => window.removeEventListener('pwaPromptReady', handlePwaReady);
         }, []);
 
         useEffect(() => {
@@ -902,7 +915,7 @@ https://is.gd/oL6gEO`;
         if (!isInstallable || dismissed) return null;
 
         const handleInstallClick = async () => {
-          if (isIOS) {
+          if (isIOS || !deferredPrompt) {
             setShowIOSHint(true);
             return;
           }
@@ -914,6 +927,7 @@ https://is.gd/oL6gEO`;
               setIsInstallable(false);
             }
             setDeferredPrompt(null);
+            window.pwaDeferredPrompt = null;
           }
         };
 
@@ -940,7 +954,11 @@ https://is.gd/oL6gEO`;
                 {showIOSHint && (
                   <div className="mt-3 p-3 bg-blue-900/40 border border-blue-500/30 rounded-lg text-xs text-blue-200 flex items-start gap-2 animate-fade">
                     <i data-lucide="info" className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400"></i>
-                    <span>{isArabic ? "في سفاري: اضغط على زر المشاركة (مربع بداخله سهم) ثم اختر 'إضافة إلى الشاشة الرئيسية'." : "In Safari: Tap Share (square with arrow) and select 'Add to Home'."}</span>
+                    <span>
+                      {isIOS
+                        ? (isArabic ? "في سفاري: اضغط على زر المشاركة (مربع بداخله سهم) ثم اختر 'إضافة إلى الشاشة الرئيسية'." : "In Safari: Tap Share (square with arrow) and select 'Add to Home'.")
+                        : (isArabic ? "للتثبيت في متصفحك: انقر على الثلاث نقاط (القائمة) ثم ابحث عن 'تثبيت التطبيق' أو 'أضف للشاشة'." : "To install: Click your browser menu (three dots) and select 'Install app' or 'Add to Home'.")}
+                    </span>
                   </div>
                 )}
               </div>
