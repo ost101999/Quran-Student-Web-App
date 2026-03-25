@@ -505,15 +505,10 @@ https://is.gd/oL6gEO`;
                   element: '#tour-report-btn',
                   popover: {
                     title: 'View Report',
-                    description: 'Click the document icon on any attended day to view its detailed report.',
+                    description: 'Click the document icon',
                     side: 'top',
-                    align: 'center'
-                  },
-                  onNextClick: () => {
-                    setSelectedReport({ day: 2, text: mockReportText });
-                    setTimeout(() => {
-                      driverObj.moveNext();
-                    }, 200);
+                    align: 'center',
+                    showButtons: ['close']
                   }
                 },
                 {
@@ -524,16 +519,52 @@ https://is.gd/oL6gEO`;
                     side: 'left',
                     align: 'center'
                   },
-                  onNextClick: () => {
-                    setSelectedReport(null);
-                    setTimeout(() => {
-                      driverObj.moveNext();
-                    }, 150);
-                  },
                   onPrevClick: () => {
                     setSelectedReport(null);
                     setTimeout(() => {
-                      driverObj.movePrevious();
+                      window.driverObjInstance.movePrevious();
+                    }, 150);
+                  }
+                },
+                {
+                  element: '#tour-completed',
+                  popover: {
+                    title: 'Completed In Class',
+                    description: 'Details about the Quran revision and new memorization.',
+                    side: 'right',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-homework',
+                  popover: {
+                    title: 'Homework & Next Class',
+                    description: 'Your assignments and what to prepare for the upcoming class.',
+                    side: 'right',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-feedback',
+                  popover: {
+                    title: 'Feedback & Notes',
+                    description: 'Important observations and tips from your teacher.',
+                    side: 'right',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-audio',
+                  popover: {
+                    title: 'Audio Corrections',
+                    description: 'Links to voice recordings from your teacher to help you practice.',
+                    side: 'top',
+                    align: 'center'
+                  },
+                  onNextClick: () => {
+                    setSelectedReport(null);
+                    setTimeout(() => {
+                      window.driverObjInstance.moveNext();
                     }, 150);
                   }
                 },
@@ -734,7 +765,12 @@ https://is.gd/oL6gEO`;
             {reportText && (
               <button
                 id={isTourMode && day === 2 ? 'tour-report-btn' : undefined}
-                onClick={() => setSelectedReport({ day, text: reportText })}
+                onClick={() => {
+                  setSelectedReport({ day, text: reportText });
+                  if (isTourMode && day === 2 && window.driverObjInstance) {
+                    setTimeout(() => window.driverObjInstance.moveNext(), 150);
+                  }
+                }}
                 className="absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg z-10"
                 title="View Report"
               >
@@ -745,10 +781,10 @@ https://is.gd/oL6gEO`;
         );
       };
 
-      const renderSectionGroup = (sections, typeLabelClass, sideBorderClass, typeName) => {
+      const renderSectionGroup = (sections, typeLabelClass, sideBorderClass, typeName, tourId) => {
         if (sections.length === 0) return null;
         return (
-          <div className="mb-6">
+          <div id={tourId} className="mb-6">
             <h5 className={`text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 ${typeLabelClass}`}>
               <div className="h-px flex-1 bg-current opacity-20"></div>
               {typeName}
@@ -959,12 +995,12 @@ https://is.gd/oL6gEO`;
 
                     return (
                       <>
-                        {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", "Completed In Class")}
-                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", "Homework & Next Class")}
-                        {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", "Feedback & Notes")}
+                        {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", "Completed In Class", isTourMode ? "tour-completed" : undefined)}
+                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", "Homework & Next Class", isTourMode ? "tour-homework" : undefined)}
+                        {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", "Feedback & Notes", isTourMode ? "tour-feedback" : undefined)}
                         {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", "Other Details")}
                         {audio.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-islamic-gold/10">
+                          <div id={isTourMode ? "tour-audio" : undefined} className="mt-4 pt-4 border-t border-islamic-gold/10">
                             <h5 className="text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 text-slate-400/60">
                               <div className="h-px flex-1 bg-current opacity-20"></div>
                               Audio
