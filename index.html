@@ -365,9 +365,9 @@
       }, [selectedReport]);
 
       // Mock Data for Tour Mode
-      const mockReportText = `📖 *Class Report*
+      const mockReportTextEn = `📖 *Class Report*
 
-Student: سبوح قدوس
+Student: EESA
 Date: Wednesday 25 March 2026
 Class Number: 1 of 9
 
@@ -408,7 +408,7 @@ Please make sure to focus on Surah An-Naba and listen to the Sheikh.
 🎧 *Audio Corrections:*
 https://is.gd/oL6gEO`;
 
-      const mockData = {
+      const mockDataEn = {
         students: [{
           id: "mock",
           name: "EESA (Tour Account)",
@@ -424,13 +424,73 @@ https://is.gd/oL6gEO`;
           "mock_9_2_2026": "-" // Compensated
         },
         savedReports: {
-          "mock_2_2_2026": mockReportText
+          "mock_2_2_2026": mockReportTextEn
         }
       };
 
-      const activeData = isTourMode ? mockData : data;
+      const mockReportTextAr = `📖 *تقرير الحصة*
 
-      const { students, attendance, month, year, savedReports } = activeData || {};
+
+التاريخ: الأربعاء ٢٥ مارس ٢٠٢٦
+رقم الحصة: ٢ من ٩
+
+ــــــــــــــــــــــــــــــ
+
+📖 *(القرآن الكريم)*
+
+✅ *إنجاز الحصة:*
+
+*• الجديد:*
+سورة المائدة (من ٥ إلى ١٥)
+
+*• المراجعة:*
+من سورة البقرة آية ٥١ إلى سورة آل عمران آية ٣٠
+
+*• المراجعة البعيدة:*
+من سورة الغاشية آية ٥ إلى سورة الناس آية ٦
+
+〰️〰️〰️〰️〰️
+
+📝 *حصتنا القادمة:*
+
+*• الجديد:*
+سورة المائدة (١٦)
+
+*• المراجعة:*
+من سورة البقرة آية ٥١ إلى سورة المائدة آية ١٥
+
+*• المراجعة البعيدة:*
+سورة الناس (٧)
+
+ــــــــــــــــــــــــــــــ
+
+✏️ *ملاحظات:*
+من فضلك يرجى التركيز على الاستماع للشيخ والتركيز على سورة العصر
+ــــــــــــــــــــــــــــــ
+
+🎧 *للاستماع إلى التوجيهات:*
+https://is.gd/oL6gEO`;
+
+      const mockDataAr = {
+        students: [{
+          id: "mock",
+          name: "سبوح قدوس (حساب تجريبي)",
+          days: [0, 1, 2, 3, 4], // Sun to Thu
+          duration: "30",
+          zoomLink: "https://zoom.us/j/mock"
+        }],
+        month: 2, // March (0-indexed)
+        year: 2026,
+        attendance: {
+          "mock_2_2_2026": "1", // Present
+          "mock_4_2_2026": "!", // Paid Absence
+          "mock_9_2_2026": "-" // Compensated
+        },
+        savedReports: {
+          "mock_2_2_2026": mockReportTextAr
+        }
+      };
+
       const toSlug = (name) => {
         const arabicToLatin = {
           'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
@@ -446,15 +506,27 @@ https://is.gd/oL6gEO`;
         return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       };
 
-      const student = activeData ? (isTourMode
-        ? students[0]
-        : (nameSlug
-          ? students.find(s => toSlug(s.name) === nameSlug)
-          : students.find(s => String(s.id) === String(studentId)))) : null;
+      // First, determine the actual student from URL/ID to know the language
+      const urlStudent = data?.students ? (nameSlug
+        ? data.students.find(s => toSlug(s.name) === nameSlug)
+        : data.students.find(s => String(s.id) === String(studentId))) : null;
 
-      const isArabic = student ? /[\u0600-\u06FF]/.test(student.name) : false;
+      const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
       const fontClass = isArabic ? "font-amiri" : "font-sans";
       const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
+
+      // Now, select activeData based on tour mode and language
+      const activeData = isTourMode ? (isArabic ? mockDataAr : mockDataEn) : data;
+
+      const { students, attendance, month, year, savedReports } = activeData || {};
+
+      // The student object used throughout the component
+      const student = isTourMode ? activeData.students[0] : urlStudent;
+
+      const toArabicNums = (str) => {
+        if (!isArabic) return str;
+        return String(str).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+      };
 
       const arabicMonthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
       const currentMonthNames = isArabic ? arabicMonthNames : monthNames;
@@ -485,6 +557,9 @@ https://is.gd/oL6gEO`;
         noDetails: "لا توجد تفاصيل إضافية.",
         errorTitle: "خطأ",
         errorLoad: "فشل تحميل البيانات. يرجى المحاولة لاحقاً.",
+        next: "التالي",
+        prev: "السابق",
+        done: "إنهاء",
 
         tourProfileTitle: "ملف الطالب",
         tourProfileDesc: "هنا يظهر اسم الطالب وملفه الشخصي.",
@@ -537,6 +612,9 @@ https://is.gd/oL6gEO`;
         noDetails: "No details provided.",
         errorTitle: "Error",
         errorLoad: "Failed to load data. Please try again later.",
+        next: "Next",
+        prev: "Previous",
+        done: "Done",
 
         tourProfileTitle: "Student Profile",
         tourProfileDesc: "This is the student name and profile header.",
@@ -576,6 +654,10 @@ https://is.gd/oL6gEO`;
             const driverObj = window.driver.js.driver({
               showProgress: true,
               animate: true,
+              nextBtnText: t.next,
+              prevBtnText: t.prev,
+              doneBtnText: t.done,
+              popoverClass: isArabic ? 'driver-rtl' : '',
               overlayColor: 'rgba(0, 0, 0, 0.75)',
               stagePadding: 8,
               stageRadius: 12,
@@ -728,7 +810,7 @@ https://is.gd/oL6gEO`;
                     setSelectedReport(null);
                   },
                   onPrevClick: () => {
-                    setSelectedReport({ day: 2, text: mockReportText });
+                    setSelectedReport({ day: 2, text: mockReportTextEn }); // Use English mock report for tour
                     setTimeout(() => {
                       window.driverObjInstance.movePrevious();
                     }, 150);
@@ -897,7 +979,7 @@ https://is.gd/oL6gEO`;
           >
             {statusIndicator}
             <span className={`text-lg font-semibold ${isScheduled ? 'text-white' : 'text-slate-400'} ${reportText ? '-translate-y-1 md:translate-y-0' : ''}`}>
-              {day}
+              {toArabicNums(day)}
             </span>
 
             {reportText && (
@@ -986,6 +1068,28 @@ https://is.gd/oL6gEO`;
 
       return (
         <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+            .driver-rtl {
+              direction: rtl !important;
+              font-family: 'Amiri', serif !important;
+            }
+            .driver-rtl .driver-popover-title,
+            .driver-rtl .driver-popover-description {
+              text-align: right !important;
+            }
+            .driver-rtl .driver-popover-footer {
+              flex-direction: row-reverse !important;
+              justify-content: flex-start !important;
+            }
+            .driver-rtl .driver-popover-progress-text {
+              margin-left: 10px !important;
+              margin-right: 0 !important;
+            }
+            .driver-rtl .driver-popover-navigation-btns {
+              gap: 0.5rem !important;
+            }
+          `}} />
 
           <FloatingHelpButton />
 
@@ -1004,7 +1108,7 @@ https://is.gd/oL6gEO`;
           <div id="tour-month" className="glass-panel rounded-2xl p-4 md:p-6 mb-4 flex flex-col items-center justify-center animate-fade delay-1">
             <h2 className={`text-2xl font-bold text-islamic-light flex items-center gap-3 ${headerFontClass}`}>
               <i data-lucide="calendar-days" className="w-6 h-6 text-islamic-gold"></i>
-              {currentMonthNames[month]} {year}
+              {currentMonthNames[month]} {toArabicNums(year)}
             </h2>
           </div>
 
@@ -1050,15 +1154,15 @@ https://is.gd/oL6gEO`;
             {/* Attendance Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
-              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">{t.classesAttended}</p>
-              <h3 className="text-5xl font-light text-emerald-400 z-10">{presentCount}</h3>
+              <p className={`text-slate-400 tracking-widest mb-1 z-10 ${isArabic ? 'text-base font-bold' : 'text-sm uppercase'}`}>{t.classesAttended}</p>
+              <h3 className={`text-5xl font-light text-emerald-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(presentCount)}</h3>
             </div>
 
             {/* Absences Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
-              <p className="text-sm text-slate-400 uppercase tracking-widest mb-1 z-10">{t.missedClasses}</p>
-              <h3 className="text-5xl font-light text-red-400 z-10">{absentCount}</h3>
+              <p className={`text-slate-400 tracking-widest mb-1 z-10 ${isArabic ? 'text-base font-bold' : 'text-sm uppercase'}`}>{t.missedClasses}</p>
+              <h3 className={`text-5xl font-light text-red-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(absentCount)}</h3>
             </div>
           </div>
 
@@ -1075,7 +1179,7 @@ https://is.gd/oL6gEO`;
                   <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-inner">
                     <i data-lucide="video" className="w-6 h-6 md:w-7 md:h-7"></i>
                   </div>
-                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">{t.joinClass}</span>
+                  <span className={`font-bold text-white tracking-widest ${isArabic ? 'text-lg' : 'text-sm md:text-base uppercase'}`}>{t.joinClass}</span>
                 </a>
               )}
 
@@ -1089,7 +1193,7 @@ https://is.gd/oL6gEO`;
                   <div className="w-12 h-12 md:w-14 md:h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-inner">
                     <i data-lucide="calendar-plus" className="w-6 h-6 md:w-7 md:h-7"></i>
                   </div>
-                  <span className="font-bold text-white uppercase tracking-widest text-sm md:text-base">{t.scheduleClass}</span>
+                  <span className={`font-bold text-white tracking-widest ${isArabic ? 'text-lg' : 'text-sm md:text-base uppercase'}`}>{t.scheduleClass}</span>
                 </a>
               )}
             </div>
@@ -1115,7 +1219,7 @@ https://is.gd/oL6gEO`;
                     {t.dailyReport}
                   </h3>
                   <p className="text-xs md:text-sm text-emerald-200 mt-1 md:mt-2">
-                    {currentMonthNames[month]} {selectedReport.day}, {year}
+                    {currentMonthNames[month]} {toArabicNums(selectedReport.day)}، {toArabicNums(year)}
                   </p>
                 </div>
 
