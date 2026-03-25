@@ -576,12 +576,6 @@ https://is.gd/oL6gEO`;
                   onHighlightStarted: () => {
                     const el = document.getElementById('tour-audio');
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  },
-                  onNextClick: () => {
-                    setSelectedReport(null);
-                    setTimeout(() => {
-                      window.driverObjInstance.moveNext();
-                    }, 150);
                   }
                 },
                 {
@@ -591,6 +585,15 @@ https://is.gd/oL6gEO`;
                     description: 'Summary of total attended and missed classes for the month.',
                     side: 'top',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    setSelectedReport(null);
+                  },
+                  onPrevClick: () => {
+                    setSelectedReport({ day: 2, text: mockReportText });
+                    setTimeout(() => {
+                      window.driverObjInstance.movePrevious();
+                    }, 150);
                   }
                 },
                 {
