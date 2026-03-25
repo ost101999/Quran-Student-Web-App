@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, HelpCircle, Video } from 'lucide-react';
 import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
 
 // Interfaces matching the desktop app
@@ -13,6 +13,7 @@ interface Student {
   rate: number;
   duration?: string;
   paymentBasis?: string;
+  zoomLink?: string;
 }
 
 interface AppState {
@@ -215,6 +216,16 @@ function App() {
   presentDays.sort((a, b) => a - b);
   const studentReport = student ? lastReports?.[student.id] : null;
 
+  const getScheduleLink = (durationStr?: string) => {
+    if (!durationStr) return null;
+    const normalized = durationStr.toString().replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString()).trim();
+    if (normalized === '30') return 'https://zcal.co/i/tYjuo5JV';
+    if (normalized === '45') return 'https://zcal.co/i/ThNRhEes';
+    if (normalized === '60') return 'https://zcal.co/i/_yKMg4po';
+    return null;
+  };
+  const scheduleLink = getScheduleLink(student?.duration);
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-12 relative" dir="rtl">
 
@@ -289,6 +300,45 @@ function App() {
       </motion.div>
 
       <div className="max-w-lg mx-auto px-4 -mt-16 relative z-20 space-y-6">
+
+        {/* Action Links */}
+        {(student?.zoomLink || scheduleLink) && (
+          <motion.div
+            id="tour-actions"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className={`grid gap-4 ${student?.zoomLink && scheduleLink ? 'grid-cols-2' : 'grid-cols-1'}`}
+          >
+            {student?.zoomLink && (
+              <a
+                href={student.zoomLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white rounded-3xl p-4 shadow-md shadow-blue-500/10 border border-blue-100 flex flex-col items-center justify-center gap-3 hover:bg-blue-50 transition-all group active:scale-95"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-sm">
+                  <Video size={28} />
+                </div>
+                <span className="font-bold text-slate-700 text-lg">الالتحاق بالحصة</span>
+              </a>
+            )}
+
+            {scheduleLink && (
+              <a
+                href={scheduleLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white rounded-3xl p-4 shadow-md shadow-purple-500/10 border border-purple-100 flex flex-col items-center justify-center gap-3 hover:bg-purple-50 transition-all group active:scale-95"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-sm">
+                  <Calendar size={28} />
+                </div>
+                <span className="font-bold text-slate-700 text-lg">جدولة حصة</span>
+              </a>
+            )}
+          </motion.div>
+        )}
 
         {/* Month & Year Info */}
         <motion.div
