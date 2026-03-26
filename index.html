@@ -489,7 +489,8 @@ https://is.gd/oL6gEO`;
           name: urlStudent ? `${urlStudent.name} (Tour)` : "EESA (Tour Account)",
           days: [1, 3], // Mon and Wed
           duration: "30",
-          zoomLink: "https://zoom.us/j/mock"
+          zoomLink: "https://zoom.us/j/mock",
+          scheduleMessage: "🕒 *Classes schedule for EESA*\nin Europe/London time\n🔹 *Monday* -> *08:00 PM*\n🔹 *Wednesday* -> *08:00 PM*"
         }],
         month: 2, // March (0-indexed)
         year: 2026,
@@ -552,7 +553,8 @@ https://is.gd/oL6gEO`;
           name: urlStudent ? `${urlStudent.name} (جولة تعريفية)` : "سبوح قدوس (جولة تعريفية)",
           days: [1, 3], // Mon and Wed
           duration: "30",
-          zoomLink: "https://zoom.us/j/mock"
+          zoomLink: "https://zoom.us/j/mock",
+          scheduleMessage: "🕒 *مواعيد حصص سبوح قدوس*\nبتوقيت مكة المكرمة\n🔹 *الإثنين* -> *08:00 PM*\n🔹 *الأربعاء* -> *08:00 PM*"
         }],
         month: 2, // March (0-indexed)
         year: 2026,
@@ -640,8 +642,8 @@ https://is.gd/oL6gEO`;
         tourAudioDesc: "روابط للتسجيلات الصوتية من المعلم للمساعدة في التدريب.",
         tourStatsTitle: "الإحصائيات",
         tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
-        tourActionsTitle: "إجراءات سريعة",
-        tourActionsDesc: "استخدم هذه الأزرار لدخول حصة زوم أو جدولة حصة جديدة."
+        tourActionsTitle: "مواعيد وإجراءات الحصص",
+        tourActionsDesc: "يعرض هذا الشريط مواعيد حصصك المجدولة أينما كنت في الشاشة لتتذكرها دائماً، بالإضافة إلى أزرار سريعة لدخول الحصة عبر زوم أو لجدولة حصة جديدة."
       } : {
         studentNotFound: "Student Not Found",
         noRecord: "There is no record for this student in the system.",
@@ -695,8 +697,8 @@ https://is.gd/oL6gEO`;
         tourAudioDesc: "Links to voice recordings from your teacher to help you practice.",
         tourStatsTitle: "Statistics",
         tourStatsDesc: "Summary of total attended and missed classes for the month.",
-        tourActionsTitle: "Quick Actions",
-        tourActionsDesc: "Use these buttons to join a Zoom class or schedule a new session."
+        tourActionsTitle: "Schedule & Quick Actions",
+        tourActionsDesc: "This bar displays your class times so you always remember them, along with quick buttons to join a Zoom class or schedule a new session."
       };
 
       const startTour = () => {
