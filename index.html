@@ -1227,7 +1227,26 @@ https://is.gd/oL6gEO`;
       };
 
       return (
-        <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+        <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${(student.zoomLink || scheduleLink) ? 'pt-24 md:pt-24' : ''} ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+          {/* Sticky Top Bar for Actions */}
+          {(student.zoomLink || scheduleLink) && (
+            <div id="tour-actions" className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+              <div className="max-w-4xl mx-auto px-4 py-3 flex gap-4">
+                {student.zoomLink && (
+                  <a href={student.zoomLink} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 px-3 md:px-6 rounded-xl transition-all active:scale-95 shadow-inner">
+                    <i data-lucide="video" className="w-5 h-5"></i>
+                    <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-xs md:text-sm uppercase'}`}>{t.joinClass}</span>
+                  </a>
+                )}
+                {scheduleLink && (
+                  <a href={scheduleLink} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 py-2.5 px-3 md:px-6 rounded-xl transition-all active:scale-95 shadow-inner">
+                    <i data-lucide="calendar-plus" className="w-5 h-5"></i>
+                    <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-xs md:text-sm uppercase'}`}>{t.scheduleClass}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
           <style dangerouslySetInnerHTML={{
             __html: `
             .driver-rtl {
@@ -1328,38 +1347,7 @@ https://is.gd/oL6gEO`;
             </div>
           </div>
 
-          {/* Action Links */}
-          {(student.zoomLink || scheduleLink) && (
-            <div id="tour-actions" className={`grid gap-4 md:gap-6 mb-8 animate-fade delay-[600ms] ${student.zoomLink && scheduleLink ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-              {student.zoomLink && (
-                <a
-                  href={student.zoomLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="glass-panel rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center gap-3 hover:bg-emerald-900/40 transition-all group active:scale-95 border-emerald-500/20 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                >
-                  <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-inner">
-                    <i data-lucide="video" className="w-6 h-6 md:w-7 md:h-7"></i>
-                  </div>
-                  <span className={`font-bold text-white tracking-widest ${isArabic ? 'text-lg' : 'text-sm md:text-base uppercase'}`}>{t.joinClass}</span>
-                </a>
-              )}
-
-              {scheduleLink && (
-                <a
-                  href={scheduleLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="glass-panel rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center gap-3 hover:bg-amber-900/30 transition-all group active:scale-95 border-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-                >
-                  <div className="w-12 h-12 md:w-14 md:h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-inner">
-                    <i data-lucide="calendar-plus" className="w-6 h-6 md:w-7 md:h-7"></i>
-                  </div>
-                  <span className={`font-bold text-white tracking-widest ${isArabic ? 'text-lg' : 'text-sm md:text-base uppercase'}`}>{t.scheduleClass}</span>
-                </a>
-              )}
-            </div>
-          )}
+          {/* Action Links (Moved to Top Sticky Bar) */}
 
           {/* Report Modal */}
           {selectedReport && (
