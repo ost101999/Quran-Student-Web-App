@@ -356,6 +356,7 @@
       const [error, setError] = useState('');
       const [selectedReport, setSelectedReport] = useState(null);
       const [showSchedule, setShowSchedule] = useState(false);
+      const [glowReportDay, setGlowReportDay] = useState(null);
 
       // Tour state
       const [isTourMode, setIsTourMode] = useState(false);
@@ -394,6 +395,41 @@
           window.lucide.createIcons();
         }
       });
+
+      // Glow animation on last reported day after data loads
+      useEffect(() => {
+        if (!loading && data && !isTourMode) {
+          const urlStudentLocal = data?.students ? (nameSlug
+            ? data.students.find(s => nameSlug && toSlugSimple(s?.name) === nameSlug)
+            : data.students.find(s => String(s.id) === String(studentId))) : null;
+          if (!urlStudentLocal) return;
+          const att = data.attendance || {};
+          const rep = data.savedReports || {};
+          const yr = data.year;
+          const mo = data.month;
+          const dim = new Date(yr, mo + 1, 0).getDate();
+          // Find the last day in displayed month with a report
+          let lastDay = null;
+          for (let d = dim; d >= 1; d--) {
+            const k = `${urlStudentLocal.id}_${d}_${mo}_${yr}`;
+            const st = att[k];
+            const raw = rep[k];
+            const txt = st ? (typeof raw === 'string' ? raw : raw?.reportText || null) : null;
+            if (txt) { lastDay = d; break; }
+          }
+          if (lastDay) {
+            const timer = setTimeout(() => setGlowReportDay(lastDay), 800);
+            const stop = setTimeout(() => setGlowReportDay(null), 4000);
+            return () => { clearTimeout(timer); clearTimeout(stop); };
+          }
+        }
+      }, [loading]);
+
+      // Simple slug for glow effect lookup (avoid circular dep)
+      const toSlugSimple = (name) => {
+        if (!name) return '';
+        return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      };
 
       useEffect(() => {
         const handleKeyDown = (e) => {
@@ -1181,7 +1217,7 @@ https://is.gd/oL6gEO`;
           <div
             id={isTourMode && [2, 4, 9].includes(day) ? `tour-day-${day}` : undefined}
             key={day}
-            className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square`}
+            className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square ${glowReportDay === day ? 'animate-report-glow' : ''}`}
           >
             {statusIndicator}
             <span className={`text-lg font-semibold ${isScheduled ? 'text-white' : 'text-slate-400'} ${reportText ? '-translate-y-1 md:translate-y-0' : ''}`}>
@@ -1448,9 +1484,9 @@ https://is.gd/oL6gEO`;
                     let timezone = "";
                     let timeLines = lines;
 
-                    if (lines.length > 0 && lines[0].includes('🕒')) {
+                    if (lines.length > 0 && lines[0].includes('\uD83D\uDD52')) {
                       title = lines[0];
-                      if (lines.length > 1 && !lines[1].includes('🔹')) {
+                      if (lines.length > 1 && !lines[1].includes('\uD83D\uDD39')) {
                         timezone = lines[1];
                         timeLines = lines.slice(2);
                       } else {
@@ -1458,27 +1494,86 @@ https://is.gd/oL6gEO`;
                       }
                     }
 
+                    // Day order mapping (0=Sun,1=Mon...6=Sat)
+                    const dayOrderEn = { 'monday':1,'tuesday':2,'wednesday':3,'thursday':4,'friday':5,'saturday':6,'sunday':0 };
+                    const dayOrderAr = { 'الأحد':0,'الاثنين':1,'الثلاثاء':2,'الأربعاء':3,'الخميس':4,'الجمعة':5,'السبت':6 };
+
+                    // Parse valid schedule lines
+                    const scheduleEntries = timeLines
+                      .filter(l => l.trim() !== '' && l.includes('\uD83D\uDD39'))
+                      .map(line => {
+                        const parts = line.split(/\*([^*]+)\*/g);
+                        // Extract day name from line
+                        const boldParts = [];
+                        parts.forEach((p, i) => { if (i % 2 === 1) boldParts.push(p.trim()); });
+                        const dayName = boldParts[0] || '';
+                        const timePart = boldParts[1] || '';
+                        // Determine sort order
+                        const lc = dayName.toLowerCase();
+                        let order = isArabic ? (dayOrderAr[dayName] ?? 99) : (dayOrderEn[lc] ?? 99);
+                        return { line, dayName, timePart, order };
+                      });
+
+                    // Sort: Monday-first for English, Sunday-first for Arabic
+                    const sorted = !isArabic
+                      ? [...scheduleEntries].sort((a, b) => {
+                          // Reorder so Monday(1) is first
+                          const mo = (n) => n === 0 ? 7 : n;
+                          return mo(a.order) - mo(b.order);
+                        })
+                      : scheduleEntries;
+
+                    // Find next upcoming class day
+                    const todayDow = new Date().getDay(); // 0=Sun
+                    let nextClassDow = -1;
+                    if (!isArabic) {
+                      // Find the next weekday from today that matches a scheduled day
+                      for (let offset = 0; offset <= 7; offset++) {
+                        const checkDow = (todayDow + offset) % 7;
+                        if (scheduleEntries.some(e => e.order === checkDow)) {
+                          nextClassDow = checkDow;
+                          break;
+                        }
+                      }
+                    } else {
+                      for (let offset = 0; offset <= 7; offset++) {
+                        const checkDow = (todayDow + offset) % 7;
+                        if (scheduleEntries.some(e => e.order === checkDow)) {
+                          nextClassDow = checkDow;
+                          break;
+                        }
+                      }
+                    }
+
                     return (
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-2">
-                        {timeLines.map((line, idx) => {
+                        {sorted.map(({ line, order, dayName, timePart }, idx) => {
+                          const isNext = order === nextClassDow;
                           const parts = line.split(/\*([^*]+)\*/g);
                           if (line.trim() === '') return null;
                           return (
-                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors" dir={isArabic ? 'rtl' : 'ltr'}>
+                            <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-500 ${
+                              isNext
+                                ? 'bg-islamic-gold/15 border-islamic-gold/50 shadow-[0_0_12px_rgba(217,119,6,0.3)] animate-next-class'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`} dir={isArabic ? 'rtl' : 'ltr'}>
+                              {isNext && (
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-islamic-gold animate-ping" style={{position:'relative',flexShrink:0,marginRight:'6px',marginLeft:'6px'}}></span>
+                              )}
                               {parts.map((part, i) => {
                                 if (i % 2 === 1) {
-                                  return <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? 'font-sans tracking-wide text-emerald-400' : ''}`}>{part}</strong>;
+                                  return <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
                                 } else {
-                                  let text = part.replace('🔹', '').trim();
+                                  let text = part.replace('\uD83D\uDD39', '').trim();
                                   if (text.includes('->')) {
                                     return (
                                       <span key={i} className="text-islamic-gold/60 px-3 font-bold opacity-80">
-                                        {isArabic ? '←' : '→'}
+                                        {isArabic ? '\u2190' : '\u2192'}
                                       </span>
                                     );
                                   }
-                                  return <span key={i} className="text-slate-300 opacity-60 px-1">{text}</span>;
+                                  return <span key={i} className={`opacity-60 px-1 ${isNext ? 'text-islamic-gold/80' : 'text-slate-300'}`}>{text}</span>;
                                 }
                               })}
                             </div>
