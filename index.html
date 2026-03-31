@@ -1237,34 +1237,32 @@ https://is.gd/oL6gEO`;
           {/* Sticky Top Bar for Actions & Schedule Title */}
           {(student.zoomLink || scheduleLink || student.scheduleMessage) && (
             <div id="tour-actions" className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
-              <div className="max-w-4xl mx-auto px-4 py-3 flex gap-4 items-center justify-between">
-
-                {/* Fixed Schedule Title */}
-                {student.scheduleMessage && (
-                  <button 
-                    onClick={() => setShowSchedule(true)} 
-                    className={`flex items-center gap-2 bg-islamic-800/50 hover:bg-islamic-800 border border-islamic-gold/30 text-islamic-light py-2 px-4 rounded-xl transition-all shadow-inner active:scale-95 ${!scheduleLink && !student.zoomLink ? 'mx-auto' : 'flex-1 md:flex-none justify-center'}`}
-                  >
-                    <i data-lucide="clock" className="w-5 h-5 shrink-0 text-islamic-gold"></i>
-                    <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>
-                      {t.scheduleTitle}
-                    </span>
-                  </button>
-                )}
+              <div className="max-w-4xl mx-auto px-4 py-3 flex gap-4 items-center justify-center">
 
                 {/* Buttons Layout */}
-                <div className={`flex gap-3 shrink-0 ${!student.scheduleMessage ? 'w-full' : 'flex-col sm:flex-row'}`}>
+                <div className={`flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0 justify-center items-center`}>
                   {student.zoomLink && (
-                    <a href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`${!student.scheduleMessage ? 'flex-1 justify-center' : 'px-4 justify-start sm:justify-center'} flex items-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                    <a href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`flex-1 w-full sm:w-auto px-4 justify-center flex items-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
                       <i data-lucide="video" className="w-4 h-4 md:w-5 md:h-5 shrink-0"></i>
                       <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>{t.joinClass}</span>
                     </a>
                   )}
                   {scheduleLink && (
-                    <a href={scheduleLink} target="_blank" rel="noopener noreferrer" className={`${!student.scheduleMessage ? 'flex-1 justify-center' : 'px-4 justify-start sm:justify-center'} flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                    <a href={scheduleLink} target="_blank" rel="noopener noreferrer" className={`flex-1 w-full sm:w-auto px-4 justify-center flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
                       <i data-lucide="calendar-plus" className="w-4 h-4 md:w-5 md:h-5 shrink-0"></i>
                       <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>{t.scheduleClass}</span>
                     </a>
+                  )}
+                  {student.scheduleMessage && (
+                    <button 
+                      onClick={() => setShowSchedule(true)} 
+                      className={`flex-1 w-full sm:w-auto flex items-center gap-2 bg-islamic-800/50 hover:bg-islamic-800 border border-islamic-gold/30 text-islamic-light py-2.5 px-4 rounded-xl transition-all shadow-inner active:scale-95 justify-center`}
+                    >
+                      <i data-lucide="clock" className="w-4 h-4 md:w-5 md:h-5 shrink-0 text-islamic-gold"></i>
+                      <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>
+                        {t.scheduleTitle}
+                      </span>
+                    </button>
                   )}
                 </div>
 
@@ -1415,23 +1413,27 @@ https://is.gd/oL6gEO`;
 
                     return (
                       <div className="flex flex-col gap-3">
-                        {(title || timezone) && (
-                          <div className={`text-center mb-2 pb-3 border-b border-white/10 ${isArabic ? 'font-amiri' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>
-                            {title && <p className="font-bold text-white text-lg mb-1">{title.replace('🕒', '').replace(/\*/g, '').trim()}</p>}
-                            {timezone && <p className="text-xs text-islamic-gold/80">{timezone.replace(/\*/g, '').trim()}</p>}
-                          </div>
-                        )}
                         <div className="flex flex-col gap-2">
                         {timeLines.map((line, idx) => {
                           const parts = line.split(/\*([^*]+)\*/g);
                           if (line.trim() === '') return null;
                           return (
-                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                              {parts.map((part, i) =>
-                                i % 2 === 1
-                                  ? <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? 'font-sans tracking-wide text-emerald-400' : ''}`}>{part}</strong>
-                                  : <span key={i} className="text-slate-300 opacity-60 px-1">{part.replace('🔹', '').trim()}</span>
-                              )}
+                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors" dir={isArabic ? 'rtl' : 'ltr'}>
+                              {parts.map((part, i) => {
+                                if (i % 2 === 1) {
+                                  return <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? 'font-sans tracking-wide text-emerald-400' : ''}`}>{part}</strong>;
+                                } else {
+                                  let text = part.replace('🔹', '').trim();
+                                  if (text.includes('->')) {
+                                    return (
+                                      <span key={i} className="text-islamic-gold/60 px-3 font-bold opacity-80">
+                                        {isArabic ? '←' : '→'}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={i} className="text-slate-300 opacity-60 px-1">{text}</span>;
+                                }
+                              })}
                             </div>
                           );
                         })}
