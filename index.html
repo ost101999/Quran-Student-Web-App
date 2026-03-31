@@ -603,7 +603,7 @@ https://is.gd/oL6gEO`;
         scheduled: "مجدولة",
         reportAvailable: "التقرير متاح",
         joinClass: "دخول الحصة",
-        scheduleClass: "طلب جدولة",
+        scheduleClass: "إضافة موعد",
         dailyReport: "التقرير المفصل",
         completedInClass: "ما تم إنجازه",
         homeworkNextClass: "الواجب والمطلوب",
@@ -646,7 +646,7 @@ https://is.gd/oL6gEO`;
         tourStatsTitle: "الإحصائيات",
         tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
         tourActionsTitle: "مواعيد وإجراءات الحصص",
-        tourActionsDesc: "يعرض هذا الشريط مواعيد حصصك المجدولة أينما كنت في الشاشة لتتذكرها دائماً، بالإضافة إلى أزرار سريعة لدخول الحصة عبر زوم أو لجدولة حصة جديدة."
+        tourActionsDesc: "يعرض هذا الشريط مواعيد حصصك المجدولة أينما كنت في الشاشة لتتذكرها دائماً، بالإضافة إلى أزرار سريعة لدخول الحصة عبر زوم أو لجدولة حصة جديدة. \n• دخول الحصة: للانتقال مباشرة لغرفة الزوم. \n• إضافة موعد: لحجز موعد جديد. \n• مواعيد الحصص: لعرض أوقات حصصك الكاملة."
       } : {
         studentNotFound: "Student Not Found",
         noRecord: "There is no record for this student in the system.",
@@ -659,7 +659,7 @@ https://is.gd/oL6gEO`;
         scheduled: "Scheduled",
         reportAvailable: "Report Available",
         joinClass: "Join Class",
-        scheduleClass: "Schedule Class",
+        scheduleClass: "Book a Session",
         dailyReport: "Daily Report",
         completedInClass: "Completed In Class",
         homeworkNextClass: "Homework & Next Class",
@@ -668,7 +668,7 @@ https://is.gd/oL6gEO`;
         audio: "Audio",
         audioRecording: "Audio Recording",
         noDetails: "No details provided.",
-        scheduleTitle: "Class Schedule",
+        scheduleTitle: "My Schedule",
         errorTitle: "Error",
         errorLoad: "Failed to load data. Please try again later.",
         next: "Next",
@@ -702,7 +702,7 @@ https://is.gd/oL6gEO`;
         tourStatsTitle: "Statistics",
         tourStatsDesc: "Summary of total attended and missed classes for the month.",
         tourActionsTitle: "Schedule & Quick Actions",
-        tourActionsDesc: "This bar displays your class times so you always remember them, along with quick buttons to join a Zoom class or schedule a new session."
+        tourActionsDesc: "This bar displays your class schedule directly, along with quick buttons. \n• Join Class: Takes you directly to the Zoom room. \n• Book a Session: To schedule a new class. \n• My Schedule: To view all your class timings."
       };
 
       const startTour = () => {
@@ -1243,7 +1243,9 @@ https://is.gd/oL6gEO`;
                 <div className={`flex gap-3 shrink-0 order-2 sm:order-1 ${!student.scheduleMessage ? 'w-full' : 'w-full sm:w-auto'}`}>
                   {student.zoomLink && (
                     <a href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
-                      <i data-lucide="video" className="w-4 h-4 md:w-5 md:h-5 shrink-0"></i>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 md:w-5 md:h-5 shrink-0">
+                        <path d="M16.033 9.07v5.86c0 .825-.675 1.5-1.5 1.5H3.5c-.825 0-1.5-.675-1.5-1.5v-5.86c0-.825.675-1.5 1.5-1.5h11.033c.825 0 1.5.675 1.5 1.5zm6.467-1.396-4.667 3.5v1.652l4.667 3.5c.367.275.833.013.833-.45V8.125c0-.463-.466-.725-.833-.45z" />
+                      </svg>
                       <span className={`font-bold whitespace-nowrap tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>{t.joinClass}</span>
                     </a>
                   )}
