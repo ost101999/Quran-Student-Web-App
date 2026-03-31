@@ -355,6 +355,7 @@
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState('');
       const [selectedReport, setSelectedReport] = useState(null);
+      const [showSchedule, setShowSchedule] = useState(false);
 
       // Tour state
       const [isTourMode, setIsTourMode] = useState(false);
@@ -398,13 +399,14 @@
         const handleKeyDown = (e) => {
           if (e.key === 'Escape') {
             setSelectedReport(null);
+            setShowSchedule(false);
           }
         };
-        if (selectedReport) {
+        if (selectedReport || showSchedule) {
           window.addEventListener('keydown', handleKeyDown);
         }
         return () => window.removeEventListener('keydown', handleKeyDown);
-      }, [selectedReport]);
+      }, [selectedReport, showSchedule]);
 
       const toSlug = (name) => {
         if (!name) return '';
@@ -610,6 +612,7 @@ https://is.gd/oL6gEO`;
         audio: "الصوتيات",
         audioRecording: "تسجيل صوتي",
         noDetails: "لا توجد تفاصيل إضافية.",
+        scheduleTitle: "مواعيد الحصص",
         errorTitle: "خطأ",
         errorLoad: "فشل تحميل البيانات. يرجى المحاولة لاحقاً.",
         next: "التالي",
@@ -665,6 +668,7 @@ https://is.gd/oL6gEO`;
         audio: "Audio",
         audioRecording: "Audio Recording",
         noDetails: "No details provided.",
+        scheduleTitle: "Class Schedule",
         errorTitle: "Error",
         errorLoad: "Failed to load data. Please try again later.",
         next: "Next",
@@ -1237,27 +1241,15 @@ https://is.gd/oL6gEO`;
 
                 {/* Fixed Schedule Title */}
                 {student.scheduleMessage && (
-                  <div className="flex-1 text-xs md:text-sm text-islamic-light/90 whitespace-pre-wrap leading-relaxed max-h-[150px] overflow-y-auto custom-scrollbar pr-2" dir="ltr">
-                    {(() => {
-                      let lines = student.scheduleMessage.split('\n');
-                      if (lines.length > 0 && lines[0].includes('🕒')) {
-                        // Skip the first two lines (Title and Timezone) to show only actual times
-                        lines = lines.slice(2);
-                      }
-                      return lines.map((line, idx) => {
-                        const parts = line.split(/\*([^*]+)\*/g);
-                        return (
-                          <div key={idx} className={line.trim() === '' ? 'hidden' : ''}>
-                            {parts.map((part, i) =>
-                              i % 2 === 1
-                                ? <strong key={i} className="text-white font-bold">{part}</strong>
-                                : <span key={i}>{part}</span>
-                            )}
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
+                  <button 
+                    onClick={() => setShowSchedule(true)} 
+                    className={`flex items-center gap-2 bg-islamic-800/50 hover:bg-islamic-800 border border-islamic-gold/30 text-islamic-light py-2 px-4 rounded-xl transition-all shadow-inner active:scale-95 ${!scheduleLink && !student.zoomLink ? 'mx-auto' : 'flex-1 md:flex-none justify-center'}`}
+                  >
+                    <i data-lucide="clock" className="w-5 h-5 shrink-0 text-islamic-gold"></i>
+                    <span className={`font-bold tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>
+                      {t.scheduleTitle}
+                    </span>
+                  </button>
                 )}
 
                 {/* Buttons Layout */}
@@ -1382,6 +1374,75 @@ https://is.gd/oL6gEO`;
           </div>
 
           {/* Action Links (Moved to Top Sticky Bar) */}
+
+          {/* Schedule Modal */}
+          {showSchedule && student.scheduleMessage && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade">
+              <div className="glass-panel w-full max-w-sm rounded-3xl p-6 relative border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+                <button
+                  onClick={() => setShowSchedule(false)}
+                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
+                >
+                  <i data-lucide="x" className="w-5 h-5"></i>
+                </button>
+                
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-islamic-800/80 text-islamic-gold mb-4 border border-islamic-gold/30 shadow-[0_0_15px_rgba(217,119,6,0.3)]">
+                    <i data-lucide="clock" className="w-7 h-7"></i>
+                  </div>
+                  <h3 className={`text-xl font-bold text-islamic-light ${headerFontClass}`}>
+                    {t.scheduleTitle}
+                  </h3>
+                </div>
+
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 text-slate-200 text-sm md:text-base leading-loose" dir="ltr">
+                  {(() => {
+                    let lines = student.scheduleMessage.split('\n');
+                    
+                    let title = "";
+                    let timezone = "";
+                    let timeLines = lines;
+
+                    if (lines.length > 0 && lines[0].includes('🕒')) {
+                      title = lines[0];
+                      if (lines.length > 1 && !lines[1].includes('🔹')) {
+                        timezone = lines[1];
+                        timeLines = lines.slice(2);
+                      } else {
+                        timeLines = lines.slice(1);
+                      }
+                    }
+
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {(title || timezone) && (
+                          <div className={`text-center mb-2 pb-3 border-b border-white/10 ${isArabic ? 'font-amiri' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>
+                            {title && <p className="font-bold text-white text-lg mb-1">{title.replace('🕒', '').replace(/\*/g, '').trim()}</p>}
+                            {timezone && <p className="text-xs text-islamic-gold/80">{timezone.replace(/\*/g, '').trim()}</p>}
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-2">
+                        {timeLines.map((line, idx) => {
+                          const parts = line.split(/\*([^*]+)\*/g);
+                          if (line.trim() === '') return null;
+                          return (
+                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                              {parts.map((part, i) =>
+                                i % 2 === 1
+                                  ? <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? 'font-sans tracking-wide text-emerald-400' : ''}`}>{part}</strong>
+                                  : <span key={i} className="text-slate-300 opacity-60 px-1">{part.replace('🔹', '').trim()}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Report Modal */}
           {selectedReport && (
