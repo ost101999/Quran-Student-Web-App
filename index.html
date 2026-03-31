@@ -718,6 +718,7 @@ https://is.gd/oL6gEO`;
       };
 
       const startTour = () => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
         setIsTourMode(true);
         setTimeout(() => {
           if (window.lucide) window.lucide.createIcons();
