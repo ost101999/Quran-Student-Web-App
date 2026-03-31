@@ -215,6 +215,10 @@
     .animate-next-class {
       animation: nextClassPulse 2s ease-in-out infinite;
     }
+
+    .animate-next-glow {
+      animation: reportGlow 2s ease-in-out infinite;
+    }
   </style>
 </head>
 
@@ -1573,12 +1577,9 @@ https://is.gd/oL6gEO`;
                           return (
                             <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-500 ${
                               isNext
-                                ? 'bg-islamic-gold/15 border-islamic-gold/50 shadow-[0_0_12px_rgba(217,119,6,0.3)] animate-next-class'
+                                ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-glow'
                                 : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`} dir={isArabic ? 'rtl' : 'ltr'}>
-                              {isNext && (
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-islamic-gold animate-ping" style={{position:'relative',flexShrink:0,marginRight:'6px',marginLeft:'6px'}}></span>
-                              )}
                               {parts.map((part, i) => {
                                 if (i % 2 === 1) {
                                   return <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
