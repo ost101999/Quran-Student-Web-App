@@ -646,7 +646,13 @@ https://is.gd/oL6gEO`;
         tourStatsTitle: "الإحصائيات",
         tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
         tourActionsTitle: "مواعيد وإجراءات الحصص",
-        tourActionsDesc: "يعرض هذا الشريط مواعيد حصصك المجدولة أينما كنت في الشاشة لتتذكرها دائماً، بالإضافة إلى أزرار سريعة لدخول الحصة عبر زوم أو لجدولة حصة جديدة. \n• دخول الحصة: للانتقال مباشرة لغرفة الزوم. \n• إضافة موعد: لحجز موعد جديد. \n• مواعيد الحصص: لعرض أوقات حصصك الكاملة."
+        tourActionsDesc: "شريط علوي سريع.",
+        tourJoinClassTitle: "دخول الحصة",
+        tourJoinClassDesc: "اضغط هنا للانتقال مباشرة لغرفة الزوم وبدء الدرس المحجوز.",
+        tourBookSessionTitle: "إضافة موعد",
+        tourBookSessionDesc: "استخدم هذا الزر لحجز موعد جديد أو لطلب جدولة حصة إضافية.",
+        tourMyScheduleTitle: "مواعيد الحصص",
+        tourMyScheduleDesc: "اضغط هنا لعرض تفاصيل أوقات حصصك الكاملة بشكل منسق."
       } : {
         studentNotFound: "Student Not Found",
         noRecord: "There is no record for this student in the system.",
@@ -702,7 +708,13 @@ https://is.gd/oL6gEO`;
         tourStatsTitle: "Statistics",
         tourStatsDesc: "Summary of total attended and missed classes for the month.",
         tourActionsTitle: "Schedule & Quick Actions",
-        tourActionsDesc: "This bar displays your class schedule directly, along with quick buttons. \n• Join Class: Takes you directly to the Zoom room. \n• Book a Session: To schedule a new class. \n• My Schedule: To view all your class timings."
+        tourActionsDesc: "Quick actions bar.",
+        tourJoinClassTitle: "Join Class",
+        tourJoinClassDesc: "Click here to jump straight into your Zoom classroom.",
+        tourBookSessionTitle: "Book a Session",
+        tourBookSessionDesc: "Use this button to request a new class or reschedule an existing one.",
+        tourMyScheduleTitle: "My Schedule",
+        tourMyScheduleDesc: "Click here to view your complete class schedule and timings."
       };
 
       const startTour = () => {
@@ -876,11 +888,29 @@ https://is.gd/oL6gEO`;
                   }
                 },
                 {
-                  element: '#tour-actions',
+                  element: '#tour-join-class',
                   popover: {
-                    title: t.tourActionsTitle,
-                    description: t.tourActionsDesc,
-                    side: 'top',
+                    title: t.tourJoinClassTitle,
+                    description: t.tourJoinClassDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-book-session',
+                  popover: {
+                    title: t.tourBookSessionTitle,
+                    description: t.tourBookSessionDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-my-schedule',
+                  popover: {
+                    title: t.tourMyScheduleTitle,
+                    description: t.tourMyScheduleDesc,
+                    side: 'bottom',
                     align: 'center'
                   }
                 }
@@ -1236,13 +1266,13 @@ https://is.gd/oL6gEO`;
         <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${(student.zoomLink || scheduleLink || student.scheduleMessage) ? 'pt-[160px] md:pt-36' : ''} ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
           {/* Sticky Top Bar for Actions & Schedule Title */}
           {(student.zoomLink || scheduleLink || student.scheduleMessage) && (
-            <div id="tour-actions" className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+            <div className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
               <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
 
                 {/* Action Buttons Group */}
                 <div className={`flex gap-3 shrink-0 order-2 sm:order-1 ${!student.scheduleMessage ? 'w-full' : 'w-full sm:w-auto'}`}>
                   {student.zoomLink && (
-                    <a href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                    <a id="tour-join-class" href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
                       <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 md:w-5 md:h-5 shrink-0">
                         <path d="M16.033 9.07v5.86c0 .825-.675 1.5-1.5 1.5H3.5c-.825 0-1.5-.675-1.5-1.5v-5.86c0-.825.675-1.5 1.5-1.5h11.033c.825 0 1.5.675 1.5 1.5zm6.467-1.396-4.667 3.5v1.652l4.667 3.5c.367.275.833.013.833-.45V8.125c0-.463-.466-.725-.833-.45z" />
                       </svg>
@@ -1250,7 +1280,7 @@ https://is.gd/oL6gEO`;
                     </a>
                   )}
                   {scheduleLink && (
-                    <a href={scheduleLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                    <a id="tour-book-session" href={scheduleLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
                       <i data-lucide="calendar-plus" className="w-4 h-4 md:w-5 md:h-5 shrink-0"></i>
                       <span className={`font-bold whitespace-nowrap tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>{t.scheduleClass}</span>
                     </a>
@@ -1340,21 +1370,21 @@ https://is.gd/oL6gEO`;
               {monthDays.map(day => renderDay(day))}
             </div>
 
-            <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-slate-400">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-emerald-400"></div> {t.present}
+            <div className="mt-6 md:mt-8 flex justify-center gap-2 sm:gap-4 md:gap-6 text-[10px] md:text-sm text-slate-500/70 whitespace-nowrap overflow-x-auto no-scrollbar pb-1 w-full" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-emerald-400/80"></div> <span>{t.present}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-400"></div> {t.absent}
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-red-400/80"></div> <span>{t.absent}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-amber-400"></div> {t.compensated}
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-amber-400/80"></div> <span>{t.compensated}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full border border-dashed border-islamic-gold/50"></div> {t.scheduled}
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full border border-dashed border-islamic-gold/40"></div> <span className="hidden xs:inline">{t.scheduled}</span><span className="inline xs:hidden">مُجدول</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-islamic-gold text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-2.5 h-2.5"></i></div> {t.reportAvailable}
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-islamic-gold/80 text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-[8px] h-[8px] md:w-2.5 md:h-2.5"></i></div> <span className="hidden sm:inline">{t.reportAvailable}</span><span className="inline sm:hidden">تقرير</span>
               </div>
             </div>
           </div>
