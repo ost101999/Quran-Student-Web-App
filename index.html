@@ -894,6 +894,9 @@ https://is.gd/oL6gEO`;
                     description: t.tourJoinClassDesc,
                     side: 'bottom',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 },
                 {
@@ -903,6 +906,9 @@ https://is.gd/oL6gEO`;
                     description: t.tourBookSessionDesc,
                     side: 'bottom',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 },
                 {
@@ -912,6 +918,9 @@ https://is.gd/oL6gEO`;
                     description: t.tourMyScheduleDesc,
                     side: 'bottom',
                     align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }
               ]
@@ -1266,7 +1275,7 @@ https://is.gd/oL6gEO`;
         <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${(student.zoomLink || scheduleLink || student.scheduleMessage) ? 'pt-[160px] md:pt-36' : ''} ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
           {/* Sticky Top Bar for Actions & Schedule Title */}
           {(student.zoomLink || scheduleLink || student.scheduleMessage) && (
-            <div className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+            <div id="tour-actions" className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
               <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
 
                 {/* Action Buttons Group */}
@@ -1290,6 +1299,7 @@ https://is.gd/oL6gEO`;
                 {/* Schedule Toggle Button */}
                 {student.scheduleMessage && (
                   <button 
+                    id="tour-my-schedule"
                     onClick={() => setShowSchedule(true)} 
                     className={`shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 bg-islamic-800/50 hover:bg-islamic-800 border border-islamic-gold/30 text-islamic-light py-2.5 px-5 rounded-xl transition-all shadow-inner active:scale-95 order-1 sm:order-2`}
                   >
@@ -1381,10 +1391,12 @@ https://is.gd/oL6gEO`;
                 <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-amber-400/80"></div> <span>{t.compensated}</span>
               </div>
               <div className="flex items-center justify-center gap-1 md:gap-2">
-                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full border border-dashed border-islamic-gold/40"></div> <span className="hidden xs:inline">{t.scheduled}</span><span className="inline xs:hidden">مُجدول</span>
+                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full border border-dashed border-islamic-gold/40"></div>
+                <span>{t.scheduled}</span>
               </div>
               <div className="flex items-center justify-center gap-1 md:gap-2">
-                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-islamic-gold/80 text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-[8px] h-[8px] md:w-2.5 md:h-2.5"></i></div> <span className="hidden sm:inline">{t.reportAvailable}</span><span className="inline sm:hidden">تقرير</span>
+                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-islamic-gold/80 text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-[8px] h-[8px] md:w-2.5 md:h-2.5"></i></div>
+                <span className="hidden sm:inline">{t.reportAvailable}</span><span className="inline sm:hidden">{isArabic ? 'تقرير' : 'Report'}</span>
               </div>
             </div>
           </div>
