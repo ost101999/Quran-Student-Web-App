@@ -1638,34 +1638,38 @@ https://is.gd/oL6gEO`;
                           const parts = line.split(/\*([^*]+)\*/g);
                           if (line.trim() === '') return null;
                           return (
-                            <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-500 ${
+                            <div key={idx} className={`flex flex-col p-3 rounded-xl border transition-all duration-500 ${
                               isNext
                                 ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-glow'
                                 : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`} dir={isArabic ? 'rtl' : 'ltr'}>
-                              <div className="flex items-center gap-2 flex-1 flex-wrap">
+                              {/* Day + Arrow + Time — always one line */}
+                              <div className="flex items-center gap-1 whitespace-nowrap overflow-hidden">
                               {parts.map((part, i) => {
                                 if (i % 2 === 1) {
-                                  return <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
+                                  return <strong key={i} className={`text-islamic-light shrink-0 ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
                                 } else {
                                   let text = part.replace('\uD83D\uDD39', '').trim();
                                   if (text.includes('->')) {
                                     return (
-                                      <span key={i} className="text-islamic-gold/60 px-3 font-bold opacity-80">
+                                      <span key={i} className="text-islamic-gold/60 px-2 font-bold opacity-80 shrink-0">
                                         {isArabic ? '\u2190' : '\u2192'}
                                       </span>
                                     );
                                   }
-                                  return <span key={i} className={`opacity-60 px-1 ${isNext ? 'text-islamic-gold/80' : 'text-slate-300'}`}>{text}</span>;
+                                  return <span key={i} className={`opacity-60 shrink-0 ${isNext ? 'text-islamic-gold/80' : 'text-slate-300'}`}>{text}</span>;
                                 }
                               })}
                               </div>
+                              {/* Countdown badge — separate line */}
                               {isNext && countdownLabel && (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 shrink-0 ${
-                                  countdownLabel.includes('ago') || countdownLabel.includes('منذ')
-                                    ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                                    : 'bg-islamic-gold/20 text-islamic-gold border border-islamic-gold/30'
-                                }`}>{countdownLabel}</span>
+                                <div className="mt-1.5">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    countdownLabel.includes('ago') || countdownLabel.includes('منذ')
+                                      ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                      : 'bg-islamic-gold/20 text-islamic-gold border border-islamic-gold/30'
+                                  }`}>{countdownLabel}</span>
+                                </div>
                               )}
                             </div>
                           );
