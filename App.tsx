@@ -366,7 +366,7 @@ function App() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center"
+            className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center h-full"
           >
             <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 size={24} />
@@ -381,13 +381,13 @@ function App() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center"
+            className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center h-full"
           >
             <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <Clock size={24} />
             </div>
             <p className="text-slate-500 text-sm font-medium mb-2">أيام الحضور</p>
-            <div className="flex flex-wrap justify-center gap-1.5 h-12 overflow-y-auto">
+            <div className="flex flex-wrap justify-center gap-1.5 min-h-[3rem]">
               {presentDays.length > 0 ? presentDays.map(d => (
                 <span key={d} className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded-md">
                   {toHindiDigits(d)}
