@@ -217,7 +217,12 @@
     }
 
     .animate-next-glow {
-      animation: reportGlow 2s ease-in-out infinite;
+      animation: nextGlowFilter 2s ease-in-out infinite;
+    }
+
+    @keyframes nextGlowFilter {
+      0%, 100% { filter: drop-shadow(0 0 0px rgba(217,119,6,0)); }
+      40%, 60% { filter: drop-shadow(0 0 8px rgba(217,119,6,0.7)) drop-shadow(0 0 3px rgba(217,119,6,0.4)); }
     }
   </style>
 </head>
