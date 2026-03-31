@@ -379,6 +379,7 @@
       const [selectedReport, setSelectedReport] = useState(null);
       const [showSchedule, setShowSchedule] = useState(false);
       const [glowReportDay, setGlowReportDay] = useState(null);
+      const [tick, setTick] = useState(0); // updates every minute for countdown
 
       // Tour state
       const [isTourMode, setIsTourMode] = useState(false);
@@ -411,6 +412,12 @@
 
         fetchData();
       }, [studentId]);
+
+      // Update tick every minute so countdown re-renders
+      useEffect(() => {
+        const interval = setInterval(() => setTick(t => t + 1), 60000);
+        return () => clearInterval(interval);
+      }, []);
 
       useEffect(() => {
         if (!loading && window.lucide) {
@@ -1545,33 +1552,84 @@ https://is.gd/oL6gEO`;
                         })
                       : scheduleEntries;
 
-                    // Find next upcoming class day
-                    const todayDow = new Date().getDay(); // 0=Sun
-                    let nextClassDow = -1;
-                    if (!isArabic) {
-                      // Find the next weekday from today that matches a scheduled day
-                      for (let offset = 0; offset <= 7; offset++) {
-                        const checkDow = (todayDow + offset) % 7;
-                        if (scheduleEntries.some(e => e.order === checkDow)) {
-                          nextClassDow = checkDow;
-                          break;
-                        }
+                    // Find next upcoming class — 15min grace period, then skip to next scheduled class day
+                    const now = new Date(); void tick; // tick forces re-render every minute
+                    const todayDow = now.getDay();
+                    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+                    // Helper: parse "08:00 PM" or "20:00" → minutes since midnight
+                    const parseTimeToMinutes = (timeStr) => {
+                      if (!timeStr) return -1;
+                      const clean = timeStr.trim().toUpperCase();
+                      const m12 = clean.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+                      if (m12) {
+                        let h = parseInt(m12[1]);
+                        const m = parseInt(m12[2]);
+                        if (m12[3] === 'PM' && h !== 12) h += 12;
+                        if (m12[3] === 'AM' && h === 12) h = 0;
+                        return h * 60 + m;
                       }
-                    } else {
-                      for (let offset = 0; offset <= 7; offset++) {
-                        const checkDow = (todayDow + offset) % 7;
-                        if (scheduleEntries.some(e => e.order === checkDow)) {
-                          nextClassDow = checkDow;
-                          break;
-                        }
+                      const m24 = clean.match(/(\d{1,2}):(\d{2})/);
+                      if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+                      return -1;
+                    };
+
+                    // Compute daysUntil for each entry
+                    const withNextOccurrence = scheduleEntries.map(entry => {
+                      const classMin = parseTimeToMinutes(entry.timePart);
+                      let daysUntil;
+                      if (entry.order === todayDow) {
+                        // today: if within 15min grace → still today; else skip to next occurrence of this day (7 days)
+                        // But we don't hardcode 7 — we only assign 7 so other days with lower daysUntil win naturally
+                        daysUntil = (classMin < 0 || nowMinutes <= classMin + 15) ? 0 : 7;
+                      } else {
+                        daysUntil = (entry.order - todayDow + 7) % 7;
                       }
-                    }
+                      return { ...entry, classMin, daysUntil };
+                    });
+
+                    const minDays = Math.min(...withNextOccurrence.map(e => e.daysUntil));
+                    const nextEntry = withNextOccurrence.find(e => e.daysUntil === minDays);
+                    const nextClassDow = nextEntry?.order ?? -1;
+
+                    // Build countdown label for next class
+                    const buildCountdown = (entry) => {
+                      const classMin = entry?.classMin ?? -1;
+                      if (classMin < 0) return null;
+                      const diff = classMin - nowMinutes; // negative = past
+                      if (entry.daysUntil > 0) {
+                        // future day
+                        const totalMins = entry.daysUntil * 24 * 60 + classMin - nowMinutes;
+                        const hh = Math.floor(totalMins / 60);
+                        const mm = totalMins % 60;
+                        if (hh >= 24) {
+                          const dd = Math.floor(hh / 24);
+                          const rh = hh % 24;
+                          return isArabic
+                            ? `بعد ${dd}ي ${rh > 0 ? rh + 'س' : ''}`
+                            : `in ${dd}d ${rh > 0 ? rh + 'h' : ''}`;
+                        }
+                        return isArabic ? `بعد ${hh}س ${mm}د` : `in ${hh}h ${mm}m`;
+                      } else if (diff >= 0) {
+                        // upcoming today
+                        const hh = Math.floor(diff / 60);
+                        const mm = diff % 60;
+                        if (hh > 0) return isArabic ? `بعد ${hh}س ${mm}د` : `in ${hh}h ${mm}m`;
+                        return isArabic ? `بعد ${mm} دقيقة` : `in ${mm}m`;
+                      } else {
+                        // past today (within grace)
+                        const elapsed = Math.abs(diff);
+                        return isArabic ? `منذ ${elapsed} دقيقة` : `${elapsed}m ago`;
+                      }
+                    };
+
+                    const countdownLabel = buildCountdown(nextEntry);
 
                     return (
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-2">
-                        {sorted.map(({ line, order, dayName, timePart }, idx) => {
-                          const isNext = order === nextClassDow;
+                        {sorted.map(({ line, order, dayName, timePart, classMin, daysUntil }, idx) => {
+                          const isNext = order === nextClassDow && withNextOccurrence.find(e => e.order === order)?.daysUntil === minDays;
                           const parts = line.split(/\*([^*]+)\*/g);
                           if (line.trim() === '') return null;
                           return (
@@ -1580,6 +1638,7 @@ https://is.gd/oL6gEO`;
                                 ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-glow'
                                 : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`} dir={isArabic ? 'rtl' : 'ltr'}>
+                              <div className="flex items-center gap-2 flex-1 flex-wrap">
                               {parts.map((part, i) => {
                                 if (i % 2 === 1) {
                                   return <strong key={i} className={`text-islamic-light ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
@@ -1595,6 +1654,14 @@ https://is.gd/oL6gEO`;
                                   return <span key={i} className={`opacity-60 px-1 ${isNext ? 'text-islamic-gold/80' : 'text-slate-300'}`}>{text}</span>;
                                 }
                               })}
+                              </div>
+                              {isNext && countdownLabel && (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 shrink-0 ${
+                                  countdownLabel.includes('ago') || countdownLabel.includes('منذ')
+                                    ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                    : 'bg-islamic-gold/20 text-islamic-gold border border-islamic-gold/30'
+                                }`}>{countdownLabel}</span>
+                              )}
                             </div>
                           );
                         })}
