@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, HelpCircle, Video } from 'lucide-react';
+import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, HelpCircle, Video, ChevronLeft, ChevronRight } from 'lucide-react';
 import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
 
 // Interfaces matching the desktop app
@@ -40,6 +40,11 @@ function App() {
   const [data, setData] = useState<AppState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Month navigation: default to current real month/year
+  const _now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(_now.getMonth()); // 0-indexed, matches Firebase
+  const [selectedYear, setSelectedYear] = useState(_now.getFullYear());
 
   // Tour states
   const [runTour, setRunTour] = useState(false);
@@ -189,10 +194,38 @@ function App() {
     }
   }
 
-  // Calculate stats for current month
+  // Calculate stats for selected month
   let visitsCount = 0;
   let presentDays: number[] = [];
-  const { attendance, month, year, lastReports } = activeData!;
+  const { attendance, lastReports } = activeData!;
+
+  // Build sorted list of months that have attendance data for this student
+  const availableMonthsSet = new Set<string>();
+  if (attendance && student) {
+    Object.keys(attendance).forEach(key => {
+      const parts = key.split('_');
+      if (parts[0] === student.id) {
+        const m = parseInt(parts[2]);
+        const y = parseInt(parts[3]);
+        if (!isNaN(m) && !isNaN(y)) availableMonthsSet.add(`${y}_${m}`);
+      }
+    });
+  }
+  // Always include the current real month
+  const _now2 = new Date();
+  const _curM = _now2.getMonth();
+  const _curY = _now2.getFullYear();
+  availableMonthsSet.add(`${_curY}_${_curM}`);
+
+  const availableMonths = Array.from(availableMonthsSet)
+    .map(k => { const [y, m] = k.split('_').map(Number); return { month: m, year: y }; })
+    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+
+  const selectedIdx = availableMonths.findIndex(am => am.month === selectedMonth && am.year === selectedYear);
+  const canGoPrev = selectedIdx > 0;
+  const canGoNext = selectedIdx < availableMonths.length - 1;
+  const goPrev = () => { if (canGoPrev) { const p = availableMonths[selectedIdx - 1]; setSelectedMonth(p.month); setSelectedYear(p.year); } };
+  const goNext = () => { if (canGoNext) { const n = availableMonths[selectedIdx + 1]; setSelectedMonth(n.month); setSelectedYear(n.year); } };
 
   if (attendance && student) {
     Object.entries(attendance).forEach(([key, status]) => {
@@ -202,7 +235,7 @@ function App() {
       const m = parseInt(parts[2]);
       const y = parseInt(parts[3]);
 
-      if (id === student.id && m === month && y === year) {
+      if (id === student.id && m === selectedMonth && y === selectedYear) {
         // PRESENT, PAID_ABSENCE, DOUBLE_CLASS
         if (status === '1' || status === '!' || status === '2' || status === 'e' || status === 'ed') {
           visitsCount++;
@@ -348,15 +381,45 @@ function App() {
           transition={{ delay: 0.1, duration: 0.5 }}
           className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between"
         >
+          {/* Prev arrow */}
+          <button
+            onClick={goPrev}
+            disabled={!canGoPrev}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+              canGoPrev
+                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95'
+                : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+            }`}
+            title="الشهر السابق"
+          >
+            <ChevronRight size={20} />
+          </button>
+
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
               <Calendar size={24} />
             </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium mb-1">الشهر الحالي</p>
-              <p className="text-xl font-bold text-slate-800">{arabicMonths[month]} {toHindiDigits(year)}</p>
+            <div className="text-center">
+              <p className="text-sm text-slate-500 font-medium mb-1">
+                {canGoNext ? 'شهر سابق' : 'الشهر الحالي'}
+              </p>
+              <p className="text-xl font-bold text-slate-800">{arabicMonths[selectedMonth]} {toHindiDigits(selectedYear)}</p>
             </div>
           </div>
+
+          {/* Next arrow */}
+          <button
+            onClick={goNext}
+            disabled={!canGoNext}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+              canGoNext
+                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95'
+                : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+            }`}
+            title="الشهر التالي"
+          >
+            <ChevronLeft size={20} />
+          </button>
         </motion.div>
 
         {/* Stats Grid */}
