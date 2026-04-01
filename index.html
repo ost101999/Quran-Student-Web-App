@@ -1,84 +1,1836 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quran Classes Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Student Portal | بوابة الطالب</title>
+
+  <!-- PWA Requirements -->
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="theme-color" content="#064e3b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Dynamic PWA Manifest: sets start_url to current student path -->
+  <script>
+    (function () {
+      var currentPath = window.location.pathname + window.location.search;
+      if (currentPath === '/' || currentPath === '') currentPath = '/';
+      var manifest = {
+        name: 'Quran Classes Portal',
+        short_name: 'Quran Classes',
+        description: 'Student Web Portal for Tracking Quran Classes',
+        start_url: currentPath,
+        display: 'standalone',
+        background_color: '#022c22',
+        theme_color: '#064e3b',
+        icons: [
+          { src: '/icon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any' }
+        ]
+      };
+      var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      var link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    })();
+
+    // Catch PWA Prompt early
+    window.pwaDeferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.pwaDeferredPrompt = e;
+      window.dispatchEvent(new Event('pwaPromptReady'));
+    });
+  </script>
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Acme&family=Amiri:wght@400;700&family=DecoType+Naskh&family=Tajawal:wght@400;500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            cinzel: ['Cinzel', 'serif'],
+            amiri: ['Amiri', 'serif'],
+          },
+          colors: {
+            islamic: {
+              900: '#064e3b',
+              800: '#065f46',
+              gold: '#d97706',
+              light: '#fde68a'
+            }
+          },
+          backgroundImage: {
+            'custom-bg': "url('bg.png')"
+          }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css" />
+  <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
   <style>
-    /* Custom Font Classes */
-    .font-english {
-      font-family: 'Acme', sans-serif;
+    .driver-popover {
+      background: #064e3b !important;
+      border: 1px solid rgba(251, 191, 36, 0.3) !important;
+      color: #fff !important;
+      border-radius: 16px !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
     }
 
-    .font-arabic {
-      font-family: 'DecoType Naskh', cursive;
+    .driver-popover .driver-popover-title {
+      color: #fde68a !important;
+      font-family: 'Cinzel', serif !important;
+      font-size: 16px !important;
     }
 
-    .font-tajawal {
-      font-family: 'Tajawal', sans-serif;
+    .driver-popover .driver-popover-description {
+      color: #e2e8f0 !important;
+      font-family: 'Outfit', sans-serif !important;
     }
 
-    .font-amiri {
-      font-family: 'Amiri', serif;
+    .driver-popover .driver-popover-navigation-btns {
+      gap: 8px !important;
     }
 
-    /* Smooth scrolling for anchor links */
-    html {
-      scroll-behavior: smooth;
+    .driver-popover .driver-popover-next-btn {
+      background: #d97706 !important;
+      color: #fff !important;
+      border: none !important;
+      border-radius: 8px !important;
+      text-shadow: none !important;
     }
 
-    /* Hide scrollbar for top nav but keep functionality */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
+    .driver-popover .driver-popover-prev-btn {
+      color: #fbbf24 !important;
+      border: 1px solid rgba(251, 191, 36, 0.3) !important;
+      border-radius: 8px !important;
+      text-shadow: none !important;
     }
 
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+    .driver-popover .driver-popover-close-btn {
+      color: #94a3b8 !important;
     }
 
-    /* Custom Scrollbar for Modal to preserve rounded corners */
-    .smart-report-modal-container::-webkit-scrollbar {
-      width: 10px;
+    .driver-popover .driver-popover-arrow-side-left,
+    .driver-popover .driver-popover-arrow-side-right,
+    .driver-popover .driver-popover-arrow-side-top,
+    .driver-popover .driver-popover-arrow-side-bottom {
+      border-color: #064e3b !important;
     }
-    .smart-report-modal-container::-webkit-scrollbar-track {
-      background: transparent;
-      margin-top: 24px;
-      margin-bottom: 24px;
-    }
-    .smart-report-modal-container::-webkit-scrollbar-thumb {
-      background-color: rgba(156, 163, 175, 0.5); /* gray-400 with opacity */
-      border-radius: 10px;
-      border: 3px solid transparent;
-      background-clip: padding-box;
-    }
-    .smart-report-modal-container::-webkit-scrollbar-thumb:hover {
-      background-color: rgba(107, 114, 128, 0.8); /* gray-500 */
+
+    .driver-popover .driver-popover-progress-text {
+      color: #94a3b8 !important;
     }
   </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
-  }
-}
-</script>
-  <link rel="stylesheet" href="/index.css">
+
+  <style>
+    body {
+      background-color: #022c22;
+      counter-reset: my-sec-counter;
+    }
+
+    .glass-panel {
+      background: rgba(6, 78, 59, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(251, 191, 36, 0.1);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: rgba(217, 119, 6, 0.5);
+      border-radius: 20px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    .delay-1 {
+      animation-delay: 0.1s;
+      opacity: 0;
+    }
+
+    .delay-2 {
+      animation-delay: 0.2s;
+      opacity: 0;
+    }
+
+    .delay-3 {
+      animation-delay: 0.3s;
+      opacity: 0;
+    }
+
+    @keyframes reportGlow {
+      0%, 100% { box-shadow: 0 0 0px rgba(217,119,6,0); }
+      30%, 70% { box-shadow: 0 0 18px 6px rgba(217,119,6,0.5), 0 0 8px 2px rgba(217,119,6,0.25); }
+    }
+
+    .animate-report-glow {
+      animation: reportGlow 2.5s ease-in-out forwards;
+    }
+
+    @keyframes nextClassPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(217,119,6,0.2); }
+      50% { box-shadow: 0 0 20px rgba(217,119,6,0.5); }
+    }
+
+    .animate-next-class {
+      animation: nextClassPulse 2s ease-in-out infinite;
+    }
+
+    .animate-next-glow {
+      animation: nextGlowFilter 2s ease-in-out infinite;
+    }
+
+    @keyframes nextGlowFilter {
+      0%, 100% { filter: drop-shadow(0 0 0px rgba(217,119,6,0)); }
+      40%, 60% { filter: drop-shadow(0 0 8px rgba(217,119,6,0.7)) drop-shadow(0 0 3px rgba(217,119,6,0.4)); }
+    }
+  </style>
 </head>
 
-<body class="bg-gray-100 font-arabic text-gray-900">
+<body class="text-slate-100 font-sans min-h-screen relative">
+  <!-- Custom user-provided background layer -->
+  <div class="fixed inset-0 z-[-1] opacity-10"
+    style="background-image: url('./bg.png'); background-size: 20%; background-repeat: repeat; background-position: center;">
+  </div>
+
   <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const STATUS = {
+      PRESENT: '1',
+      PAID_ABSENCE: '!',
+      DOUBLE_CLASS: '2',
+      EXTRA_DOUBLE: 'ed',
+      EXTRA_DAY: 'e',
+      ABSENCE_RED: '0',
+      UNEXCUSED_ABSENCE: '-',
+      POSTPONED: 'p',
+      EXEMPT: 'x'
+    };
+
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const parseReport = (text) => {
+      if (!text) return [];
+      const lines = text.split('\n');
+      const sections = [];
+
+      let currentTitle = 'Summary';
+      let currentContent = [];
+
+      const keywords = [
+        { id: 'new', type: 'classwork', match: ['new', 'الجديد', 'الحفظ'], icon: 'sparkles' },
+        { id: 'quran', type: 'classwork', match: ['quran', 'قرآن', 'القرآن', 'recitation'], icon: 'check-circle-2' },
+        { id: 'reading', type: 'classwork', match: ['reading', 'قراءة', 'تلاوة', 'التلاوة', 'قرائية'], icon: 'check-circle-2' },
+        { id: 'old_revision', type: 'classwork', match: ['old', 'قديم', 'بعيد', 'ماضي'], icon: 'check-circle-2' },
+        { id: 'revision', type: 'classwork', match: ['revision', 'مراجعة', 'المراجعة'], icon: 'check-circle-2' },
+        { id: 'noor', type: 'classwork', match: ['noor', 'نور', 'bayan', 'بيان'], icon: 'check-circle-2' },
+        { id: 'islamic', type: 'classwork', match: ['islamic', 'اسلامية', 'إسلامية'], icon: 'check-circle-2' },
+        { id: 'arabic', type: 'classwork', match: ['arabic'], icon: 'book' },
+        { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
+        { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
+        { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' },
+        { id: 'audio', type: 'audio', match: ['🎧', 'للاستماع', 'audio correction'], icon: 'headphones' }
+      ];
+
+      // Track repeated titles: same title twice → second becomes homework
+      const seenTitles = new Set();
+
+      const getSectionMeta = (title) => {
+        const lowerT = title.toLowerCase().trim();
+        for (const kw of keywords) {
+          if (kw.match.some(m => lowerT.includes(m))) {
+            if (kw.type === 'classwork') {
+              if (seenTitles.has(lowerT)) return { icon: 'pen-tool', type: 'homework' };
+              seenTitles.add(lowerT);
+              return { icon: kw.icon, type: 'classwork' };
+            }
+            return { icon: kw.icon, type: kw.type };
+          }
+        }
+        // Unknown section — also tracks repetition
+        if (seenTitles.has(lowerT)) return { icon: 'pen-tool', type: 'homework' };
+        seenTitles.add(lowerT);
+        return { icon: 'file-text', type: 'other' };
+      };
+
+      let currentArabicSubject = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].replace(/\*/g, '').replace(/_/g, '').replace(/〰️/g, '').replace(/ـ/g, '').trim();
+        if (/^[-]+$/.test(line)) continue;
+        if (!line) continue;
+
+        // Extract subject name from 📚/📖 (SubjectName) emoji headers, then skip
+        if (line.includes('📚') || line.includes('📖')) {
+          const subjectMatch = line.match(/\(([^)]+)\)/);
+          if (subjectMatch) currentArabicSubject = subjectMatch[1].trim();
+          continue;
+        }
+
+        // Hide redundant header text
+        if (
+          line.toLowerCase().includes('(arabic)') ||
+          line.toLowerCase().startsWith('student:') ||
+          line.startsWith('الطالب:') ||
+          line.toLowerCase().startsWith('date:') ||
+          line.startsWith('التاريخ:') ||
+          line.toLowerCase().includes('class report') ||
+          line.includes('تقرير الحصة')
+        ) {
+          continue;
+        }
+
+        // Section matching
+        if (line.includes(':')) {
+          const parts = line.split(':');
+          let potentialTitle = parts[0].replace(/^[•\-\s]+/, '').trim();
+
+          // Intercept specific English headers to unify them under 'Arabic'
+          if (potentialTitle.toLowerCase().includes('session summary') || potentialTitle.toLowerCase().includes('next session plan')) {
+            potentialTitle = 'Arabic';
+          }
+
+          // Intercept Arabic book sub-sections (إنجاز الحصة / حصتنا القادمة) → use parent subject as title
+          if (currentArabicSubject && (
+            potentialTitle.includes('إنجاز') ||
+            potentialTitle.includes('حصتنا') ||
+            potentialTitle.includes('القادمة')
+          )) {
+            potentialTitle = currentArabicSubject;
+          }
+
+          let isSectionHeader = false;
+          for (const kw of keywords) {
+            if (kw.match.some(m => potentialTitle.toLowerCase().includes(m))) {
+              isSectionHeader = true;
+              break;
+            }
+          }
+
+          if (isSectionHeader) {
+            if (currentContent.length > 0 && currentTitle !== 'Summary') {
+              const meta = getSectionMeta(currentTitle);
+              sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
+            }
+            currentTitle = potentialTitle;
+            const contentAfter = parts.slice(1).join(':').trim();
+            currentContent = contentAfter ? [contentAfter] : [];
+            continue;
+          }
+        }
+        currentContent.push(line);
+      }
+
+      if (currentContent.length > 0 && currentTitle !== 'Summary') {
+        const meta = getSectionMeta(currentTitle);
+        sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
+      }
+
+      return sections.length > 0 ? sections : [{ title: 'Report Overview', content: text.replace(/〰️/g, ''), icon: 'file-text', type: 'other' }];
+    };
+
+    function App() {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState('');
+      const [selectedReport, setSelectedReport] = useState(null);
+      const [showSchedule, setShowSchedule] = useState(false);
+      const [glowReportDay, setGlowReportDay] = useState(null);
+      const [tick, setTick] = useState(0); // updates every minute for countdown
+
+      // Tour state
+      const [isTourMode, setIsTourMode] = useState(false);
+
+      // Month navigation: defaults to actual current date (month is 0-indexed like Firebase)
+      const _rnow = new Date();
+      const [selectedMonth, setSelectedMonth] = useState(_rnow.getMonth());
+      const [selectedYear, setSelectedYear] = useState(_rnow.getFullYear());
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const studentId = searchParams.get('student');
+      // Name-based routing: /ahmed-hassan takes priority over ?student=ID
+      const nameSlug = window.location.pathname.replace(/^\//, '').toLowerCase().trim();
+
+      const [studentList, setStudentList] = useState(null);
+
+      useEffect(() => {
+        const fetchData = async () => {
+          if (!studentId && !nameSlug) {
+            setError('Invalid student link. Please check the URL.');
+            setLoading(false);
+            return;
+          }
+
+          try {
+            const response = await axios.get('https://quran-classes-tracker-default-rtdb.firebaseio.com/appState.json');
+            setData(response.data);
+          } catch (err) {
+            console.error(err);
+            setError('Failed to load data. Please try again later.');
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        fetchData();
+      }, [studentId]);
+
+      // Update tick every minute so countdown re-renders
+      useEffect(() => {
+        const interval = setInterval(() => setTick(t => t + 1), 60000);
+        return () => clearInterval(interval);
+      }, []);
+
+      useEffect(() => {
+        if (!loading && window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
+      // Glow animation on last reported day after data loads
+      useEffect(() => {
+        if (!loading && data && !isTourMode) {
+          const urlStudentLocal = data?.students ? (nameSlug
+            ? data.students.find(s => nameSlug && toSlugSimple(s?.name) === nameSlug)
+            : data.students.find(s => String(s.id) === String(studentId))) : null;
+          if (!urlStudentLocal) return;
+          const att = data.attendance || {};
+          const rep = data.savedReports || {};
+          const yr = data.year;
+          const mo = data.month;
+          const dim = new Date(yr, mo + 1, 0).getDate();
+          // Find the last day in displayed month with a report
+          let lastDay = null;
+          for (let d = dim; d >= 1; d--) {
+            const k = `${urlStudentLocal.id}_${d}_${mo}_${yr}`;
+            const st = att[k];
+            const raw = rep[k];
+            const txt = st ? (typeof raw === 'string' ? raw : raw?.reportText || null) : null;
+            if (txt) { lastDay = d; break; }
+          }
+          if (lastDay) {
+            const timer = setTimeout(() => setGlowReportDay(lastDay), 800);
+            const stop = setTimeout(() => setGlowReportDay(null), 4000);
+            return () => { clearTimeout(timer); clearTimeout(stop); };
+          }
+        }
+      }, [loading]);
+
+      // Simple slug for glow effect lookup (avoid circular dep)
+      const toSlugSimple = (name) => {
+        if (!name) return '';
+        return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      };
+
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'Escape') {
+            setSelectedReport(null);
+            setShowSchedule(false);
+          }
+        };
+        if (selectedReport || showSchedule) {
+          window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [selectedReport, showSchedule]);
+
+      const toSlug = (name) => {
+        if (!name) return '';
+        const arabicToLatin = {
+          'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
+          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+          'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o'
+        };
+        let transliterated = name.toLowerCase().trim();
+        for (const [ar, en] of Object.entries(arabicToLatin)) {
+          transliterated = transliterated.replace(new RegExp(ar, 'g'), en);
+        }
+        return transliterated.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      };
+
+      // First, determine the actual student from URL/ID to know the language
+      const urlStudent = data?.students ? (nameSlug
+        ? data.students.find(s => toSlug(s?.name) === nameSlug)
+        : data.students.find(s => String(s.id) === String(studentId))) : null;
+
+      const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
+
+      // Setup dynamic document title
+      useEffect(() => {
+        if (urlStudent) {
+          document.title = isArabic ? `تقرير ${urlStudent.name}` : `${urlStudent.name} - Report`;
+        }
+      }, [urlStudent, isArabic]);
+
+      const fontClass = isArabic ? "font-amiri" : "font-sans";
+      const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
+
+      // Mock Data for Tour Mode
+      const mockReportTextEn = `📖 *Class Report*
+
+Student: EESA
+Date: Wednesday 25 March 2026
+Class Number: 1 of 9
+
+ــــــــــــــــــــــــــــــ
+
+📖 *(Quran)*
+
+✅ *Session Summary:*
+
+*• New:*
+From Surah Al-Imran Ayah 1 to Surah Al-Ma'idah Ayah 4
+
+*• Revision:*
+Surah Al-Baqara (From 1 to 50)
+
+*• Old Revision:*
+From Surah An-Naba to Surah Al-A'la
+
+〰️〰️〰️〰️〰️
+
+📝 *Next Session Plan:*
+
+*• New:*
+Surah Al-Ma'idah (From 5 to 15)
+
+*• Revision:*
+From Surah Al-Baqara Ayah 51 to Surah Al-Imran Ayah 30
+
+*• Old Revision:*
+From Surah Al-Ghashiyah to Surah An-Nas
+
+ــــــــــــــــــــــــــــــ
+
+✏️ *Notes:*
+Please make sure to focus on Surah An-Naba and listen to the Sheikh.
+ــــــــــــــــــــــــــــــ
+
+🎧 *Audio Corrections:*
+https://is.gd/oL6gEO`;
+
+      const mockDataEn = {
+        students: [{
+          id: "mock",
+          name: urlStudent ? `${urlStudent.name} (Tour)` : "EESA (Tour Account)",
+          days: [1, 3], // Mon and Wed
+          duration: "30",
+          zoomLink: "https://zoom.us/j/mock",
+          scheduleMessage: "🕒 *Classes schedule for EESA*\nin Europe/London time\n🔹 *Monday* -> *08:00 PM*\n🔹 *Wednesday* -> *08:00 PM*"
+        }],
+        month: 2, // March (0-indexed)
+        year: 2026,
+        attendance: {
+          "mock_2_2_2026": "1", // Present
+          "mock_4_2_2026": "!", // Paid Absence
+          "mock_9_2_2026": "-" // Compensated
+        },
+        savedReports: {
+          "mock_2_2_2026": mockReportTextEn
+        }
+      };
+
+      const mockReportTextAr = `📖 *تقرير الحصة*
+
+
+التاريخ: الأربعاء ٢٥ مارس ٢٠٢٦
+رقم الحصة: ٢ من ٩
+
+ــــــــــــــــــــــــــــــ
+
+📖 *(القرآن الكريم)*
+
+✅ *إنجاز الحصة:*
+
+*• الجديد:*
+سورة المائدة (من ٥ إلى ١٥)
+
+*• المراجعة:*
+من سورة البقرة آية ٥١ إلى سورة آل عمران آية ٣٠
+
+*• المراجعة البعيدة:*
+من سورة الغاشية آية ٥ إلى سورة الناس آية ٦
+
+〰️〰️〰️〰️〰️
+
+📝 *حصتنا القادمة:*
+
+*• الجديد:*
+سورة المائدة (١٦)
+
+*• المراجعة:*
+من سورة البقرة آية ٥١ إلى سورة المائدة آية ١٥
+
+*• المراجعة البعيدة:*
+سورة الناس (٧)
+
+ــــــــــــــــــــــــــــــ
+
+✏️ *ملاحظات:*
+من فضلك يرجى التركيز على الاستماع للشيخ والتركيز على سورة العصر
+ــــــــــــــــــــــــــــــ
+
+🎧 *للاستماع إلى التوجيهات:*
+https://is.gd/oL6gEO`;
+
+      const mockDataAr = {
+        students: [{
+          id: "mock",
+          name: urlStudent ? `${urlStudent.name} (جولة تعريفية)` : "سبوح قدوس (جولة تعريفية)",
+          days: [1, 3], // Mon and Wed
+          duration: "30",
+          zoomLink: "https://zoom.us/j/mock",
+          scheduleMessage: "🕒 *مواعيد حصص سبوح قدوس*\nبتوقيت مكة المكرمة\n🔹 *الإثنين* -> *08:00 PM*\n🔹 *الأربعاء* -> *08:00 PM*"
+        }],
+        month: 2, // March (0-indexed)
+        year: 2026,
+        attendance: {
+          "mock_2_2_2026": "1", // Present
+          "mock_4_2_2026": "!", // Paid Absence
+          "mock_9_2_2026": "-" // Compensated
+        },
+        savedReports: {
+          "mock_2_2_2026": mockReportTextAr
+        }
+      };
+
+
+
+      // Now, select activeData based on tour mode and language
+      const activeData = isTourMode ? (isArabic ? mockDataAr : mockDataEn) : data;
+
+      const { students, attendance, month, year, savedReports } = activeData || {};
+
+      // The student object used throughout the component
+      const student = isTourMode ? activeData.students[0] : urlStudent;
+
+      // Build sorted list of months that have attendance data for this student
+      const _availMonthsSet = new Set();
+      if (attendance && student) {
+        Object.keys(attendance).forEach(key => {
+          const _kparts = key.split('_');
+          if (_kparts[0] === student.id) {
+            const _km = parseInt(_kparts[2]);
+            const _ky = parseInt(_kparts[3]);
+            if (!isNaN(_km) && !isNaN(_ky)) _availMonthsSet.add(`${_ky}_${_km}`);
+          }
+        });
+      }
+      const _rNow2 = new Date();
+      _availMonthsSet.add(`${_rNow2.getFullYear()}_${_rNow2.getMonth()}`);
+      const availableMonths = Array.from(_availMonthsSet)
+        .map(k => { const [_y, _m] = k.split('_').map(Number); return { month: _m, year: _y }; })
+        .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+      const _selIdx = availableMonths.findIndex(am => am.month === selectedMonth && am.year === selectedYear);
+      const canGoPrev = _selIdx > 0;
+      const canGoNext = _selIdx < availableMonths.length - 1;
+      const goPrev = () => { if (canGoPrev) { const p = availableMonths[_selIdx - 1]; setSelectedMonth(p.month); setSelectedYear(p.year); } };
+      const goNext = () => { if (canGoNext) { const n = availableMonths[_selIdx + 1]; setSelectedMonth(n.month); setSelectedYear(n.year); } };
+      const prevBtnClass = 'w-10 h-10 rounded-xl flex items-center justify-center transition-all ' + (canGoPrev ? 'bg-white/10 text-islamic-gold hover:bg-white/20 active:scale-95' : 'opacity-20 cursor-not-allowed text-slate-400');
+      const nextBtnClass = 'w-10 h-10 rounded-xl flex items-center justify-center transition-all ' + (canGoNext ? 'bg-white/10 text-islamic-gold hover:bg-white/20 active:scale-95' : 'opacity-20 cursor-not-allowed text-slate-400');
+
+      const toArabicNums = (str) => {
+        if (!isArabic) return str;
+        return String(str).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+      };
+
+      const arabicMonthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+      const currentMonthNames = isArabic ? arabicMonthNames : monthNames;
+
+      const arabicWeekDays = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const currentWeekDays = isArabic ? arabicWeekDays : weekDays;
+
+      const t = isArabic ? {
+        studentNotFound: "لم يتم العثور على الطالب",
+        noRecord: "لا يوجد سجل لهذا الطالب في النظام.",
+        monthlySchedule: "سجل الحضور والغياب",
+        classesAttended: "حصص الحضور",
+        missedClasses: "حصص الغياب",
+        present: "حاضر",
+        absent: "غائب",
+        compensated: "تم التعويض",
+        scheduled: "مجدولة",
+        reportAvailable: "التقرير متاح",
+        joinClass: "دخول الحصة",
+        scheduleClass: "إضافة موعد",
+        dailyReport: "التقرير المفصل",
+        completedInClass: "ما تم إنجازه",
+        homeworkNextClass: "الواجب والمطلوب",
+        feedbackNotes: "ملاحظات إضافية",
+        otherDetails: "تفاصيل أخرى",
+        audio: "الصوتيات",
+        audioRecording: "تسجيل صوتي",
+        noDetails: "لا توجد تفاصيل إضافية.",
+        scheduleTitle: "مواعيد الحصص",
+        errorTitle: "خطأ",
+        errorLoad: "فشل تحميل البيانات. يرجى المحاولة لاحقاً.",
+        next: "التالي",
+        prev: "السابق",
+        done: "إنهاء",
+
+        tourProfileTitle: "ملف الطالب",
+        tourProfileDesc: "هنا يظهر اسم الطالب وملفه الشخصي.",
+        tourMonthTitle: "الشهر الحالي",
+        tourMonthDesc: "يعرض الشهر والسنة الحالية المحددة.",
+        tourCalendarTitle: "سجل الحضور",
+        tourCalendarDesc: "يعرض التقويم سجل الحضور بشكل مرئي. دعنا نشرح الألوان.",
+        tourGreenTitle: "حاضر (أخضر)",
+        tourGreenDesc: "أخضر = حاضر. مثال على يوم حضر فيه الطالب بنجاح.",
+        tourRedTitle: "غائب (أحمر)",
+        tourRedDesc: "أحمر = غائب. الطالب تغيب عن هذه الحصة المجدولة.",
+        tourYellowTitle: "تم التعويض (أصفر)",
+        tourYellowDesc: "أصفر = تم التعويض. غياب بعذر وتم تعويضه لاحقاً.",
+        tourViewReportTitle: "عرض التقرير",
+        tourViewReportDesc: "اضغط على أيقونة المستند لعرض التقرير المفصل للحصة.",
+        tourDetailTitle: "التقرير المفصل",
+        tourDetailDesc: "يعرض كل ما تمت مناقشته في الحصة، بما في ذلك الحفظ الجديد، المراجعة، الواجبات، والملاحظات.",
+        tourCompletedTitle: "ما تم إنجازه",
+        tourCompletedDesc: "تفاصيل الحفظ الجديد والمراجعة خلال الحصة.",
+        tourHomeworkTitle: "الواجب والمطلوب",
+        tourHomeworkDesc: "الواجبات والمطلوب تحضيره للحصة القادمة.",
+        tourFeedbackTitle: "ملاحظات إضافية",
+        tourFeedbackDesc: "ملاحظات وتوجيهات هامة من المعلم.",
+        tourAudioTitle: "الصوتيات",
+        tourAudioDesc: "روابط للتسجيلات الصوتية من المعلم للمساعدة في التدريب.",
+        tourStatsTitle: "الإحصائيات",
+        tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
+        tourActionsTitle: "مواعيد وإجراءات الحصص",
+        tourActionsDesc: "شريط علوي سريع.",
+        tourJoinClassTitle: "دخول الحصة",
+        tourJoinClassDesc: "اضغط هنا للانتقال مباشرة لغرفة الزوم وبدء الدرس المحجوز.",
+        tourBookSessionTitle: "إضافة موعد",
+        tourBookSessionDesc: "استخدم هذا الزر لحجز موعد جديد أو لطلب جدولة حصة إضافية.",
+        tourMyScheduleTitle: "مواعيد الحصص",
+        tourMyScheduleDesc: "اضغط هنا لعرض تفاصيل أوقات حصصك الكاملة بشكل منسق."
+      } : {
+        studentNotFound: "Student Not Found",
+        noRecord: "There is no record for this student in the system.",
+        monthlySchedule: "Monthly Schedule",
+        classesAttended: "Classes Attended",
+        missedClasses: "Missed Classes",
+        present: "Present",
+        absent: "Absent",
+        compensated: "Compensated",
+        scheduled: "Scheduled",
+        reportAvailable: "Report Available",
+        joinClass: "Join Class",
+        scheduleClass: "Book a Session",
+        dailyReport: "Daily Report",
+        completedInClass: "Completed In Class",
+        homeworkNextClass: "Homework & Next Class",
+        feedbackNotes: "Feedback & Notes",
+        otherDetails: "Other Details",
+        audio: "Audio",
+        audioRecording: "Audio Recording",
+        noDetails: "No details provided.",
+        scheduleTitle: "My Schedule",
+        errorTitle: "Error",
+        errorLoad: "Failed to load data. Please try again later.",
+        next: "Next",
+        prev: "Previous",
+        done: "Done",
+
+        tourProfileTitle: "Student Profile",
+        tourProfileDesc: "This is the student name and profile header.",
+        tourMonthTitle: "Current Month",
+        tourMonthDesc: "Displays the current month and year being viewed.",
+        tourCalendarTitle: "Monthly Schedule",
+        tourCalendarDesc: "The calendar shows attendance visually. We will break down the colors for you.",
+        tourGreenTitle: "Present (Green)",
+        tourGreenDesc: "Green = Present. For example, the student successfully attended class on this day.",
+        tourRedTitle: "Absent (Red)",
+        tourRedDesc: "Red = Absent. The student missed this scheduled class.",
+        tourYellowTitle: "Compensated (Yellow)",
+        tourYellowDesc: "Yellow = Compensated. This was an excused absence that has been made up for.",
+        tourViewReportTitle: "View Report",
+        tourViewReportDesc: "Click the document icon",
+        tourDetailTitle: "Detailed Report",
+        tourDetailDesc: "Displays everything discussed in the session, including new memorization, homework, notes, and audio attachments.",
+        tourCompletedTitle: "Completed In Class",
+        tourCompletedDesc: "Details about the Quran revision and new memorization.",
+        tourHomeworkTitle: "Homework & Next Class",
+        tourHomeworkDesc: "Your assignments and what to prepare for the upcoming class.",
+        tourFeedbackTitle: "Feedback & Notes",
+        tourFeedbackDesc: "Important observations and tips from your teacher.",
+        tourAudioTitle: "Audio Corrections",
+        tourAudioDesc: "Links to voice recordings from your teacher to help you practice.",
+        tourStatsTitle: "Statistics",
+        tourStatsDesc: "Summary of total attended and missed classes for the month.",
+        tourActionsTitle: "Schedule & Quick Actions",
+        tourActionsDesc: "Quick actions bar.",
+        tourJoinClassTitle: "Join Class",
+        tourJoinClassDesc: "Click here to jump straight into your Zoom classroom.",
+        tourBookSessionTitle: "Book a Session",
+        tourBookSessionDesc: "Use this button to request a new class or reschedule an existing one.",
+        tourMyScheduleTitle: "My Schedule",
+        tourMyScheduleDesc: "Click here to view your complete class schedule and timings."
+      };
+
+      const startTour = () => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        setIsTourMode(true);
+        setTimeout(() => {
+          if (window.lucide) window.lucide.createIcons();
+          setTimeout(() => {
+            const driverObj = window.driver.js.driver({
+              showProgress: false,
+              animate: true,
+              nextBtnText: t.next,
+              prevBtnText: t.prev,
+              doneBtnText: t.done,
+              popoverClass: isArabic ? 'driver-rtl' : '',
+              overlayColor: 'rgba(0, 0, 0, 0.75)',
+              stagePadding: 8,
+              stageRadius: 12,
+              allowClose: true,
+              onDestroyed: () => {
+                setIsTourMode(false);
+                setSelectedReport(null);
+              },
+              steps: [
+                {
+                  element: '#tour-header',
+                  popover: {
+                    title: t.tourProfileTitle,
+                    description: t.tourProfileDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-month',
+                  popover: {
+                    title: t.tourMonthTitle,
+                    description: t.tourMonthDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-calendar',
+                  popover: {
+                    title: t.tourCalendarTitle,
+                    description: t.tourCalendarDesc,
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-day-2',
+                  popover: {
+                    title: t.tourGreenTitle,
+                    description: t.tourGreenDesc,
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-day-4',
+                  popover: {
+                    title: t.tourRedTitle,
+                    description: t.tourRedDesc,
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-day-9',
+                  popover: {
+                    title: t.tourYellowTitle,
+                    description: t.tourYellowDesc,
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-report-btn',
+                  popover: {
+                    title: t.tourViewReportTitle,
+                    description: t.tourViewReportDesc,
+                    side: 'top',
+                    align: 'center',
+                    showButtons: ['close']
+                  }
+                },
+                {
+                  element: '#tour-report-modal-content',
+                  popover: {
+                    title: t.tourDetailTitle,
+                    description: t.tourDetailDesc,
+                    side: 'left',
+                    align: 'center'
+                  },
+                  onPrevClick: () => {
+                    setSelectedReport(null);
+                    setTimeout(() => {
+                      window.driverObjInstance.movePrevious();
+                    }, 150);
+                  }
+                },
+                {
+                  element: '#tour-completed',
+                  popover: {
+                    title: t.tourCompletedTitle,
+                    description: t.tourCompletedDesc,
+                    side: 'right',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-completed');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                },
+                {
+                  element: '#tour-homework',
+                  popover: {
+                    title: t.tourHomeworkTitle,
+                    description: t.tourHomeworkDesc,
+                    side: 'right',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-homework');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                },
+                {
+                  element: '#tour-feedback',
+                  popover: {
+                    title: t.tourFeedbackTitle,
+                    description: t.tourFeedbackDesc,
+                    side: 'right',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-feedback');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                },
+                {
+                  element: '#tour-audio',
+                  popover: {
+                    title: t.tourAudioTitle,
+                    description: t.tourAudioDesc,
+                    side: 'top',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-audio');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                },
+                {
+                  element: '#tour-stats',
+                  popover: {
+                    title: t.tourStatsTitle,
+                    description: t.tourStatsDesc,
+                    side: 'top',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    setSelectedReport(null);
+                  },
+                  onPrevClick: () => {
+                    setSelectedReport({ day: 2, text: mockReportTextEn }); // Use English mock report for tour
+                    setTimeout(() => {
+                      window.driverObjInstance.movePrevious();
+                    }, 150);
+                  }
+                },
+                {
+                  element: '#tour-join-class',
+                  popover: {
+                    title: t.tourJoinClassTitle,
+                    description: t.tourJoinClassDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                },
+                {
+                  element: '#tour-book-session',
+                  popover: {
+                    title: t.tourBookSessionTitle,
+                    description: t.tourBookSessionDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                },
+                {
+                  element: '#tour-my-schedule',
+                  popover: {
+                    title: t.tourMyScheduleTitle,
+                    description: t.tourMyScheduleDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }
+              ]
+            });
+            window.driverObjInstance = driverObj;
+            driverObj.drive();
+          }, 300);
+        }, 200);
+      };
+
+      const FloatingHelpButton = () => (
+        <button
+          onClick={startTour}
+          className="fixed bottom-6 left-6 z-[100] bg-islamic-800 text-islamic-light p-3 md:p-4 rounded-full shadow-[0_4px_20px_rgba(217,119,6,0.5)] border border-islamic-gold/50 hover:bg-islamic-900 hover:scale-110 transition-all duration-300"
+          title="Start Tour"
+        >
+          <i data-lucide="help-circle" className="w-6 h-6 md:w-8 md:h-8"></i>
+        </button>
+      );
+
+      const InstallPrompt = () => {
+        const [isInstallable, setIsInstallable] = useState(false);
+        const [deferredPrompt, setDeferredPrompt] = useState(null);
+        const [isIOS, setIsIOS] = useState(false);
+        const [showIOSHint, setShowIOSHint] = useState(false);
+        const [dismissed, setDismissed] = useState(false);
+
+        useEffect(() => {
+          // Check if already installed or dismissed
+          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+          if (isStandalone || localStorage.getItem('pwa_dismissed') === 'true' || localStorage.getItem('pwa_installed') === 'true') {
+            return;
+          }
+
+          // Always show the prompt if not installed (for UI visibility)
+          setIsInstallable(true);
+
+          // Detect iOS
+          const objAgent = navigator.userAgent;
+          const isIOSDevice = /iPad|iPhone|iPod/.test(objAgent) && !window.MSStream;
+          setIsIOS(isIOSDevice);
+
+          // Check if prompt was caught early
+          if (window.pwaDeferredPrompt) {
+            setDeferredPrompt(window.pwaDeferredPrompt);
+          }
+
+          // Listen for the prompt if it fires later
+          const handlePwaReady = () => {
+            setDeferredPrompt(window.pwaDeferredPrompt);
+          };
+
+          window.addEventListener('pwaPromptReady', handlePwaReady);
+
+          // Listen for successful installation
+          const handleInstalled = () => {
+            localStorage.setItem('pwa_installed', 'true');
+            setIsInstallable(false);
+          };
+          window.addEventListener('appinstalled', handleInstalled);
+
+          return () => {
+            window.removeEventListener('pwaPromptReady', handlePwaReady);
+            window.removeEventListener('appinstalled', handleInstalled);
+          };
+        }, []);
+
+        useEffect(() => {
+          if (isInstallable && window.lucide) window.lucide.createIcons();
+        }, [isInstallable, showIOSHint]);
+
+        if (!isInstallable || dismissed) return null;
+
+        const handleInstallClick = async () => {
+          if (isIOS || !deferredPrompt) {
+            setShowIOSHint(true);
+            return;
+          }
+
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+              localStorage.setItem('pwa_installed', 'true');
+              setIsInstallable(false);
+            }
+            setDeferredPrompt(null);
+            window.pwaDeferredPrompt = null;
+          }
+        };
+
+        const handleDismiss = () => {
+          setDismissed(true);
+          localStorage.setItem('pwa_dismissed', 'true');
+        };
+
+        return (
+          <div className={`fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 glass-panel rounded-2xl p-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-[100] border-islamic-gold/30 animate-fade-up ${fontClass}`}>
+            <button onClick={handleDismiss} className={`absolute ${isArabic ? 'left-3' : 'right-3'} top-3 text-slate-400 hover:text-white transition-colors`}>
+              <i data-lucide="x" className="w-5 h-5"></i>
+            </button>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-islamic-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-islamic-gold/20 shadow-inner">
+                <i data-lucide="download" className="w-6 h-6 text-islamic-gold"></i>
+              </div>
+              <div className="flex-1 pr-6">
+                <h4 className="text-white font-bold mb-1">{isArabic ? "تثبيت التطبيق" : "Install App"}</h4>
+                <p className="text-xs text-slate-300 mb-3 leading-relaxed">{isArabic ? "قم بتثبيت كشكول الطالب على هاتفك للوصول السريع دائماً." : "Install the student portal on your device for quick access."}</p>
+                <button onClick={handleInstallClick} className="bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-colors w-full shadow-lg border border-emerald-400/20 uppercase tracking-widest">
+                  {isArabic ? "تثبيت الآن" : "Install Now"}
+                </button>
+                {showIOSHint && (
+                  <div className="mt-3 p-3 bg-blue-900/40 border border-blue-500/30 rounded-lg text-xs text-blue-200 flex items-start gap-2 animate-fade">
+                    <i data-lucide="info" className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400"></i>
+                    <span>
+                      {isIOS
+                        ? (isArabic ? "في سفاري: اضغط على زر المشاركة (مربع بداخله سهم) ثم اختر 'إضافة إلى الشاشة الرئيسية'." : "In Safari: Tap Share (square with arrow) and select 'Add to Home'.")
+                        : (isArabic ? "للتثبيت في متصفحك: انقر على الثلاث نقاط (القائمة) ثم ابحث عن 'تثبيت التطبيق' أو 'أضف للشاشة'." : "To install: Click your browser menu (three dots) and select 'Install app' or 'Add to Home'.")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // Render Loading Phase
+      if (!isTourMode && loading) {
+        return (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="animate-spin flex gap-2">
+              <div className="w-4 h-4 rounded-full bg-islamic-gold"></div>
+              <div className="w-4 h-4 rounded-full bg-islamic-gold"></div>
+            </div>
+          </div>
+        );
+      }
+
+      if (!isTourMode && (error || !activeData || !activeData.students)) {
+        return (
+          <div className={`min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+            <i data-lucide="alert-circle" className="text-red-400 mb-4 w-16 h-16"></i>
+            <h1 className={`text-2xl font-bold text-white mb-2 ${headerFontClass}`}>{t ? t.errorTitle : 'Error'}</h1>
+            <p className="text-slate-400">{error || (t ? t.errorLoad : 'No data found')}</p>
+          </div>
+        );
+      }
+
+      const getScheduleLink = (durationStr) => {
+        if (!durationStr) return null;
+        const normalized = String(durationStr).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString()).trim();
+        if (normalized === '30') return 'https://zcal.co/i/tYjuo5JV';
+        if (normalized === '45') return 'https://zcal.co/i/ThNRhEes';
+        if (normalized === '60') return 'https://zcal.co/i/_yKMg4po';
+        return null;
+      };
+
+      if (!student) {
+        return (
+          <div className={`min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+            <i data-lucide="user-x" className="text-islamic-gold mb-4 w-16 h-16"></i>
+            <h1 className={`text-2xl font-bold text-white mb-2 ${headerFontClass}`}>{t ? t.studentNotFound : 'Student Not Found'}</h1>
+            <p className="text-slate-400">{t ? t.noRecord : 'There is no record for this student in the system.'}</p>
+            <FloatingHelpButton />
+          </div>
+        );
+      }
+
+      const scheduleLink = getScheduleLink(student.duration);
+
+      // Calendar Calculations
+      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay();
+
+      const paddingDays = Array.from({ length: firstDayIndex }).map((_, i) => null);
+      const monthDays = Array.from({ length: daysInMonth }).map((_, i) => i + 1);
+
+      // Calculate Stats
+      let presentCount = 0;
+      let absentCount = 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const daysInMonthCounter = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonthCounter; d++) {
+        const dateObj = new Date(selectedYear, selectedMonth, d);
+        const dayOfWeek = dateObj.getDay();
+        const isSched = student.days?.includes(dayOfWeek);
+        const attendanceKey = `${student.id}_${d}_${selectedMonth}_${selectedYear}`;
+        const st = attendance?.[attendanceKey];
+
+        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(st)) {
+          presentCount++;
+          if (st === STATUS.DOUBLE_CLASS || st === STATUS.EXTRA_DOUBLE) presentCount++;
+        } else if ([STATUS.UNEXCUSED_ABSENCE, STATUS.ABSENCE_RED, STATUS.PAID_ABSENCE].includes(st)) {
+          absentCount++;
+        }
+      }
+
+      const closeReport = () => setSelectedReport(null);
+
+      // Render Calendar Day
+      const renderDay = (day) => {
+        if (!day) return <div key={Math.random()} className="aspect-square opacity-0"></div>;
+
+        const dateObj = new Date(selectedYear, selectedMonth, day);
+        const dayOfWeek = dateObj.getDay();
+
+        const isScheduled = student.days?.includes(dayOfWeek);
+        const attendanceKey = `${student.id}_${day}_${selectedMonth}_${selectedYear}`;
+        const status = attendance?.[attendanceKey];
+        const rawReport = savedReports?.[attendanceKey];
+        // If the status was deleted/cleared via Undo, hide the report icon even if report text remains in Firebase
+        const reportText = status ? (typeof rawReport === 'string' ? rawReport : rawReport?.reportText || null) : null;
+
+        let bgColor = "bg-white/5";
+        let borderColor = "border-white/10";
+        let statusIndicator = null;
+        let opacityClass = "opacity-100";
+        let isAbsent = false;
+        let isCompensated = false;
+
+        // Present statuses
+        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(status)) {
+          bgColor = "bg-emerald-500/20";
+          borderColor = "border-emerald-500/50";
+          statusIndicator = <div className="absolute top-1 right-1 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>;
+        }
+        // Compensated Absences (Scroll clicks)
+        else if ([STATUS.UNEXCUSED_ABSENCE, STATUS.ABSENCE_RED].includes(status)) {
+          isCompensated = true;
+          isAbsent = true;
+        }
+        // Regular Paid Absence (Right click)
+        else if (status === STATUS.PAID_ABSENCE) {
+          isAbsent = true;
+        }
+
+        if (isCompensated) {
+          bgColor = "bg-amber-500/10";
+          borderColor = "border-amber-500/40";
+          statusIndicator = <div className="absolute top-1 right-1 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" title="Compensated Class"></div>;
+        } else if (isAbsent) {
+          bgColor = "bg-red-500/10";
+          borderColor = "border-red-500/30";
+          statusIndicator = <div className="absolute top-1 right-1 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]"></div>;
+        } else if (!status && !isScheduled) {
+          bgColor = "bg-transparent";
+          borderColor = "border-transparent";
+          opacityClass = "opacity-25 blur-[0.5px]"; // Dim days without classes
+        } else if (isScheduled && !isAbsent && !status) {
+          borderColor = "border-islamic-gold/40 border-dashed";
+        }
+
+        return (
+          <div
+            id={isTourMode && [2, 4, 9].includes(day) ? `tour-day-${day}` : undefined}
+            key={day}
+            className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square ${glowReportDay === day ? 'animate-report-glow' : ''}`}
+          >
+            {statusIndicator}
+            <span className={`text-lg font-semibold ${isScheduled ? 'text-white' : 'text-slate-400'} ${reportText ? '-translate-y-1 md:translate-y-0' : ''}`}>
+              {toArabicNums(day)}
+            </span>
+
+            {reportText && (
+              <button
+                id={isTourMode && day === 2 ? 'tour-report-btn' : undefined}
+                onClick={() => {
+                  setSelectedReport({ day, text: reportText });
+                  if (isTourMode && day === 2 && window.driverObjInstance) {
+                    setTimeout(() => window.driverObjInstance.moveNext(), 150);
+                  }
+                }}
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg z-10"
+                title="View Report"
+              >
+                <i data-lucide="file-text" className="w-2.5 h-2.5 md:w-4 md:h-4"></i>
+              </button>
+            )}
+          </div>
+        );
+      };
+
+      const renderSectionGroup = (sections, typeLabelClass, sideBorderClass, typeName, tourId) => {
+        if (sections.length === 0) return null;
+        return (
+          <div id={tourId} className="mb-6">
+            <h5 className={`text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 ${typeLabelClass}`}>
+              <div className="h-px flex-1 bg-current opacity-20"></div>
+              {typeName}
+              <div className="h-px flex-1 bg-current opacity-20"></div>
+            </h5>
+            <div className={`${isArabic ? 'pr-4 border-r-[3px]' : 'pl-4 border-l-[3px]'} space-y-3 ${sideBorderClass}`}>
+              {sections.map((section, idx) => {
+                let bgClass = "bg-islamic-900/40 hover:bg-islamic-900/60";
+                let borderClass = "border-islamic-gold/10 hover:border-islamic-gold/30";
+                let iconBgClass = "bg-islamic-800/80 border-islamic-gold/20 text-islamic-gold";
+                let titleClass = "text-emerald-400";
+
+                if (section.type === 'homework') {
+                  bgClass = "bg-amber-900/10 hover:bg-amber-900/20";
+                  borderClass = "border-amber-500/20 hover:border-amber-500/40";
+                  iconBgClass = "bg-amber-900/40 border-amber-500/30 text-amber-500";
+                  titleClass = "text-amber-500";
+                } else if (section.type === 'feedback') {
+                  bgClass = "bg-blue-900/10 hover:bg-blue-900/20";
+                  borderClass = "border-blue-500/20 hover:border-blue-500/40";
+                  iconBgClass = "bg-blue-900/50 border-blue-500/30 text-blue-400";
+                  titleClass = "text-blue-400";
+                }
+
+                return (
+                  <div key={idx} className={`relative rounded-2xl p-4 flex gap-4 transition-transform hover:translate-x-1 duration-300 border ${bgClass} ${borderClass}`}>
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full border flex items-center justify-center shadow-inner mt-0.5 ${iconBgClass}`}>
+                      <i data-lucide={section.icon} className="w-4 h-4"></i>
+                    </div>
+                    <div className="flex-1 pr-4">
+                      {(() => {
+                        const isTitleArabic = /[\u0600-\u06FF]/.test(section.title);
+                        return (
+                          <h4
+                            className={`font-bold mb-1 ${isTitleArabic ? 'font-amiri text-lg text-right' : 'text-[13px] uppercase tracking-widest'} ${titleClass}`}
+                            dir={isTitleArabic ? 'rtl' : 'ltr'}
+                          >
+                            {section.title}
+                          </h4>
+                        );
+                      })()}
+                      {(() => {
+                        const isContentArabic = /[\u0600-\u06FF]/.test(section.content);
+                        return (
+                          <div
+                            className={`text-slate-200 text-sm whitespace-pre-wrap leading-loose mt-1 ${isContentArabic ? 'font-amiri text-base text-right' : 'font-sans'}`}
+                            dir={isContentArabic ? 'rtl' : 'ltr'}
+                          >
+                            {section.content || <span className="opacity-40 italic">{t.noDetails}</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className={`max-w-4xl mx-auto p-4 md:p-8 pb-20 relative ${(student.zoomLink || scheduleLink || student.scheduleMessage) ? 'pt-[160px] md:pt-36' : ''} ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+          {/* Sticky Top Bar for Actions & Schedule Title */}
+          {(student.zoomLink || scheduleLink || student.scheduleMessage) && (
+            <div id="tour-actions" className={`fixed top-0 left-0 right-0 z-40 bg-islamic-900/80 backdrop-blur-md border-b border-islamic-gold/20 shadow-lg animate-fade-down ${fontClass}`} dir={isArabic ? 'rtl' : 'ltr'}>
+              <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
+
+                {/* Action Buttons Group */}
+                <div className={`flex gap-3 shrink-0 order-2 sm:order-1 ${!student.scheduleMessage ? 'w-full' : 'w-full sm:w-auto'}`}>
+                  {student.zoomLink && (
+                    <a id="tour-join-class" href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 md:w-5 md:h-5 shrink-0">
+                        <path d="M16.033 9.07v5.86c0 .825-.675 1.5-1.5 1.5H3.5c-.825 0-1.5-.675-1.5-1.5v-5.86c0-.825.675-1.5 1.5-1.5h11.033c.825 0 1.5.675 1.5 1.5zm6.467-1.396-4.667 3.5v1.652l4.667 3.5c.367.275.833.013.833-.45V8.125c0-.463-.466-.725-.833-.45z" />
+                      </svg>
+                      <span className={`font-bold whitespace-nowrap tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>{t.joinClass}</span>
+                    </a>
+                  )}
+                  {scheduleLink && (
+                    <a id="tour-book-session" href={scheduleLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                      <i data-lucide="calendar-plus" className="w-4 h-4 md:w-5 md:h-5 shrink-0"></i>
+                      <span className={`font-bold whitespace-nowrap tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>{t.scheduleClass}</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Schedule Toggle Button */}
+                {student.scheduleMessage && (
+                  <button 
+                    id="tour-my-schedule"
+                    onClick={() => setShowSchedule(true)} 
+                    className={`shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 bg-islamic-800/50 hover:bg-islamic-800 border border-islamic-gold/30 text-islamic-light py-2.5 px-5 rounded-xl transition-all shadow-inner active:scale-95 order-1 sm:order-2`}
+                  >
+                    <i data-lucide="clock" className="w-4 h-4 md:w-5 md:h-5 shrink-0 text-islamic-gold"></i>
+                    <span className={`font-bold whitespace-nowrap tracking-wider ${isArabic ? 'text-sm' : 'text-[11px] md:text-sm uppercase'}`}>
+                      {t.scheduleTitle}
+                    </span>
+                  </button>
+                )}
+
+              </div>
+            </div>
+          )}
+          <style dangerouslySetInnerHTML={{
+            __html: `
+            .driver-rtl {
+              direction: rtl !important;
+              font-family: 'Amiri', serif !important;
+            }
+            .driver-rtl .driver-popover-title,
+            .driver-rtl .driver-popover-description {
+              text-align: right !important;
+            }
+            .driver-rtl .driver-popover-footer {
+              flex-direction: row-reverse !important;
+              justify-content: flex-start !important;
+            }
+            .driver-rtl .driver-popover-progress-text {
+              display: none !important;
+            }
+            .driver-rtl .driver-popover-navigation-btns {
+              display: flex !important;
+              flex-direction: row-reverse !important;
+              gap: 0.5rem !important;
+            }
+          `}} />
+
+          <FloatingHelpButton />
+          <InstallPrompt />
+
+          {/* Header Section */}
+          <div id="tour-header" className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-islamic-gold/10 rounded-full blur-3xl -mx-20 -my-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <i data-lucide="book-open" className="w-12 h-12 text-islamic-gold mx-auto mb-4 opacity-80"></i>
+            <h1 className={`text-4xl md:text-5xl font-bold text-white ${headerFontClass}`}>
+              {student.name}
+            </h1>
+          </div>
+
+          {/* Current Month Box Above Calendar - with month navigation */}
+          <div id="tour-month" className="glass-panel rounded-2xl p-4 md:p-6 mb-4 flex items-center justify-between animate-fade delay-1">
+
+            <button onClick={goPrev} disabled={!canGoPrev} className={prevBtnClass} title={isArabic ? 'الشهر السابق' : 'Previous Month'}>
+              <i data-lucide={isArabic ? 'chevron-right' : 'chevron-left'} className="w-5 h-5"></i>
+            </button>
+
+            <div className="flex flex-col items-center gap-1">
+              <h2 className={`text-2xl font-bold text-islamic-light flex items-center gap-3 ${headerFontClass}`}>
+                <i data-lucide="calendar-days" className="w-6 h-6 text-islamic-gold"></i>
+                {currentMonthNames[selectedMonth]} {toArabicNums(selectedYear)}
+              </h2>
+              {canGoNext && <span className="text-xs text-slate-400 tracking-wider">{isArabic ? 'شهر سابق' : 'Previous Month'}</span>}
+            </div>
+
+            <button onClick={goNext} disabled={!canGoNext} className={nextBtnClass} title={isArabic ? 'الشهر التالي' : 'Next Month'}>
+              <i data-lucide={isArabic ? 'chevron-left' : 'chevron-right'} className="w-5 h-5"></i>
+            </button>
+
+          </div>
+
+          {/* Schedule Message moved to Sticky Top Bar */}
+
+          {/* Calendar Section */}
+          <div id="tour-calendar" className="glass-panel rounded-3xl p-6 md:p-8 animate-fade delay-[500ms] mb-8">
+            <h2 className={`text-xl md:text-2xl font-semibold mb-6 text-center text-white flex items-center justify-center gap-3 ${headerFontClass}`}>
+              {t.monthlySchedule}
+            </h2>
+
+            <div className="grid grid-cols-7 gap-2 md:gap-4 mb-2">
+              {currentWeekDays.map(day => (
+                <div key={day} className={`text-center font-bold text-slate-400 text-sm py-2 ${headerFontClass}`}>
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 md:gap-4 overflow-visible">
+              {paddingDays.map((_, i) => <div key={`pad-${i}`}></div>)}
+              {monthDays.map(day => renderDay(day))}
+            </div>
+
+            <div className="mt-6 md:mt-8 flex justify-center gap-2 sm:gap-4 md:gap-6 text-[10px] md:text-sm text-slate-500/70 whitespace-nowrap overflow-x-auto no-scrollbar pb-1 w-full" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-emerald-400/80"></div> <span>{t.present}</span>
+              </div>
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-red-400/80"></div> <span>{t.absent}</span>
+              </div>
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-amber-400/80"></div> <span>{t.compensated}</span>
+              </div>
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full border border-dashed border-islamic-gold/40"></div>
+                <span>{t.scheduled}</span>
+              </div>
+              <div className="flex items-center justify-center gap-1 md:gap-2">
+                <div className="w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-islamic-gold/80 text-islamic-900 flex items-center justify-center"><i data-lucide="file-text" className="w-[8px] h-[8px] md:w-2.5 md:h-2.5"></i></div>
+                <span className="hidden sm:inline">{t.reportAvailable}</span><span className="inline sm:hidden">{isArabic ? 'تقرير' : 'Report'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Attendance Stat */}
+            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
+              <p className={`text-slate-400 tracking-widest mb-1 z-10 ${isArabic ? 'text-base font-bold' : 'text-sm uppercase'}`}>{t.classesAttended}</p>
+              <h3 className={`text-5xl font-light text-emerald-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(presentCount)}</h3>
+            </div>
+
+            {/* Absences Stat */}
+            <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
+              <p className={`text-slate-400 tracking-widest mb-1 z-10 ${isArabic ? 'text-base font-bold' : 'text-sm uppercase'}`}>{t.missedClasses}</p>
+              <h3 className={`text-5xl font-light text-red-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(absentCount)}</h3>
+            </div>
+          </div>
+
+          {/* Action Links (Moved to Top Sticky Bar) */}
+
+          {/* Schedule Modal */}
+          {showSchedule && student.scheduleMessage && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade">
+              <div className="glass-panel w-full max-w-sm rounded-3xl p-6 relative border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+                <button
+                  onClick={() => setShowSchedule(false)}
+                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
+                >
+                  <i data-lucide="x" className="w-5 h-5"></i>
+                </button>
+                
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-islamic-800/80 text-islamic-gold mb-4 border border-islamic-gold/30 shadow-[0_0_15px_rgba(217,119,6,0.3)]">
+                    <i data-lucide="clock" className="w-7 h-7"></i>
+                  </div>
+                  <h3 className={`text-xl font-bold text-islamic-light ${headerFontClass}`}>
+                    {t.scheduleTitle}
+                  </h3>
+                </div>
+
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 text-slate-200 text-sm md:text-base leading-loose" dir="ltr">
+                  {(() => {
+                    let lines = student.scheduleMessage.split('\n');
+                    
+                    let title = "";
+                    let timezone = "";
+                    let timeLines = lines;
+
+                    if (lines.length > 0 && lines[0].includes('\uD83D\uDD52')) {
+                      title = lines[0];
+                      if (lines.length > 1 && !lines[1].includes('\uD83D\uDD39')) {
+                        timezone = lines[1];
+                        timeLines = lines.slice(2);
+                      } else {
+                        timeLines = lines.slice(1);
+                      }
+                    }
+
+                    // Day order mapping (0=Sun,1=Mon...6=Sat)
+                    const dayOrderEn = { 'monday':1,'tuesday':2,'wednesday':3,'thursday':4,'friday':5,'saturday':6,'sunday':0 };
+                    const dayOrderAr = { 'الأحد':0,'الاثنين':1,'الثلاثاء':2,'الأربعاء':3,'الخميس':4,'الجمعة':5,'السبت':6 };
+
+                    // Parse valid schedule lines
+                    const scheduleEntries = timeLines
+                      .filter(l => l.trim() !== '' && l.includes('\uD83D\uDD39'))
+                      .map(line => {
+                        const parts = line.split(/\*([^*]+)\*/g);
+                        // Extract day name from line
+                        const boldParts = [];
+                        parts.forEach((p, i) => { if (i % 2 === 1) boldParts.push(p.trim()); });
+                        const dayName = boldParts[0] || '';
+                        const timePart = boldParts[1] || '';
+                        // Determine sort order
+                        const lc = dayName.toLowerCase();
+                        let order = isArabic ? (dayOrderAr[dayName] ?? 99) : (dayOrderEn[lc] ?? 99);
+                        return { line, dayName, timePart, order };
+                      });
+
+                    // Sort: Monday-first for English, Sunday-first for Arabic
+                    const sorted = !isArabic
+                      ? [...scheduleEntries].sort((a, b) => {
+                          // Reorder so Monday(1) is first
+                          const mo = (n) => n === 0 ? 7 : n;
+                          return mo(a.order) - mo(b.order);
+                        })
+                      : scheduleEntries;
+
+                    // Find next upcoming class — 15min grace period, then skip to next scheduled class day
+                    const now = new Date(); void tick; // tick forces re-render every minute
+                    const todayDow = now.getDay();
+                    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+                    // Helper: parse "08:00 PM" or "20:00" → minutes since midnight
+                    const parseTimeToMinutes = (timeStr) => {
+                      if (!timeStr) return -1;
+                      const clean = timeStr.trim().toUpperCase();
+                      const m12 = clean.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+                      if (m12) {
+                        let h = parseInt(m12[1]);
+                        const m = parseInt(m12[2]);
+                        if (m12[3] === 'PM' && h !== 12) h += 12;
+                        if (m12[3] === 'AM' && h === 12) h = 0;
+                        return h * 60 + m;
+                      }
+                      const m24 = clean.match(/(\d{1,2}):(\d{2})/);
+                      if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+                      return -1;
+                    };
+
+                    // Compute daysUntil for each entry
+                    const withNextOccurrence = scheduleEntries.map(entry => {
+                      const classMin = parseTimeToMinutes(entry.timePart);
+                      let daysUntil;
+                      if (entry.order === todayDow) {
+                        // today: if within 15min grace → still today; else skip to next occurrence of this day (7 days)
+                        // But we don't hardcode 7 — we only assign 7 so other days with lower daysUntil win naturally
+                        daysUntil = (classMin < 0 || nowMinutes <= classMin + 15) ? 0 : 7;
+                      } else {
+                        daysUntil = (entry.order - todayDow + 7) % 7;
+                      }
+                      return { ...entry, classMin, daysUntil };
+                    });
+
+                    const minDays = Math.min(...withNextOccurrence.map(e => e.daysUntil));
+                    const nextEntry = withNextOccurrence.find(e => e.daysUntil === minDays);
+                    const nextClassDow = nextEntry?.order ?? -1;
+
+                    // Build countdown label for next class
+                    const buildCountdown = (entry) => {
+                      const classMin = entry?.classMin ?? -1;
+                      if (classMin < 0) return null;
+                      const diff = classMin - nowMinutes; // negative = past
+                      if (entry.daysUntil > 0) {
+                        // future day
+                        const totalMins = entry.daysUntil * 24 * 60 + classMin - nowMinutes;
+                        const hh = Math.floor(totalMins / 60);
+                        const mm = totalMins % 60;
+                        if (hh >= 24) {
+                          const dd = Math.floor(hh / 24);
+                          const rh = hh % 24;
+                          return isArabic
+                            ? `بعد ${dd}ي ${rh > 0 ? rh + 'س' : ''}`
+                            : `in ${dd}d ${rh > 0 ? rh + 'h' : ''}`;
+                        }
+                        return isArabic ? `بعد ${hh}س ${mm}د` : `in ${hh}h ${mm}m`;
+                      } else if (diff >= 0) {
+                        // upcoming today
+                        const hh = Math.floor(diff / 60);
+                        const mm = diff % 60;
+                        if (hh > 0) return isArabic ? `بعد ${hh}س ${mm}د` : `in ${hh}h ${mm}m`;
+                        return isArabic ? `بعد ${mm} دقيقة` : `in ${mm}m`;
+                      } else {
+                        // past today (within grace)
+                        const elapsed = Math.abs(diff);
+                        return isArabic ? `منذ ${elapsed} دقيقة` : `${elapsed}m ago`;
+                      }
+                    };
+
+                    const countdownLabel = buildCountdown(nextEntry);
+
+                    return (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2">
+                        {sorted.map(({ line, order, dayName, timePart, classMin, daysUntil }, idx) => {
+                          const isNext = order === nextClassDow && withNextOccurrence.find(e => e.order === order)?.daysUntil === minDays;
+                          const parts = line.split(/\*([^*]+)\*/g);
+                          if (line.trim() === '') return null;
+                          return (
+                            <div key={idx} className={`flex flex-col p-3 rounded-xl border transition-all duration-500 ${
+                              isNext
+                                ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-glow'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`} dir={isArabic ? 'rtl' : 'ltr'}>
+                              {/* Day + Arrow + Time — always one line */}
+                              <div className="flex items-center gap-1 whitespace-nowrap overflow-hidden">
+                              {parts.map((part, i) => {
+                                if (i % 2 === 1) {
+                                  return <strong key={i} className={`text-islamic-light shrink-0 ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
+                                } else {
+                                  let text = part.replace('\uD83D\uDD39', '').trim();
+                                  if (text.includes('->')) {
+                                    return (
+                                      <span key={i} className="text-islamic-gold/60 px-2 font-bold opacity-80 shrink-0">
+                                        {isArabic ? '\u2190' : '\u2192'}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={i} className={`opacity-60 shrink-0 ${isNext ? 'text-islamic-gold/80' : 'text-slate-300'}`}>{text}</span>;
+                                }
+                              })}
+                              </div>
+                              {/* Countdown badge — separate line */}
+                              {isNext && countdownLabel && (
+                                <div className="mt-1.5">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    countdownLabel.includes('ago') || countdownLabel.includes('منذ')
+                                      ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                      : 'bg-islamic-gold/20 text-islamic-gold border border-islamic-gold/30'
+                                  }`}>{countdownLabel}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Report Modal */}
+          {selectedReport && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div id="tour-report-modal-content" className="glass-panel w-full max-w-lg rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
+                <button
+                  onClick={() => setSelectedReport(null)}
+                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
+                >
+                  <i data-lucide="x" className="w-5 h-5"></i>
+                </button>
+
+                <div className="relative z-10 text-center mb-3 md:mb-6">
+                  <div className="hidden md:inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mb-3 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                    <i data-lucide="award" className="w-6 h-6"></i>
+                  </div>
+                  <h3 className={`text-base md:text-2xl font-bold text-islamic-light border-b border-islamic-gold/20 pb-2 md:pb-4 ${headerFontClass}`}>
+                    {t.dailyReport}
+                  </h3>
+                  <p className="text-xs md:text-sm text-emerald-200 mt-1 md:mt-2">
+                    {isArabic
+                      ? `${toArabicNums(selectedReport.day)} ${currentMonthNames[month]} ${toArabicNums(year)}`
+                      : `${currentMonthNames[month]} ${selectedReport.day}, ${year}`}
+                  </p>
+                </div>
+
+                <div className="space-y-2 max-h-[65vh] md:max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 relative z-10 pb-4">
+                  {(() => {
+                    const parsed = parseReport(selectedReport.text);
+                    // Filter out any accidentally lingering 'Summary' just in case
+                    const validSections = parsed.filter(s => s.title !== 'Summary');
+
+                    const classwork = validSections.filter(s => s.type === 'classwork');
+                    const homework = validSections.filter(s => s.type === 'homework');
+                    const feedback = validSections.filter(s => s.type === 'feedback');
+                    const other = validSections.filter(s => s.type === 'other');
+                    const audio = validSections.filter(s => s.type === 'audio');
+
+                    return (
+                      <>
+                        {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", t.completedInClass, isTourMode ? "tour-completed" : undefined)}
+                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", t.homeworkNextClass, isTourMode ? "tour-homework" : undefined)}
+                        {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", t.feedbackNotes, isTourMode ? "tour-feedback" : undefined)}
+                        {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", t.otherDetails)}
+                        {audio.length > 0 && (
+                          <div id={isTourMode ? "tour-audio" : undefined} className="mt-4 pt-4 border-t border-islamic-gold/10">
+                            <h5 className="text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 text-slate-400/60">
+                              <div className="h-px flex-1 bg-current opacity-20"></div>
+                              {t.audio}
+                              <div className="h-px flex-1 bg-current opacity-20"></div>
+                            </h5>
+                            <div className="space-y-2">
+                              {audio.map((s, idx) => {
+                                const url = s.content?.trim();
+                                const label = s.title.replace(/🎧/g, '').trim();
+                                return url ? (
+                                  <a
+                                    key={idx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 rounded-2xl bg-slate-800/50 border border-slate-600/20 hover:border-islamic-gold/40 hover:bg-slate-700/40 transition-all duration-300 group"
+                                  >
+                                    <div className="relative w-9 h-9 flex-shrink-0">
+                                      <div className="absolute inset-0 rounded-full bg-islamic-gold/25 animate-ping group-hover:animate-none"></div>
+                                      <div className="relative w-full h-full rounded-full bg-islamic-gold/10 border border-islamic-gold/20 flex items-center justify-center text-islamic-gold group-hover:bg-islamic-gold/20 transition-colors">
+                                        <i data-lucide="headphones" className="w-4 h-4"></i>
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs text-slate-300 font-medium group-hover:text-white transition-colors">{label || t.audioRecording}</p>
+                                    </div>
+                                    <i data-lucide="external-link" className="w-4 h-4 text-slate-500 group-hover:text-islamic-gold transition-colors flex-shrink-0"></i>
+                                  </a>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    } // End App
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(req => console.log('Service Worker Registered!'))
+          .catch(err => console.error('Service Worker Registration Failed:', err));
+      });
+    }
+  </script>
 </body>
 
 </html>
