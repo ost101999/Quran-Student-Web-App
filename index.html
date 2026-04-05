@@ -1221,7 +1221,7 @@ https://is.gd/oL6gEO`;
         const attendanceKey = `${student.id}_${d}_${effectiveMonth}_${effectiveYear}`;
         const st = attendance?.[attendanceKey];
 
-        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(st)) {
+        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DOUBLE].includes(st)) {
           presentCount++;
           if (st === STATUS.DOUBLE_CLASS || st === STATUS.EXTRA_DOUBLE) presentCount++;
         } else if ([STATUS.UNEXCUSED_ABSENCE, STATUS.ABSENCE_RED, STATUS.PAID_ABSENCE].includes(st)) {
@@ -1253,7 +1253,7 @@ https://is.gd/oL6gEO`;
         let isCompensated = false;
 
         // Present statuses
-        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(status)) {
+        if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DOUBLE].includes(status)) {
           bgColor = "bg-emerald-500/20";
           borderColor = "border-emerald-500/50";
           statusIndicator = <div className="absolute top-1 right-1 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>;
@@ -1280,7 +1280,7 @@ https://is.gd/oL6gEO`;
           bgColor = "bg-transparent";
           borderColor = "border-transparent";
           opacityClass = "opacity-25 blur-[0.5px]"; // Dim days without classes
-        } else if (isScheduled && !isAbsent && (!status || status === STATUS.POSTPONED)) {
+        } else if (!isAbsent && ((isScheduled && !status) || status === STATUS.POSTPONED || status === STATUS.EXTRA_DAY)) {
           borderColor = "border-islamic-gold/40 border-dashed";
         }
 
