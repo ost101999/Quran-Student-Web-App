@@ -655,6 +655,10 @@ https://is.gd/oL6gEO`;
       // The student object used throughout the component
       const student = isTourMode ? activeData.students[0] : urlStudent;
 
+      // In tour mode, use mock data's month/year. In real mode, use user-navigated month/year.
+      const effectiveMonth = isTourMode ? month : selectedMonth;
+      const effectiveYear  = isTourMode ? year  : selectedYear;
+
       // Build sorted list of months that have attendance data for this student
       const _availMonthsSet = new Set();
       if (attendance && student) {
@@ -667,12 +671,15 @@ https://is.gd/oL6gEO`;
           }
         });
       }
-      const _rNow2 = new Date();
-      _availMonthsSet.add(`${_rNow2.getFullYear()}_${_rNow2.getMonth()}`);
+      // Only add current real month in real mode (not in tour – mock has its own month)
+      if (!isTourMode) {
+        const _rNow2 = new Date();
+        _availMonthsSet.add(`${_rNow2.getFullYear()}_${_rNow2.getMonth()}`);
+      }
       const availableMonths = Array.from(_availMonthsSet)
         .map(k => { const [_y, _m] = k.split('_').map(Number); return { month: _m, year: _y }; })
         .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-      const _selIdx = availableMonths.findIndex(am => am.month === selectedMonth && am.year === selectedYear);
+      const _selIdx = availableMonths.findIndex(am => am.month === effectiveMonth && am.year === effectiveYear);
       const canGoPrev = _selIdx > 0;
       const canGoNext = _selIdx < availableMonths.length - 1;
       const goPrev = () => { if (canGoPrev) { const p = availableMonths[_selIdx - 1]; setSelectedMonth(p.month); setSelectedYear(p.year); } };
@@ -1194,8 +1201,8 @@ https://is.gd/oL6gEO`;
       const scheduleLink = getScheduleLink(student.duration);
 
       // Calendar Calculations
-      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-      const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay();
+      const daysInMonth = new Date(effectiveYear, effectiveMonth + 1, 0).getDate();
+      const firstDayIndex = new Date(effectiveYear, effectiveMonth, 1).getDay();
 
       const paddingDays = Array.from({ length: firstDayIndex }).map((_, i) => null);
       const monthDays = Array.from({ length: daysInMonth }).map((_, i) => i + 1);
@@ -1206,12 +1213,12 @@ https://is.gd/oL6gEO`;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const daysInMonthCounter = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      const daysInMonthCounter = new Date(effectiveYear, effectiveMonth + 1, 0).getDate();
       for (let d = 1; d <= daysInMonthCounter; d++) {
-        const dateObj = new Date(selectedYear, selectedMonth, d);
+        const dateObj = new Date(effectiveYear, effectiveMonth, d);
         const dayOfWeek = dateObj.getDay();
         const isSched = student.days?.includes(dayOfWeek);
-        const attendanceKey = `${student.id}_${d}_${selectedMonth}_${selectedYear}`;
+        const attendanceKey = `${student.id}_${d}_${effectiveMonth}_${effectiveYear}`;
         const st = attendance?.[attendanceKey];
 
         if ([STATUS.PRESENT, STATUS.DOUBLE_CLASS, STATUS.EXTRA_DAY, STATUS.EXTRA_DOUBLE].includes(st)) {
@@ -1228,11 +1235,11 @@ https://is.gd/oL6gEO`;
       const renderDay = (day) => {
         if (!day) return <div key={Math.random()} className="aspect-square opacity-0"></div>;
 
-        const dateObj = new Date(selectedYear, selectedMonth, day);
+        const dateObj = new Date(effectiveYear, effectiveMonth, day);
         const dayOfWeek = dateObj.getDay();
 
         const isScheduled = student.days?.includes(dayOfWeek);
-        const attendanceKey = `${student.id}_${day}_${selectedMonth}_${selectedYear}`;
+        const attendanceKey = `${student.id}_${day}_${effectiveMonth}_${effectiveYear}`;
         const status = attendance?.[attendanceKey];
         const rawReport = savedReports?.[attendanceKey];
         // If the status was deleted/cleared via Undo, hide the report icon even if report text remains in Firebase
@@ -1453,23 +1460,27 @@ https://is.gd/oL6gEO`;
           </div>
 
           {/* Current Month Box Above Calendar - with month navigation */}
-          <div id="tour-month" className="glass-panel rounded-2xl p-4 md:p-6 mb-4 flex items-center justify-between animate-fade delay-1">
+          <div id="tour-month" className={`glass-panel rounded-2xl p-4 md:p-6 mb-4 flex items-center ${isTourMode ? 'justify-center' : 'justify-between'} animate-fade delay-1`}>
 
-            <button onClick={goPrev} disabled={!canGoPrev} className={prevBtnClass} title={isArabic ? 'الشهر السابق' : 'Previous Month'}>
-              <i data-lucide={isArabic ? 'chevron-right' : 'chevron-left'} className="w-5 h-5"></i>
-            </button>
+            {!isTourMode && (
+              <button onClick={goPrev} disabled={!canGoPrev} className={prevBtnClass} title={isArabic ? 'الشهر السابق' : 'Previous Month'}>
+                <i data-lucide={isArabic ? 'chevron-right' : 'chevron-left'} className="w-5 h-5"></i>
+              </button>
+            )}
 
             <div className="flex flex-col items-center gap-1">
               <h2 className={`text-2xl font-bold text-islamic-light flex items-center gap-3 ${headerFontClass}`}>
                 <i data-lucide="calendar-days" className="w-6 h-6 text-islamic-gold"></i>
-                {currentMonthNames[selectedMonth]} {toArabicNums(selectedYear)}
+                {currentMonthNames[effectiveMonth]} {toArabicNums(effectiveYear)}
               </h2>
-              {canGoNext && <span className="text-xs text-slate-400 tracking-wider">{isArabic ? 'شهر سابق' : 'Previous Month'}</span>}
+              {!isTourMode && canGoNext && <span className="text-xs text-slate-400 tracking-wider">{isArabic ? 'شهر سابق' : 'Previous Month'}</span>}
             </div>
 
-            <button onClick={goNext} disabled={!canGoNext} className={nextBtnClass} title={isArabic ? 'الشهر التالي' : 'Next Month'}>
-              <i data-lucide={isArabic ? 'chevron-left' : 'chevron-right'} className="w-5 h-5"></i>
-            </button>
+            {!isTourMode && (
+              <button onClick={goNext} disabled={!canGoNext} className={nextBtnClass} title={isArabic ? 'الشهر التالي' : 'Next Month'}>
+                <i data-lucide={isArabic ? 'chevron-left' : 'chevron-right'} className="w-5 h-5"></i>
+              </button>
+            )}
 
           </div>
 
