@@ -1280,7 +1280,7 @@ https://is.gd/oL6gEO`;
           bgColor = "bg-transparent";
           borderColor = "border-transparent";
           opacityClass = "opacity-25 blur-[0.5px]"; // Dim days without classes
-        } else if (isScheduled && !isAbsent && !status) {
+        } else if (isScheduled && !isAbsent && (!status || status === STATUS.POSTPONED)) {
           borderColor = "border-islamic-gold/40 border-dashed";
         }
 
