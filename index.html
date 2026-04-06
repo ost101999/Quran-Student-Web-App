@@ -1699,11 +1699,6 @@ https://is.gd/oL6gEO`;
 
                     return (
                       <div className="flex flex-col gap-3">
-                        {timezone && (
-                          <div className={`text-center text-xs opacity-70 border-b border-islamic-gold/10 pb-3 mb-1 px-4 ${isArabic ? 'font-amiri' : 'font-sans'}`}>
-                            {timezone}
-                          </div>
-                        )}
                         <div className="flex flex-col gap-2">
                         {sorted.map(({ line, order, dayName, timePart, classMin, daysUntil }, idx) => {
                           const isNext = order === nextClassDow && withNextOccurrence.find(e => e.order === order)?.daysUntil === minDays;
@@ -1712,7 +1707,7 @@ https://is.gd/oL6gEO`;
                           return (
                             <div key={idx} className={`flex flex-col p-3 rounded-xl border transition-all duration-500 ${
                               isNext
-                                ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-class'
+                                ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-glow'
                                 : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`} dir={isArabic ? 'rtl' : 'ltr'}>
                               {/* Day + Arrow + Time — always one line */}
@@ -1720,7 +1715,7 @@ https://is.gd/oL6gEO`;
                               {parts.map((part, i) => {
                                 if (i % 2 === 1) {
                                   const isTime = part.includes('PM') || part.includes('AM') || part.includes('ص') || part.includes('م') || part.match(/[\d\u0660-\u0669]/);
-                                  return <strong key={i} className={`text-islamic-light shrink-0 ${isTime ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
+                                  return <strong key={i} className={`text-islamic-light shrink-0 ${isNext ? 'text-lg' : ''} ${isTime ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
                                 } else {
                                   let text = part.replace('\uD83D\uDD39', '').trim();
                                   if (text.includes('->')) {
