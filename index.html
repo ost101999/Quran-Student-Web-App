@@ -1712,14 +1712,15 @@ https://is.gd/oL6gEO`;
                           return (
                             <div key={idx} className={`flex flex-col p-3 rounded-xl border transition-all duration-500 ${
                               isNext
-                                ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-glow'
+                                ? 'bg-islamic-gold/15 border-islamic-gold/50 animate-next-class'
                                 : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`} dir={isArabic ? 'rtl' : 'ltr'}>
                               {/* Day + Arrow + Time — always one line */}
                               <div className="flex items-center gap-1 whitespace-nowrap overflow-hidden">
                               {parts.map((part, i) => {
                                 if (i % 2 === 1) {
-                                  return <strong key={i} className={`text-islamic-light shrink-0 ${part.includes('PM') || part.includes('AM') || part.match(/\d/) ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
+                                  const isTime = part.includes('PM') || part.includes('AM') || part.includes('ص') || part.includes('م') || part.match(/[\d\u0660-\u0669]/);
+                                  return <strong key={i} className={`text-islamic-light shrink-0 ${isTime ? `font-sans tracking-wide ${isNext ? 'text-islamic-gold' : 'text-emerald-400'}` : ''}`}>{part}</strong>;
                                 } else {
                                   let text = part.replace('\uD83D\uDD39', '').trim();
                                   if (text.includes('->')) {
