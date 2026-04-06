@@ -435,40 +435,6 @@
         }
       });
 
-      // Glow animation on last reported day after data loads
-      useEffect(() => {
-        if (!loading && data && !isTourMode) {
-          const urlStudentLocal = data?.students ? (nameSlug
-            ? data.students.find(s => nameSlug && toSlugSimple(s?.name) === nameSlug)
-            : data.students.find(s => String(s.id) === String(studentId))) : null;
-          if (!urlStudentLocal) return;
-          const att = data.attendance || {};
-          const rep = data.savedReports || {};
-          const yr = data.year;
-          const mo = data.month;
-          const dim = new Date(yr, mo + 1, 0).getDate();
-          // Find the last day in displayed month with a report
-          let lastDay = null;
-          for (let d = dim; d >= 1; d--) {
-            const k = `${urlStudentLocal.id}_${d}_${mo}_${yr}`;
-            const st = att[k];
-            const raw = rep[k];
-            const txt = st ? (typeof raw === 'string' ? raw : raw?.reportText || null) : null;
-            if (txt) { lastDay = d; break; }
-          }
-          if (lastDay) {
-            const timer = setTimeout(() => setGlowReportDay(lastDay), 800);
-            const stop = setTimeout(() => setGlowReportDay(null), 4000);
-            return () => { clearTimeout(timer); clearTimeout(stop); };
-          }
-        }
-      }, [loading]);
-
-      // Simple slug for glow effect lookup (avoid circular dep)
-      const toSlugSimple = (name) => {
-        if (!name) return '';
-        return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      };
 
       useEffect(() => {
         const handleKeyDown = (e) => {
@@ -505,6 +471,31 @@
         : data.students.find(s => String(s.id) === String(studentId))) : null;
 
       const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
+
+      // Glow animation on last reported day after data loads
+      useEffect(() => {
+        if (!loading && data && !isTourMode && urlStudent) {
+          const att = data.attendance || {};
+          const rep = data.savedReports || {};
+          const yr = data.year;
+          const mo = data.month;
+          const dim = new Date(yr, mo + 1, 0).getDate();
+          // Find the last day in displayed month with a report
+          let lastDay = null;
+          for (let d = dim; d >= 1; d--) {
+            const k = `${urlStudent.id}_${d}_${mo}_${yr}`;
+            const st = att[k];
+            const raw = rep[k];
+            const txt = st ? (typeof raw === 'string' ? raw : raw?.reportText || null) : null;
+            if (txt) { lastDay = d; break; }
+          }
+          if (lastDay) {
+            const timer = setTimeout(() => setGlowReportDay(lastDay), 800);
+            const stop = setTimeout(() => setGlowReportDay(null), 4000);
+            return () => { clearTimeout(timer); clearTimeout(stop); };
+          }
+        }
+      }, [loading, urlStudent]);
 
       // Setup dynamic document title
       useEffect(() => {
