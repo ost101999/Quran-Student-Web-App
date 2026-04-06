@@ -1616,18 +1616,31 @@ https://is.gd/oL6gEO`;
                     const todayDow = now.getDay();
                     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-                    // Helper: parse "08:00 PM" or "20:00" → minutes since midnight
+                    // Helper: parse "08:00 PM", "07:30 م", or "20:00" → minutes since midnight
                     const parseTimeToMinutes = (timeStr) => {
                       if (!timeStr) return -1;
-                      const clean = timeStr.trim().toUpperCase();
-                      const m12 = clean.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+                      
+                      // Convert Arabic numerals to English numerals
+                      const arabicNumbers = [ /٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g ];
+                      let clean = timeStr.trim();
+                      for (let i = 0; i < 10; i++) {
+                        clean = clean.replace(arabicNumbers[i], i);
+                      }
+                      
+                      clean = clean.toUpperCase();
+                      
+                      // Match 12-hour format with AM/PM or ص/م
+                      const m12 = clean.match(/(\d{1,2}):(\d{2})\s*(AM|PM|ص|م)/i);
                       if (m12) {
                         let h = parseInt(m12[1]);
                         const m = parseInt(m12[2]);
-                        if (m12[3] === 'PM' && h !== 12) h += 12;
-                        if (m12[3] === 'AM' && h === 12) h = 0;
+                        const ampm = m12[3];
+                        
+                        if ((ampm === 'PM' || ampm === 'م') && h !== 12) h += 12;
+                        if ((ampm === 'AM' || ampm === 'ص') && h === 12) h = 0;
                         return h * 60 + m;
                       }
+                      
                       const m24 = clean.match(/(\d{1,2}):(\d{2})/);
                       if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
                       return -1;
