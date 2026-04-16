@@ -259,6 +259,17 @@
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+    const SMART_TAJWEED_REFERENCE = [
+      { id: 'tajweed-foundation', ar: 'النون والميم المشددتان', en: 'stressed noon and meem' },
+      { id: 'tajweed-nun-izhar', ar: 'الإظهار الحلقي', en: 'izhar halqi' },
+      { id: 'tajweed-nun-idgham', ar: 'الإدغام', en: 'idgham' },
+      { id: 'tajweed-nun-iqlab', ar: 'الإقلاب', en: 'iqlab' },
+      { id: 'tajweed-nun-ikhfa', ar: 'الإخفاء الحقيقي', en: 'ikhfa haqiqi' },
+      { id: 'tajweed-meem-ikhfa', ar: 'الإخفاء الشفوي', en: 'ikhfa shafawi' },
+      { id: 'tajweed-meem-idgham', ar: 'الإدغام الشفوي', en: 'idgham shafawi' },
+      { id: 'tajweed-meem-izhar', ar: 'الإظهار الشفوي', en: 'izhar shafawi' }
+    ];
+
     const parseReport = (text) => {
       if (!text) return [];
       const lines = text.split('\n');
@@ -377,7 +388,18 @@
         sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
       }
 
-      return sections.length > 0 ? sections : [{ title: 'Report Overview', content: text.replace(/〰️/g, ''), icon: 'file-text', type: 'other' }];
+      const filteredSections = [];
+      let sawTajweedInCompleted = false;
+      for (const section of sections) {
+        if (section.type === 'tajweed') {
+          // Keep only the first Tajweed occurrence (the completed part), hide the upcoming one.
+          if (sawTajweedInCompleted) continue;
+          sawTajweedInCompleted = true;
+        }
+        filteredSections.push(section);
+      }
+
+      return filteredSections.length > 0 ? filteredSections : [{ title: 'Report Overview', content: text.replace(/〰️/g, ''), icon: 'file-text', type: 'other' }];
     };
 
     function App() {
@@ -1210,18 +1232,117 @@ https://is.gd/oL6gEO`;
 
       const tajweedBank = activeData?.tajweedBank || {};
       const tajweedAssignments = activeData?.tajweedAssignments || {};
-      const pendingTajweedAssignments = Object.values(tajweedAssignments).filter((assignment) => {
-        if (!assignment || !tajweedBank[assignment.lessonId]) return false;
-        return assignment.studentId === student.id && assignment.status === 'pending';
-      });
 
       const normalizeForMatch = (value) => {
         return String(value || '')
           .toLowerCase()
+          .replace(/[ـ]/g, '')
           .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim();
       };
+
+      const getReferenceCandidatesFromId = (lessonId) => {
+        const ref = SMART_TAJWEED_REFERENCE.find(item => item.id === lessonId);
+        if (!ref) return [];
+        return [ref.ar, ref.en].filter(Boolean);
+      };
+
+      const getSmartOrderedBankEntries = () => {
+        const entries = Object.entries(tajweedBank);
+        const ordered = [];
+        const usedIds = new Set();
+
+        SMART_TAJWEED_REFERENCE.forEach((ref) => {
+          const refs = [ref.ar, ref.en]
+            .map((item) => normalizeForMatch(item))
+            .filter(Boolean);
+
+          const exact = entries.find(([id, lesson]) => {
+            if (usedIds.has(id)) return false;
+            const lessonTitle = normalizeForMatch(lesson?.title || '');
+            return refs.some((r) => lessonTitle === r);
+          });
+
+          const loose = exact ? null : entries.find(([id, lesson]) => {
+            if (usedIds.has(id)) return false;
+            const lessonTitle = normalizeForMatch(lesson?.title || '');
+            return refs.some((r) => lessonTitle && (lessonTitle.includes(r) || r.includes(lessonTitle)));
+          });
+
+          const picked = exact || loose;
+          if (picked) {
+            usedIds.add(picked[0]);
+            ordered.push(picked);
+          }
+        });
+
+        entries.forEach((entry) => {
+          if (!usedIds.has(entry[0])) ordered.push(entry);
+        });
+
+        return ordered;
+      };
+
+      const resolveBankLessonForAssignment = (assignment) => {
+        if (!assignment) return null;
+
+        const direct = tajweedBank[assignment.lessonId];
+        if (direct) {
+          return { lessonId: assignment.lessonId, lesson: direct };
+        }
+
+        const referenceTitles = getReferenceCandidatesFromId(assignment.lessonId);
+        if (referenceTitles.length === 0) return null;
+
+        const entries = getSmartOrderedBankEntries();
+
+        for (const refTitle of referenceTitles) {
+          const refNorm = normalizeForMatch(refTitle);
+          const exact = entries.find(([_, lesson]) => normalizeForMatch(lesson?.title || '') === refNorm);
+          if (exact) return { lessonId: exact[0], lesson: exact[1] };
+        }
+
+        for (const refTitle of referenceTitles) {
+          const refNorm = normalizeForMatch(refTitle);
+          const loose = entries.find(([_, lesson]) => {
+            const lessonNorm = normalizeForMatch(lesson?.title || '');
+            return lessonNorm && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm));
+          });
+          if (loose) return { lessonId: loose[0], lesson: loose[1] };
+        }
+
+        return null;
+      };
+
+      const resolveBankLessonFromSection = (section) => {
+        const firstLine = String(section?.content || '').split('\n').find(Boolean) || '';
+        const hint = normalizeForMatch(`${section?.title || ''} ${firstLine}`);
+        if (!hint) return null;
+
+        const entries = getSmartOrderedBankEntries();
+
+        const exact = entries.find(([_, lesson]) => {
+          const lessonTitle = normalizeForMatch(lesson?.title || '');
+          return lessonTitle && (lessonTitle === hint || hint.includes(lessonTitle) || lessonTitle.includes(hint));
+        });
+        if (exact) return { lessonId: exact[0], lesson: exact[1] };
+
+        return null;
+      };
+
+      const pendingTajweedAssignments = Object.values(tajweedAssignments)
+        .filter((assignment) => assignment && assignment.studentId === student.id && assignment.status === 'pending')
+        .map((assignment) => {
+          const resolved = resolveBankLessonForAssignment(assignment);
+          if (!resolved) return null;
+          return {
+            ...assignment,
+            resolvedLessonId: resolved.lessonId,
+            resolvedLesson: resolved.lesson
+          };
+        })
+        .filter(Boolean);
 
       const findMatchingPendingTajweedAssignment = (section) => {
         if (!pendingTajweedAssignments.length) return null;
@@ -1232,7 +1353,7 @@ https://is.gd/oL6gEO`;
         if (!hint) return pendingTajweedAssignments[0];
 
         const matched = pendingTajweedAssignments.find((assignment) => {
-          const lessonTitle = normalizeForMatch(tajweedBank[assignment.lessonId]?.title || '');
+          const lessonTitle = normalizeForMatch(assignment?.resolvedLesson?.title || '');
           return lessonTitle && (lessonTitle.includes(hint) || hint.includes(lessonTitle));
         });
 
@@ -1243,15 +1364,26 @@ https://is.gd/oL6gEO`;
         const assignment = findMatchingPendingTajweedAssignment(section);
 
         if (!assignment) {
-          setSelectedTajweedQuiz({ missing: true });
+          const sectionResolved = resolveBankLessonFromSection(section);
+          if (!sectionResolved) {
+            setSelectedTajweedQuiz({ missing: true });
+            return;
+          }
+
+          setSelectedTajweedQuiz({
+            assignmentId: null,
+            lessonTitle: sectionResolved.lesson?.title || section?.content || t.tajweedSection,
+            assignedAt: undefined,
+            questions: Array.isArray(sectionResolved.lesson?.questions) ? sectionResolved.lesson.questions : []
+          });
           return;
         }
 
-        const lesson = tajweedBank[assignment.lessonId];
+        const lesson = assignment.resolvedLesson;
         setSelectedTajweedQuiz({
-          assignmentId: assignment.id,
+          assignmentId: assignment?.id,
           lessonTitle: lesson?.title || section?.content || t.tajweedSection,
-          assignedAt: assignment.assignedAt,
+          assignedAt: assignment?.assignedAt,
           questions: Array.isArray(lesson?.questions) ? lesson.questions : []
         });
       };
@@ -1863,6 +1995,7 @@ https://is.gd/oL6gEO`;
                     return (
                       <>
                         {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", t.completedInClass, isTourMode ? "tour-completed" : undefined)}
+                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", t.homeworkNextClass, isTourMode ? "tour-homework" : undefined)}
                         {renderSectionGroup(
                           tajweed,
                           "text-teal-300/80",
@@ -1871,7 +2004,6 @@ https://is.gd/oL6gEO`;
                           undefined,
                           { showQuizAction: true, onOpenQuiz: openTajweedQuizFromSection }
                         )}
-                        {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", t.homeworkNextClass, isTourMode ? "tour-homework" : undefined)}
                         {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", t.feedbackNotes, isTourMode ? "tour-feedback" : undefined)}
                         {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", t.otherDetails)}
                         {audio.length > 0 && (
