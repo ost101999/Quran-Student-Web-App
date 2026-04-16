@@ -242,6 +242,8 @@ function App() {
 
   const selectedAssignment = selectedAssignmentId ? assignments[selectedAssignmentId] : null;
   const selectedLesson = selectedAssignment ? bank[selectedAssignment.lessonId] : null;
+  const latestPendingAssignment = pendingAssignments[0] || null;
+  const latestPendingLesson = latestPendingAssignment ? bank[latestPendingAssignment.lessonId] : null;
 
   const upsertDraft = (assignmentId: string, questionId: string, updates: Partial<DraftAnswer>) => {
     setDraftAnswersByAssignment((prev) => {
@@ -476,7 +478,14 @@ function App() {
       <main className="max-w-6xl mx-auto px-4 pb-10 space-y-5">
         <div className="tab-strip">
           <button onClick={() => setActiveTab('overview')} className={activeTab === 'overview' ? 'tab-btn tab-btn-active' : 'tab-btn'}>لوحة الطالب</button>
-          <button onClick={() => setActiveTab('assignments')} className={activeTab === 'assignments' ? 'tab-btn tab-btn-active' : 'tab-btn'}>واجبات التجويد</button>
+          <button onClick={() => setActiveTab('assignments')} className={activeTab === 'assignments' ? 'tab-btn tab-btn-active' : 'tab-btn'}>
+            واجبات التجويد
+            {pendingAssignments.length > 0 && (
+              <span className="mr-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-600 px-2 text-xs font-bold text-white">
+                {toHindiDigits(pendingAssignments.length)}
+              </span>
+            )}
+          </button>
           <button onClick={() => setActiveTab('history')} className={activeTab === 'history' ? 'tab-btn tab-btn-active' : 'tab-btn'}>سجل التجويد</button>
         </div>
 
@@ -530,6 +539,28 @@ function App() {
                     {studentReport.homeworkNew?.surah && <p><strong>واجب الحفظ:</strong> {studentReport.homeworkNew.surah}</p>}
                   </div>
                 ) : <p className="text-slate-500">لا يوجد تقرير محفوظ بعد.</p>}
+              </div>
+
+              <div className="glass-card">
+                <h2 className="text-xl font-bold mb-3 flex items-center gap-2"><BookOpen size={18} /> اختبار التجويد المرتبط</h2>
+                {latestPendingAssignment && latestPendingLesson ? (
+                  <div className="space-y-3 text-sm">
+                    <p><strong>الدرس:</strong> {latestPendingLesson.title}</p>
+                    <p><strong>تاريخ الإسناد:</strong> {toDate(latestPendingAssignment.assignedAt)}</p>
+                    <p><strong>عدد الأسئلة:</strong> {toHindiDigits(latestPendingLesson.questions.length)}</p>
+                    <button
+                      onClick={() => {
+                        setSelectedAssignmentId(latestPendingAssignment.id);
+                        setActiveTab('assignments');
+                      }}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-white font-bold hover:bg-emerald-700 transition-colors"
+                    >
+                      فتح الاختبار الآن
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-slate-500">لا يوجد اختبار تجويد جديد حالياً.</p>
+                )}
               </div>
             </motion.section>
           )}
