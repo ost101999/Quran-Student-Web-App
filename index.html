@@ -270,6 +270,7 @@
       const keywords = [
         { id: 'new', type: 'classwork', match: ['new', 'الجديد', 'الحفظ'], icon: 'sparkles' },
         { id: 'quran', type: 'classwork', match: ['quran', 'قرآن', 'القرآن', 'recitation'], icon: 'check-circle-2' },
+        { id: 'tajweed', type: 'tajweed', match: ['tajweed', 'التجويد', 'تجويد'], icon: 'graduation-cap' },
         { id: 'reading', type: 'classwork', match: ['reading', 'قراءة', 'تلاوة', 'التلاوة', 'قرائية'], icon: 'check-circle-2' },
         { id: 'old_revision', type: 'classwork', match: ['old', 'قديم', 'بعيد', 'ماضي'], icon: 'check-circle-2' },
         { id: 'revision', type: 'classwork', match: ['revision', 'مراجعة', 'المراجعة'], icon: 'check-circle-2' },
@@ -384,6 +385,7 @@
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState('');
       const [selectedReport, setSelectedReport] = useState(null);
+      const [selectedTajweedQuiz, setSelectedTajweedQuiz] = useState(null);
       const [showSchedule, setShowSchedule] = useState(false);
       const [glowReportDay, setGlowReportDay] = useState(null);
       const [tick, setTick] = useState(0); // updates every minute for countdown
@@ -442,14 +444,15 @@
         const handleKeyDown = (e) => {
           if (e.key === 'Escape') {
             setSelectedReport(null);
+            setSelectedTajweedQuiz(null);
             setShowSchedule(false);
           }
         };
-        if (selectedReport || showSchedule) {
+        if (selectedReport || selectedTajweedQuiz || showSchedule) {
           window.addEventListener('keydown', handleKeyDown);
         }
         return () => window.removeEventListener('keydown', handleKeyDown);
-      }, [selectedReport, showSchedule]);
+      }, [selectedReport, selectedTajweedQuiz, showSchedule]);
 
       const toSlug = (name) => {
         if (!name) return '';
@@ -706,6 +709,12 @@ https://is.gd/oL6gEO`;
         scheduleClass: "إضافة موعد",
         dailyReport: "التقرير المفصل",
         completedInClass: "ما تم إنجازه",
+        tajweedSection: "التجويد",
+        openQuiz: "فتح الاختبار",
+        tajweedQuizTitle: "اختبار التجويد",
+        noTajweedQuiz: "لا يوجد اختبار تجويد متاح لهذا الدرس حالياً.",
+        assignedAt: "تاريخ الإسناد",
+        questionsCount: "عدد الأسئلة",
         homeworkNextClass: "الواجب والمطلوب",
         feedbackNotes: "ملاحظات إضافية",
         otherDetails: "تفاصيل أخرى",
@@ -768,6 +777,12 @@ https://is.gd/oL6gEO`;
         scheduleClass: "Book a Session",
         dailyReport: "Daily Report",
         completedInClass: "Completed In Class",
+        tajweedSection: "Tajweed",
+        openQuiz: "Open Quiz",
+        tajweedQuizTitle: "Tajweed Quiz",
+        noTajweedQuiz: "No Tajweed quiz is currently available for this lesson.",
+        assignedAt: "Assigned At",
+        questionsCount: "Questions",
         homeworkNextClass: "Homework & Next Class",
         feedbackNotes: "Feedback & Notes",
         otherDetails: "Other Details",
@@ -1193,6 +1208,54 @@ https://is.gd/oL6gEO`;
 
       const scheduleLink = getScheduleLink(student.duration);
 
+      const tajweedBank = activeData?.tajweedBank || {};
+      const tajweedAssignments = activeData?.tajweedAssignments || {};
+      const pendingTajweedAssignments = Object.values(tajweedAssignments).filter((assignment) => {
+        if (!assignment || !tajweedBank[assignment.lessonId]) return false;
+        return assignment.studentId === student.id && assignment.status === 'pending';
+      });
+
+      const normalizeForMatch = (value) => {
+        return String(value || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      const findMatchingPendingTajweedAssignment = (section) => {
+        if (!pendingTajweedAssignments.length) return null;
+
+        const firstLine = String(section?.content || '').split('\n').find(Boolean) || '';
+        const hint = normalizeForMatch(`${section?.title || ''} ${firstLine}`);
+
+        if (!hint) return pendingTajweedAssignments[0];
+
+        const matched = pendingTajweedAssignments.find((assignment) => {
+          const lessonTitle = normalizeForMatch(tajweedBank[assignment.lessonId]?.title || '');
+          return lessonTitle && (lessonTitle.includes(hint) || hint.includes(lessonTitle));
+        });
+
+        return matched || pendingTajweedAssignments[0];
+      };
+
+      const openTajweedQuizFromSection = (section) => {
+        const assignment = findMatchingPendingTajweedAssignment(section);
+
+        if (!assignment) {
+          setSelectedTajweedQuiz({ missing: true });
+          return;
+        }
+
+        const lesson = tajweedBank[assignment.lessonId];
+        setSelectedTajweedQuiz({
+          assignmentId: assignment.id,
+          lessonTitle: lesson?.title || section?.content || t.tajweedSection,
+          assignedAt: assignment.assignedAt,
+          questions: Array.isArray(lesson?.questions) ? lesson.questions : []
+        });
+      };
+
       // Calendar Calculations
       const daysInMonth = new Date(effectiveYear, effectiveMonth + 1, 0).getDate();
       const firstDayIndex = new Date(effectiveYear, effectiveMonth, 1).getDay();
@@ -1307,7 +1370,7 @@ https://is.gd/oL6gEO`;
         );
       };
 
-      const renderSectionGroup = (sections, typeLabelClass, sideBorderClass, typeName, tourId) => {
+      const renderSectionGroup = (sections, typeLabelClass, sideBorderClass, typeName, tourId, options = {}) => {
         if (sections.length === 0) return null;
         return (
           <div id={tourId} className="mb-6">
@@ -1333,6 +1396,11 @@ https://is.gd/oL6gEO`;
                   borderClass = "border-blue-500/20 hover:border-blue-500/40";
                   iconBgClass = "bg-blue-900/50 border-blue-500/30 text-blue-400";
                   titleClass = "text-blue-400";
+                } else if (section.type === 'tajweed') {
+                  bgClass = "bg-teal-900/20 hover:bg-teal-900/30";
+                  borderClass = "border-teal-500/30 hover:border-teal-400/50";
+                  iconBgClass = "bg-teal-900/50 border-teal-400/40 text-teal-300";
+                  titleClass = "text-teal-300";
                 }
 
                 return (
@@ -1363,6 +1431,15 @@ https://is.gd/oL6gEO`;
                           </div>
                         );
                       })()}
+                      {options.showQuizAction && (
+                        <button
+                          onClick={() => options.onOpenQuiz && options.onOpenQuiz(section)}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-teal-400/40 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-200 hover:bg-teal-500/30 transition-colors"
+                        >
+                          <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
+                          {t.openQuiz}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1777,6 +1854,7 @@ https://is.gd/oL6gEO`;
                     const validSections = parsed.filter(s => s.title !== 'Summary');
 
                     const classwork = validSections.filter(s => s.type === 'classwork');
+                    const tajweed = validSections.filter(s => s.type === 'tajweed');
                     const homework = validSections.filter(s => s.type === 'homework');
                     const feedback = validSections.filter(s => s.type === 'feedback');
                     const other = validSections.filter(s => s.type === 'other');
@@ -1785,6 +1863,14 @@ https://is.gd/oL6gEO`;
                     return (
                       <>
                         {renderSectionGroup(classwork, "text-emerald-500/70", "border-emerald-500/40", t.completedInClass, isTourMode ? "tour-completed" : undefined)}
+                        {renderSectionGroup(
+                          tajweed,
+                          "text-teal-300/80",
+                          "border-teal-400/40",
+                          t.tajweedSection,
+                          undefined,
+                          { showQuizAction: true, onOpenQuiz: openTajweedQuizFromSection }
+                        )}
                         {renderSectionGroup(homework, "text-amber-500/70", "border-amber-500/40", t.homeworkNextClass, isTourMode ? "tour-homework" : undefined)}
                         {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", t.feedbackNotes, isTourMode ? "tour-feedback" : undefined)}
                         {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", t.otherDetails)}
@@ -1827,6 +1913,59 @@ https://is.gd/oL6gEO`;
                     );
                   })()}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tajweed Quiz Modal */}
+          {selectedTajweedQuiz && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+              <div className="glass-panel w-full max-w-lg rounded-3xl p-5 relative animate-fade border border-teal-400/30 shadow-[0_0_25px_rgba(20,184,166,0.15)]">
+                <button
+                  onClick={() => setSelectedTajweedQuiz(null)}
+                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
+                >
+                  <i data-lucide="x" className="w-5 h-5"></i>
+                </button>
+
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-teal-500/20 text-teal-300 mb-2 border border-teal-400/30">
+                    <i data-lucide="graduation-cap" className="w-5 h-5"></i>
+                  </div>
+                  <h3 className={`text-xl font-bold text-teal-200 ${headerFontClass}`}>{t.tajweedQuizTitle}</h3>
+                </div>
+
+                {selectedTajweedQuiz.missing ? (
+                  <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
+                ) : (
+                  <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                    <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 p-3">
+                      <p className="font-bold text-teal-200">{selectedTajweedQuiz.lessonTitle}</p>
+                      <p className="text-xs text-slate-300 mt-1">{t.assignedAt}: {(() => {
+                        const ts = selectedTajweedQuiz.assignedAt;
+                        if (!ts) return '-';
+                        const d = new Date(ts);
+                        return isArabic
+                          ? `${toArabicNums(d.getDate())} ${arabicMonthNames[d.getMonth()]} ${toArabicNums(d.getFullYear())}`
+                          : `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+                      })()}</p>
+                      <p className="text-xs text-slate-300">{t.questionsCount}: {toArabicNums(selectedTajweedQuiz.questions.length)}</p>
+                    </div>
+
+                    {selectedTajweedQuiz.questions.map((q, i) => (
+                      <div key={q.id || i} className="rounded-xl border border-slate-600/30 bg-slate-800/50 p-3">
+                        <p className="text-sm text-white font-semibold">{toArabicNums(i + 1)}. {q.text || '-'}</p>
+                        {Array.isArray(q.options) && q.options.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {q.options.map((opt, idx) => (
+                              <p key={`${q.id || i}_opt_${idx}`} className="text-xs text-slate-300">- {opt}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
