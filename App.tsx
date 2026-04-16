@@ -1,19 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { Calendar, Clock, BookOpen, AlertCircle, FileText, CheckCircle2, HelpCircle, Video, ChevronLeft, ChevronRight } from 'lucide-react';
-import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock3, FileAudio, FileText, Mic, PauseCircle, PlayCircle, Send, Video } from 'lucide-react';
+import './App.css';
 
-// Interfaces matching the desktop app
+type QuestionType = 'multiple_choice' | 'text' | 'audio';
+
 interface Student {
   id: string;
   name: string;
   academy: string;
-  location: string;
-  rate: number;
-  duration?: string;
-  paymentBasis?: string;
   zoomLink?: string;
+  duration?: string;
+}
+
+interface TajweedQuestion {
+  id: string;
+  type: QuestionType;
+  text: string;
+  options?: string[];
+  correctOptionIndex?: number;
+  points?: number;
+}
+
+interface TajweedLesson {
+  id: string;
+  title: string;
+  questions: TajweedQuestion[];
+}
+
+interface TajweedAssignment {
+  id: string;
+  lessonId: string;
+  studentId: string;
+  assignedAt: number;
+  status: 'pending' | 'submitted' | 'graded';
+  submissionId?: string;
+  deadline?: number;
+}
+
+interface QuestionAnswer {
+  questionId: string;
+  answerText?: string;
+  selectedOptionIndex?: number;
+  audioBase64?: string;
+  audioLocalPath?: string;
+  grade?: number;
+  teacherNote?: string;
+}
+
+interface TajweedSubmission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  submittedAt: number;
+  answers: QuestionAnswer[];
+  totalGrade?: number;
+  overallNote?: string;
 }
 
 interface AppState {
@@ -22,505 +65,662 @@ interface AppState {
   month: number;
   year: number;
   lastReports?: Record<string, any>;
+  tajweedBank?: Record<string, TajweedLesson>;
+  tajweedAssignments?: Record<string, TajweedAssignment>;
+  tajweedSubmissions?: Record<string, TajweedSubmission>;
 }
 
-// Convert numbers to Arabic Hindi digits
-const toHindiDigits = (num: number | string): string => {
-  if (num === undefined || num === null) return '';
-  return num.toString().replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[parseInt(d)]).replace(/\./g, ",");
+interface DraftAnswer {
+  questionId: string;
+  answerText?: string;
+  selectedOptionIndex?: number;
+  audioBase64?: string;
+  audioPreviewUrl?: string;
+}
+
+const API_BASE = 'https://quran-classes-tracker-default-rtdb.firebaseio.com';
+
+const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+const toHindiDigits = (num: number | string): string => num.toString().replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+
+const toDate = (timestamp?: number) => {
+  if (!timestamp) return 'غير محدد';
+  const date = new Date(timestamp);
+  return `${toHindiDigits(date.getDate())} ${arabicMonths[date.getMonth()]} ${toHindiDigits(date.getFullYear())}`;
 };
 
-// Month Names in Arabic
-const arabicMonths = [
-  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-];
+const getScheduleLink = (durationStr?: string) => {
+  if (!durationStr) return null;
+  const normalized = durationStr.toString().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString()).trim();
+  if (normalized === '30') return 'https://zcal.co/i/tYjuo5JV';
+  if (normalized === '45') return 'https://zcal.co/i/ThNRhEes';
+  if (normalized === '60') return 'https://zcal.co/i/_yKMg4po';
+  return null;
+};
 
 function App() {
-  const [data, setData] = useState<AppState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  // Month navigation: default to current real month/year
-  const _now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(_now.getMonth()); // 0-indexed, matches Firebase
-  const [selectedYear, setSelectedYear] = useState(_now.getFullYear());
-
-  // Tour states
-  const [runTour, setRunTour] = useState(false);
-  const [isTourMode, setIsTourMode] = useState(false);
-
-  // Get student ID from URL
   const searchParams = new URLSearchParams(window.location.search);
   const studentId = searchParams.get('student');
 
+  const [data, setData] = useState<AppState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'history'>('overview');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [draftAnswersByAssignment, setDraftAnswersByAssignment] = useState<Record<string, Record<string, DraftAnswer>>>({});
+  const [recordingQuestionId, setRecordingQuestionId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordingMetaRef = useRef<{ assignmentId: string; questionId: string } | null>(null);
+
+  const fetchData = async () => {
+    if (!studentId) {
+      setError('رابط الطالب غير صالح. يرجى التأكد من الرابط.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE}/appState.json`);
+      setData(response.data);
+      setSelectedMonth(new Date().getMonth());
+      setSelectedYear(new Date().getFullYear());
+      setError('');
+    } catch {
+      setError('حدث خطأ أثناء جلب البيانات. الرجاء المحاولة لاحقاً.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      if (!studentId) {
-        setError('رابط الطالب غير صالح. يرجى التأكد من الرابط.');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await axios.get('https://quran-classes-tracker-default-rtdb.firebaseio.com/appState.json');
-        setData(response.data);
-      } catch (err) {
-        console.error(err);
-        setError('حدث خطأ أثناء جلب البيانات. الرجاء المحاولة لاحقاً.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [studentId]);
 
-  // Mock data for Tour
-  const mockData: AppState = {
-    students: [{
-      id: "mock_student",
-      name: "أحمد بن عبد الله (حساب افتراضي)",
-      academy: "أكاديمية نور القرآن",
-      location: "مصر",
-      rate: 50
-    }],
-    attendance: {
-      "mock_student_12_5_2024": "1",
-      "mock_student_15_5_2024": "1",
-      "mock_student_18_5_2024": "1"
-    },
-    month: 5,
-    year: 2024,
-    lastReports: {
-      "mock_student": {
-        sectionToggles: { readingNew: true, readingRev: true, homeworkNew: true },
-        readingNew: { surah: "البقرة", mode: "ayah", fromAyah: 1, toAyah: 20 },
-        readingRev: { surah: "الفاتحة والناس" },
-        homeworkNew: { surah: "آل عمران", mode: "page", from: 50, to: 51 }
+  useEffect(() => {
+    return () => {
+      Object.values(draftAnswersByAssignment).forEach((answersMap) => {
+        Object.values(answersMap).forEach((answer) => {
+          if (answer.audioPreviewUrl) {
+            URL.revokeObjectURL(answer.audioPreviewUrl);
+          }
+        });
+      });
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
       }
-    }
-  };
+    };
+  }, [draftAnswersByAssignment]);
 
-  const activeData = isTourMode ? mockData : data;
-  const student = isTourMode ? mockData.students[0] : activeData?.students?.find(s => s.id === studentId);
+  const student = useMemo(() => data?.students?.find((s) => s.id === studentId), [data, studentId]);
 
-  // Tour Steps
-  const tourSteps: Step[] = [
-    {
-      target: 'body',
-      content: 'مرحباً بك في تطبيق متابعة الطلاب! سنأخذك في جولة سريعة للتعرف على الميزات الأساسية للتطبيق.',
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-header',
-      content: 'هنا تجد البيانات الأساسية للطالب مثل اسمه والأكاديمية التي يدرس بها.',
-    },
-    {
-      target: '#tour-month',
-      content: 'يوضح هذا القسم الشهر والسنة الحالية التي تخص إحصائيات الحضور والغياب المعروضة.',
-    },
-    {
-      target: '#tour-stats',
-      content: 'من خلال هذا الرقم يمكنك معرفة إجمالي عدد الحصص التي حضرها الطالب بانتظام خلال الشهر المحدد المعروض.',
-    },
-    {
-      target: '#tour-present-days',
-      content: 'وهنا يمكنك الاطلاع بدقة على أيام الحضور الفعلية خلال الشهر.',
-    },
-    {
-      target: '#tour-report',
-      content: 'أخيراً، يعرض لك هذا القسم التقرير التفصيلي لآخر حصة، ويتضمن المهام المطلوبة من الطالب كالحفظ والمراجعة.',
-    }
-  ];
+  const attendance = data?.attendance || {};
+  const availableMonths = useMemo(() => {
+    if (!student) return [{ month: new Date().getMonth(), year: new Date().getFullYear() }];
+    const monthsSet = new Set<string>();
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
-    const { status } = data;
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-      setRunTour(false);
-      setIsTourMode(false);
-    }
-  };
-
-  const startTour = () => {
-    setIsTourMode(true);
-    setTimeout(() => {
-      setRunTour(true);
-    }, 100);
-  };
-
-  const FloatingHelpButton = () => (
-    <button
-      onClick={startTour}
-      className="fixed bottom-6 left-6 bg-blue-600 text-white p-3.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-blue-700 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(37,99,235,0.4)] transition-all duration-300 z-50 flex items-center justify-center group border border-blue-500/50"
-      title="جولة تعريفية"
-    >
-      <HelpCircle size={28} className="group-hover:rotate-12 transition-transform duration-300 relative z-10" />
-      <div className="absolute inset-0 rounded-2xl bg-blue-600 blur-sm opacity-50 group-hover:opacity-100 transition-opacity"></div>
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 to-white/20"></div>
-    </button>
-  );
-
-  // Render loading or error with tour button (unless in tour mode)
-  if (!isTourMode) {
-    if (loading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 relative" dir="rtl">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
-          <FloatingHelpButton />
-        </div>
-      );
-    }
-    if (error || !activeData) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center relative" dir="rtl">
-          <AlertCircle size={64} className="text-red-500 mb-4" />
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">عذراً</h1>
-          <p className="text-slate-600">{error || 'لم يتم العثور على بيانات'}</p>
-          <FloatingHelpButton />
-        </div>
-      );
-    }
-    if (!student) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center relative" dir="rtl">
-          <AlertCircle size={64} className="text-amber-500 mb-4" />
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">طالب غير موجود</h1>
-          <p className="text-slate-600">لا يوجد سجل لهذا الطالب في النظام.</p>
-          <FloatingHelpButton />
-        </div>
-      );
-    }
-  }
-
-  // Calculate stats for selected month
-  let visitsCount = 0;
-  let presentDays: number[] = [];
-  const { attendance, lastReports } = activeData!;
-
-  // Build sorted list of months that have attendance data for this student
-  const availableMonthsSet = new Set<string>();
-  if (attendance && student) {
-    Object.keys(attendance).forEach(key => {
-      const parts = key.split('_');
-      if (parts[0] === student.id) {
-        const m = parseInt(parts[2]);
-        const y = parseInt(parts[3]);
-        if (!isNaN(m) && !isNaN(y)) availableMonthsSet.add(`${y}_${m}`);
-      }
-    });
-  }
-  // Always include the current real month
-  const _now2 = new Date();
-  const _curM = _now2.getMonth();
-  const _curY = _now2.getFullYear();
-  availableMonthsSet.add(`${_curY}_${_curM}`);
-
-  const availableMonths = Array.from(availableMonthsSet)
-    .map(k => { const [y, m] = k.split('_').map(Number); return { month: m, year: y }; })
-    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-
-  const selectedIdx = availableMonths.findIndex(am => am.month === selectedMonth && am.year === selectedYear);
-  const canGoPrev = selectedIdx > 0;
-  const canGoNext = selectedIdx < availableMonths.length - 1;
-  const goPrev = () => { if (canGoPrev) { const p = availableMonths[selectedIdx - 1]; setSelectedMonth(p.month); setSelectedYear(p.year); } };
-  const goNext = () => { if (canGoNext) { const n = availableMonths[selectedIdx + 1]; setSelectedMonth(n.month); setSelectedYear(n.year); } };
-
-  if (attendance && student) {
-    Object.entries(attendance).forEach(([key, status]) => {
-      const parts = key.split('_');
-      const id = parts[0];
-      const d = parseInt(parts[1]);
-      const m = parseInt(parts[2]);
-      const y = parseInt(parts[3]);
-
-      if (id === student.id && m === selectedMonth && y === selectedYear) {
-        // PRESENT, PAID_ABSENCE, DOUBLE_CLASS
-        if (status === '1' || status === '!' || status === '2' || status === 'e' || status === 'ed') {
-          visitsCount++;
-          if (status === '2' || status === 'ed') visitsCount++; // double
-          presentDays.push(d);
+    Object.keys(attendance).forEach((key) => {
+      const [id, _day, month, year] = key.split('_');
+      if (id === student.id) {
+        const monthNo = Number(month);
+        const yearNo = Number(year);
+        if (!Number.isNaN(monthNo) && !Number.isNaN(yearNo)) {
+          monthsSet.add(`${yearNo}_${monthNo}`);
         }
       }
     });
+
+    const now = new Date();
+    monthsSet.add(`${now.getFullYear()}_${now.getMonth()}`);
+
+    return Array.from(monthsSet)
+      .map((key) => {
+        const [year, month] = key.split('_').map(Number);
+        return { month, year };
+      })
+      .sort((a, b) => (a.year === b.year ? a.month - b.month : a.year - b.year));
+  }, [attendance, student]);
+
+  const selectedMonthIndex = availableMonths.findIndex((m) => m.month === selectedMonth && m.year === selectedYear);
+  const canGoPrev = selectedMonthIndex > 0;
+  const canGoNext = selectedMonthIndex >= 0 && selectedMonthIndex < availableMonths.length - 1;
+
+  const visitsData = useMemo(() => {
+    if (!student) return { visitsCount: 0, presentDays: [] as number[] };
+    let visitsCount = 0;
+    const presentDays: number[] = [];
+
+    Object.entries(attendance).forEach(([key, status]) => {
+      const [id, day, month, year] = key.split('_');
+      if (id !== student.id) return;
+      if (Number(month) !== selectedMonth || Number(year) !== selectedYear) return;
+      if (status === '1' || status === '!' || status === '2' || status === 'e' || status === 'ed') {
+        visitsCount += status === '2' || status === 'ed' ? 2 : 1;
+        presentDays.push(Number(day));
+      }
+    });
+
+    presentDays.sort((a, b) => a - b);
+    return { visitsCount, presentDays };
+  }, [attendance, selectedMonth, selectedYear, student]);
+
+  const bank = data?.tajweedBank || {};
+  const assignments = data?.tajweedAssignments || {};
+  const submissions = data?.tajweedSubmissions || {};
+
+  const pendingAssignments = useMemo(
+    () => Object.values(assignments)
+      .filter((item) => item.studentId === studentId && item.status === 'pending' && bank[item.lessonId])
+      .sort((a, b) => b.assignedAt - a.assignedAt),
+    [assignments, bank, studentId],
+  );
+
+  const historyAssignments = useMemo(
+    () => Object.values(assignments)
+      .filter((item) => item.studentId === studentId && (item.status === 'submitted' || item.status === 'graded'))
+      .sort((a, b) => b.assignedAt - a.assignedAt),
+    [assignments, studentId],
+  );
+
+  useEffect(() => {
+    if (!pendingAssignments.length) {
+      setSelectedAssignmentId(null);
+      return;
+    }
+    const stillExists = pendingAssignments.some((assignment) => assignment.id === selectedAssignmentId);
+    if (!stillExists) {
+      setSelectedAssignmentId(pendingAssignments[0].id);
+    }
+  }, [pendingAssignments, selectedAssignmentId]);
+
+  const selectedAssignment = selectedAssignmentId ? assignments[selectedAssignmentId] : null;
+  const selectedLesson = selectedAssignment ? bank[selectedAssignment.lessonId] : null;
+
+  const upsertDraft = (assignmentId: string, questionId: string, updates: Partial<DraftAnswer>) => {
+    setDraftAnswersByAssignment((prev) => {
+      const currentAssignmentAnswers = prev[assignmentId] || {};
+      const currentAnswer = currentAssignmentAnswers[questionId] || { questionId };
+
+      if (currentAnswer.audioPreviewUrl && updates.audioPreviewUrl && currentAnswer.audioPreviewUrl !== updates.audioPreviewUrl) {
+        URL.revokeObjectURL(currentAnswer.audioPreviewUrl);
+      }
+
+      return {
+        ...prev,
+        [assignmentId]: {
+          ...currentAssignmentAnswers,
+          [questionId]: {
+            ...currentAnswer,
+            ...updates,
+          },
+        },
+      };
+    });
+  };
+
+  const startRecording = async (assignmentId: string, questionId: string) => {
+    setStatusMessage('');
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setStatusMessage('المتصفح الحالي لا يدعم التسجيل الصوتي.');
+      return;
+    }
+
+    if (recordingQuestionId) {
+      setStatusMessage('يوجد تسجيل يعمل حالياً. أوقفه أولاً.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+
+      chunksRef.current = [];
+      streamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      recordingMetaRef.current = { assignmentId, questionId };
+      setRecordingQuestionId(questionId);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const meta = recordingMetaRef.current;
+        if (!meta) return;
+
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const fileReader = new FileReader();
+        const previewUrl = URL.createObjectURL(blob);
+
+        fileReader.onloadend = () => {
+          const dataUrl = typeof fileReader.result === 'string' ? fileReader.result : '';
+          upsertDraft(meta.assignmentId, meta.questionId, {
+            questionId: meta.questionId,
+            audioBase64: dataUrl,
+            audioPreviewUrl: previewUrl,
+          });
+        };
+        fileReader.readAsDataURL(blob);
+
+        stream.getTracks().forEach((track) => track.stop());
+        chunksRef.current = [];
+        streamRef.current = null;
+        mediaRecorderRef.current = null;
+        recordingMetaRef.current = null;
+        setRecordingQuestionId(null);
+      };
+
+      recorder.start();
+    } catch {
+      setStatusMessage('تعذر تشغيل الميكروفون. تأكد من منح صلاحية التسجيل.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const removeAudioDraft = (assignmentId: string, questionId: string) => {
+    setDraftAnswersByAssignment((prev) => {
+      const currentAssignmentAnswers = prev[assignmentId] || {};
+      const currentAnswer = currentAssignmentAnswers[questionId];
+      if (!currentAnswer) return prev;
+
+      if (currentAnswer.audioPreviewUrl) {
+        URL.revokeObjectURL(currentAnswer.audioPreviewUrl);
+      }
+
+      return {
+        ...prev,
+        [assignmentId]: {
+          ...currentAssignmentAnswers,
+          [questionId]: {
+            ...currentAnswer,
+            audioBase64: undefined,
+            audioPreviewUrl: undefined,
+          },
+        },
+      };
+    });
+  };
+
+  const submitSelectedAssignment = async () => {
+    if (!selectedAssignment || !selectedLesson || !student) return;
+
+    const assignmentDraft = draftAnswersByAssignment[selectedAssignment.id] || {};
+
+    const hasMissing = selectedLesson.questions.some((question) => {
+      const answer = assignmentDraft[question.id];
+      if (question.type === 'text') return !answer?.answerText?.trim();
+      if (question.type === 'multiple_choice') return answer?.selectedOptionIndex === undefined;
+      return !answer?.audioBase64;
+    });
+
+    if (hasMissing) {
+      setStatusMessage('يرجى حل جميع الأسئلة قبل الإرسال.');
+      return;
+    }
+
+    const submissionId = `${selectedAssignment.id}_sub_${Date.now()}`;
+    const submission: TajweedSubmission = {
+      id: submissionId,
+      assignmentId: selectedAssignment.id,
+      studentId: student.id,
+      submittedAt: Date.now(),
+      answers: selectedLesson.questions.map((question) => {
+        const draft = assignmentDraft[question.id] || { questionId: question.id };
+        return {
+          questionId: question.id,
+          answerText: draft.answerText,
+          selectedOptionIndex: draft.selectedOptionIndex,
+          audioBase64: draft.audioBase64,
+        };
+      }),
+    };
+
+    setIsSubmitting(true);
+    setStatusMessage('');
+
+    try {
+      await axios.put(`${API_BASE}/appState/tajweedSubmissions/${encodeURIComponent(submissionId)}.json`, submission);
+      await axios.patch(`${API_BASE}/appState/tajweedAssignments/${encodeURIComponent(selectedAssignment.id)}.json`, {
+        status: 'submitted',
+        submissionId,
+      });
+
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tajweedSubmissions: {
+            ...(prev.tajweedSubmissions || {}),
+            [submissionId]: submission,
+          },
+          tajweedAssignments: {
+            ...(prev.tajweedAssignments || {}),
+            [selectedAssignment.id]: {
+              ...selectedAssignment,
+              status: 'submitted',
+              submissionId,
+            },
+          },
+        };
+      });
+
+      setStatusMessage('تم إرسال الواجب بنجاح. بارك الله فيك.');
+      setActiveTab('history');
+    } catch {
+      setStatusMessage('تعذر إرسال الإجابات حالياً. حاول مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="portal-shell" dir="rtl">
+        <div className="loading-ring" />
+      </div>
+    );
   }
 
-  presentDays.sort((a, b) => a - b);
-  const studentReport = student ? lastReports?.[student.id] : null;
+  if (error || !data || !student) {
+    return (
+      <div className="portal-shell" dir="rtl">
+        <div className="alert-card">
+          <AlertCircle size={44} className="text-rose-500" />
+          <h1 className="text-2xl font-bold">تعذر فتح الصفحة</h1>
+          <p className="text-slate-600">{error || 'لا يوجد سجل للطالب المطلوب.'}</p>
+          <button onClick={fetchData} className="rounded-2xl bg-slate-900 px-5 py-3 text-white">إعادة المحاولة</button>
+        </div>
+      </div>
+    );
+  }
 
-  const getScheduleLink = (durationStr?: string) => {
-    if (!durationStr) return null;
-    const normalized = durationStr.toString().replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString()).trim();
-    if (normalized === '30') return 'https://zcal.co/i/tYjuo5JV';
-    if (normalized === '45') return 'https://zcal.co/i/ThNRhEes';
-    if (normalized === '60') return 'https://zcal.co/i/_yKMg4po';
-    return null;
-  };
-  const scheduleLink = getScheduleLink(student?.duration);
+  const scheduleLink = getScheduleLink(student.duration);
+  const studentReport = data.lastReports?.[student.id];
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-12 relative" dir="rtl">
-
-      {/* Joyride Tour Component */}
-      <Joyride
-        steps={tourSteps}
-        run={runTour}
-        continuous
-        showProgress
-        showSkipButton
-        callback={handleJoyrideCallback}
-        locale={{
-          back: 'السابق',
-          close: 'إغلاق',
-          last: 'إنهاء الجولة',
-          next: 'التالي',
-          skip: 'تخطي'
-        }}
-        styles={{
-          options: {
-            primaryColor: '#2563eb',
-            textColor: '#1e293b',
-            zIndex: 1000,
-            arrowColor: '#fff',
-            backgroundColor: '#fff',
-            overlayColor: 'rgba(0, 0, 0, 0.5)',
-          },
-          tooltipContainer: {
-            textAlign: 'right',
-            direction: 'rtl',
-            fontFamily: 'inherit',
-          },
-          buttonNext: {
-            backgroundColor: '#2563eb',
-            borderRadius: '8px',
-            fontSize: '14px',
-            padding: '8px 16px',
-            fontFamily: 'inherit',
-          },
-          buttonBack: {
-            marginRight: 0,
-            marginLeft: '10px',
-            color: '#64748b',
-            fontSize: '14px',
-            fontFamily: 'inherit',
-          },
-          buttonSkip: {
-            color: '#94a3b8',
-            fontSize: '14px',
-            fontFamily: 'inherit',
-          }
-        }}
-      />
-
-      <FloatingHelpButton />
-
-      {/* Header */}
-      <motion.div
-        id="tour-header"
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="bg-blue-600 text-white pt-12 pb-24 px-6 rounded-b-[40px] shadow-lg relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mx-20 -my-20"></div>
-        <div className="relative z-10 max-w-lg mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-2 break-words">{student?.name}</h1>
-          <p className="text-blue-100/90 text-lg flex items-center justify-center gap-2">
-            <BookOpen size={18} /> {student?.academy}
-          </p>
+    <div className="portal-shell" dir="rtl">
+      <motion.header className="portal-header" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+        <div>
+          <p className="text-sky-100/90 text-sm mb-1">بوابة الطالب</p>
+          <h1 className="text-3xl font-extrabold mb-1 break-words">{student.name}</h1>
+          <p className="text-sky-100/90 flex items-center gap-2"><BookOpen size={18} /> {student.academy}</p>
         </div>
-      </motion.div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5 sm:mt-0">
+          {student.zoomLink && (
+            <a href={student.zoomLink} target="_blank" rel="noreferrer" className="action-chip">
+              <Video size={16} /> الالتحاق بالحصة
+            </a>
+          )}
+          {scheduleLink && (
+            <a href={scheduleLink} target="_blank" rel="noreferrer" className="action-chip">
+              <Calendar size={16} /> جدولة حصة
+            </a>
+          )}
+        </div>
+      </motion.header>
 
-      <div className="max-w-lg mx-auto px-4 -mt-16 relative z-20 space-y-6">
-
-        {/* Action Links */}
-        {(student?.zoomLink || scheduleLink) && (
-          <motion.div
-            id="tour-actions"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            className={`grid gap-4 ${student?.zoomLink && scheduleLink ? 'grid-cols-2' : 'grid-cols-1'}`}
-          >
-            {student?.zoomLink && (
-              <a
-                href={student.zoomLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white rounded-3xl p-4 shadow-md shadow-blue-500/10 border border-blue-100 flex flex-col items-center justify-center gap-3 hover:bg-blue-50 transition-all group active:scale-95"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-sm">
-                  <Video size={28} />
-                </div>
-                <span className="font-bold text-slate-700 text-lg">الالتحاق بالحصة</span>
-              </a>
-            )}
-
-            {scheduleLink && (
-              <a
-                href={scheduleLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white rounded-3xl p-4 shadow-md shadow-purple-500/10 border border-purple-100 flex flex-col items-center justify-center gap-3 hover:bg-purple-50 transition-all group active:scale-95"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-sm">
-                  <Calendar size={28} />
-                </div>
-                <span className="font-bold text-slate-700 text-lg">جدولة حصة</span>
-              </a>
-            )}
-          </motion.div>
-        )}
-
-        {/* Month & Year Info */}
-        <motion.div
-          id="tour-month"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between"
-        >
-          {/* Prev arrow */}
-          <button
-            onClick={goPrev}
-            disabled={!canGoPrev}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-              canGoPrev
-                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95'
-                : 'bg-slate-50 text-slate-300 cursor-not-allowed'
-            }`}
-            title="الشهر السابق"
-          >
-            <ChevronRight size={20} />
-          </button>
-
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-              <Calendar size={24} />
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-slate-500 font-medium mb-1">
-                {canGoNext ? 'شهر سابق' : 'الشهر الحالي'}
-              </p>
-              <p className="text-xl font-bold text-slate-800">{arabicMonths[selectedMonth]} {toHindiDigits(selectedYear)}</p>
-            </div>
-          </div>
-
-          {/* Next arrow */}
-          <button
-            onClick={goNext}
-            disabled={!canGoNext}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-              canGoNext
-                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95'
-                : 'bg-slate-50 text-slate-300 cursor-not-allowed'
-            }`}
-            title="الشهر التالي"
-          >
-            <ChevronLeft size={20} />
-          </button>
-        </motion.div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <motion.div
-            id="tour-stats"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center"
-          >
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
-              <CheckCircle2 size={24} />
-            </div>
-            <h3 className="text-3xl font-bold text-slate-800 mb-1">{toHindiDigits(visitsCount)}</h3>
-            <p className="text-slate-500 text-sm font-medium">عدد الحصص</p>
-          </motion.div>
-
-          {/* Present Days List Mini */}
-          <motion.div
-            id="tour-present-days"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center"
-          >
-            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Clock size={24} />
-            </div>
-            <p className="text-slate-500 text-sm font-medium mb-2">أيام الحضور</p>
-            <div className="flex flex-wrap justify-center gap-1.5 h-12 overflow-y-auto">
-              {presentDays.length > 0 ? presentDays.map(d => (
-                <span key={d} className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-1 rounded-md">
-                  {toHindiDigits(d)}
-                </span>
-              )) : (
-                <span className="text-slate-400 text-sm">لم يحضر بعد</span>
-              )}
-            </div>
-          </motion.div>
+      <main className="max-w-6xl mx-auto px-4 pb-10 space-y-5">
+        <div className="tab-strip">
+          <button onClick={() => setActiveTab('overview')} className={activeTab === 'overview' ? 'tab-btn tab-btn-active' : 'tab-btn'}>لوحة الطالب</button>
+          <button onClick={() => setActiveTab('assignments')} className={activeTab === 'assignments' ? 'tab-btn tab-btn-active' : 'tab-btn'}>واجبات التجويد</button>
+          <button onClick={() => setActiveTab('history')} className={activeTab === 'history' ? 'tab-btn tab-btn-active' : 'tab-btn'}>سجل التجويد</button>
         </div>
 
-        {/* Latest Report Section */}
-        {studentReport && (
-          <motion.div
-            id="tour-report"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="bg-white rounded-3xl p-1 shadow-sm border border-slate-100 overflow-hidden"
-          >
-            <div className="p-5 border-b border-slate-50 flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                <FileText size={20} />
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.section key="overview" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
+              <div className="glass-card flex items-center justify-between">
+                <button disabled={!canGoPrev} onClick={() => {
+                  if (!canGoPrev) return;
+                  const prev = availableMonths[selectedMonthIndex - 1];
+                  setSelectedMonth(prev.month);
+                  setSelectedYear(prev.year);
+                }} className="nav-month-btn">السابق</button>
+
+                <div className="text-center">
+                  <p className="text-slate-500 text-sm">الشهر المعروض</p>
+                  <p className="text-2xl font-bold text-slate-900">{arabicMonths[selectedMonth]} {toHindiDigits(selectedYear)}</p>
+                </div>
+
+                <button disabled={!canGoNext} onClick={() => {
+                  if (!canGoNext) return;
+                  const next = availableMonths[selectedMonthIndex + 1];
+                  setSelectedMonth(next.month);
+                  setSelectedYear(next.year);
+                }} className="nav-month-btn">التالي</button>
               </div>
-              <h2 className="text-lg font-bold text-slate-800">آخر تقرير (مهام اليوم)</h2>
-            </div>
 
-            <div className="p-6 space-y-4">
-              {/* Reading New */}
-              {studentReport.sectionToggles?.readingNew && studentReport.readingNew && (
-                <div className="bg-slate-50 p-4 rounded-2xl">
-                  <h3 className="text-blue-600 font-bold mb-2">📖 الجديد (تلاوة)</h3>
-                  <p className="text-slate-700 text-sm leading-relaxed">
-                    سورة {studentReport.readingNew.surah}
-                    {studentReport.readingNew.mode === 'ayah' && studentReport.readingNew.fromAyah && ` من آية ${toHindiDigits(studentReport.readingNew.fromAyah)}`}
-                    {studentReport.readingNew.mode === 'ayah' && studentReport.readingNew.toAyah && ` إلى آية ${toHindiDigits(studentReport.readingNew.toAyah)}`}
-                  </p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="glass-card text-center">
+                  <CheckCircle2 className="mx-auto text-emerald-600 mb-2" size={28} />
+                  <p className="text-slate-500">عدد الحصص</p>
+                  <p className="text-4xl font-black text-slate-900">{toHindiDigits(visitsData.visitsCount)}</p>
+                </div>
+                <div className="glass-card text-center">
+                  <Clock3 className="mx-auto text-amber-600 mb-2" size={28} />
+                  <p className="text-slate-500 mb-3">أيام الحضور</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {visitsData.presentDays.length ? visitsData.presentDays.map((day) => (
+                      <span key={day} className="rounded-full bg-slate-900 text-white px-3 py-1 text-sm">{toHindiDigits(day)}</span>
+                    )) : <span className="text-slate-400">لا توجد بيانات</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-card">
+                <h2 className="text-xl font-bold mb-3 flex items-center gap-2"><FileText size={18} /> آخر تقرير</h2>
+                {studentReport ? (
+                  <div className="space-y-3 text-sm">
+                    {studentReport.readingNew?.surah && <p><strong>الجديد:</strong> {studentReport.readingNew.surah}</p>}
+                    {studentReport.readingRev?.surah && <p><strong>المراجعة:</strong> {studentReport.readingRev.surah}</p>}
+                    {studentReport.homeworkNew?.surah && <p><strong>واجب الحفظ:</strong> {studentReport.homeworkNew.surah}</p>}
+                  </div>
+                ) : <p className="text-slate-500">لا يوجد تقرير محفوظ بعد.</p>}
+              </div>
+            </motion.section>
+          )}
+
+          {activeTab === 'assignments' && (
+            <motion.section key="assignments" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="grid lg:grid-cols-[320px_1fr] gap-5">
+              <aside className="glass-card h-fit">
+                <h2 className="text-xl font-bold mb-3">الواجبات المسندة</h2>
+                <div className="space-y-3">
+                  {pendingAssignments.length === 0 && <p className="text-slate-500">لا يوجد واجب تجويد حاليًا.</p>}
+                  {pendingAssignments.map((assignment) => (
+                    <button key={assignment.id} onClick={() => setSelectedAssignmentId(assignment.id)} className={selectedAssignmentId === assignment.id ? 'assignment-item assignment-item-active' : 'assignment-item'}>
+                      <p className="font-bold text-right">{bank[assignment.lessonId]?.title || 'درس غير متاح'}</p>
+                      <p className="text-xs text-slate-500 text-right">تاريخ الإسناد: {toDate(assignment.assignedAt)}</p>
+                      <p className="text-xs text-slate-500 text-right">الموعد النهائي: {toDate(assignment.deadline)}</p>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+
+              <div className="glass-card">
+                {!selectedLesson || !selectedAssignment ? (
+                  <p className="text-slate-500">اختر واجبًا من القائمة لبدء الحل.</p>
+                ) : (
+                  <>
+                    <div className="border-b border-slate-200 pb-4 mb-5">
+                      <h3 className="text-2xl font-extrabold">{selectedLesson.title}</h3>
+                      <p className="text-slate-500 mt-1">أجب على جميع الأسئلة ثم اضغط إرسال.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {selectedLesson.questions.map((question, idx) => {
+                        const answer = draftAnswersByAssignment[selectedAssignment.id]?.[question.id];
+                        return (
+                          <div key={question.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                            <p className="font-bold mb-3">{idx + 1}. {question.text}</p>
+
+                            {question.type === 'text' && (
+                              <textarea
+                                value={answer?.answerText || ''}
+                                onChange={(event) => upsertDraft(selectedAssignment.id, question.id, { questionId: question.id, answerText: event.target.value })}
+                                placeholder="اكتب إجابتك هنا"
+                                className="w-full rounded-xl border border-slate-300 p-3 min-h-24 outline-none focus:border-sky-500"
+                              />
+                            )}
+
+                            {question.type === 'multiple_choice' && (
+                              <div className="space-y-2">
+                                {(question.options || []).map((option, optionIdx) => (
+                                  <label key={`${question.id}_${optionIdx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      checked={answer?.selectedOptionIndex === optionIdx}
+                                      onChange={() => upsertDraft(selectedAssignment.id, question.id, {
+                                        questionId: question.id,
+                                        selectedOptionIndex: optionIdx,
+                                      })}
+                                    />
+                                    <span>{option}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+
+                            {question.type === 'audio' && (
+                              <div className="space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {recordingQuestionId === question.id ? (
+                                    <button onClick={stopRecording} className="record-btn bg-rose-600 text-white">
+                                      <PauseCircle size={16} /> إيقاف التسجيل
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => startRecording(selectedAssignment.id, question.id)} className="record-btn bg-sky-700 text-white">
+                                      <Mic size={16} /> بدء التسجيل
+                                    </button>
+                                  )}
+                                  {!!answer?.audioBase64 && (
+                                    <button onClick={() => removeAudioDraft(selectedAssignment.id, question.id)} className="record-btn bg-slate-200 text-slate-700">
+                                      حذف التسجيل
+                                    </button>
+                                  )}
+                                </div>
+                                {!!answer?.audioPreviewUrl && (
+                                  <audio controls src={answer.audioPreviewUrl} className="w-full" />
+                                )}
+                                {!answer?.audioPreviewUrl && <p className="text-sm text-slate-500">سجل تلاوتك أو نطقك لهذا السؤال.</p>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {statusMessage && (
+                      <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-amber-800 text-sm">
+                        {statusMessage}
+                      </div>
+                    )}
+
+                    <button disabled={isSubmitting} onClick={submitSelectedAssignment} className="mt-5 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white px-5 py-4 text-lg font-bold flex items-center justify-center gap-2">
+                      <Send size={18} /> {isSubmitting ? 'جاري الإرسال...' : 'إرسال الواجب'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.section>
+          )}
+
+          {activeTab === 'history' && (
+            <motion.section key="history" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
+              {historyAssignments.length === 0 && (
+                <div className="glass-card">
+                  <p className="text-slate-500">لا يوجد سجل تجويد حتى الآن.</p>
                 </div>
               )}
 
-              {/* Reading Revision */}
-              {studentReport.sectionToggles?.readingRev && studentReport.readingRev && (
-                <div className="bg-slate-50 p-4 rounded-2xl">
-                  <h3 className="text-emerald-600 font-bold mb-2">🔄 المراجعة</h3>
-                  <p className="text-slate-700 text-sm leading-relaxed">
-                    سورة {studentReport.readingRev.surah}
-                  </p>
-                </div>
-              )}
+              {historyAssignments.map((assignment) => {
+                const lesson = bank[assignment.lessonId];
+                const submission = assignment.submissionId ? submissions[assignment.submissionId] : undefined;
+                const maxTotal = lesson?.questions?.reduce((total, question) => total + (question.points || 0), 0) || 0;
 
-              {/* Homework New */}
-              {studentReport.sectionToggles?.homeworkNew && studentReport.homeworkNew && (
-                <div className="bg-orange-50 p-4 rounded-2xl">
-                  <h3 className="text-orange-600 font-bold mb-2">📝 واجب (حفظ جديد)</h3>
-                  <p className="text-slate-700 text-sm leading-relaxed">
-                    سورة {studentReport.homeworkNew.surah}
-                    {studentReport.homeworkNew.mode === 'ayah' && studentReport.homeworkNew.from && ` من آية ${toHindiDigits(studentReport.homeworkNew.from)}`}
-                    {studentReport.homeworkNew.mode === 'ayah' && studentReport.homeworkNew.to && ` إلى آية ${toHindiDigits(studentReport.homeworkNew.to)}`}
-                  </p>
-                </div>
-              )}
+                return (
+                  <div key={assignment.id} className="glass-card">
+                    <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
+                      <div>
+                        <h3 className="text-xl font-extrabold">{lesson?.title || 'درس محذوف'}</h3>
+                        <p className="text-sm text-slate-500">تاريخ الإسناد: {toDate(assignment.assignedAt)}</p>
+                        {submission && <p className="text-sm text-slate-500">تاريخ الإرسال: {toDate(submission.submittedAt)}</p>}
+                      </div>
+                      <span className={assignment.status === 'graded' ? 'rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-sm font-bold' : 'rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-sm font-bold'}>
+                        {assignment.status === 'graded' ? 'تم التصحيح' : 'قيد التصحيح'}
+                      </span>
+                    </div>
 
-              {!studentReport.sectionToggles?.readingNew && !studentReport.sectionToggles?.readingRev && !studentReport.sectionToggles?.homeworkNew && (
-                <p className="text-center text-slate-500 italic text-sm">لا يتوفر تفاصيل للتقرير الأخير</p>
-              )}
-            </div>
-          </motion.div>
-        )}
+                    {submission?.overallNote && (
+                      <div className="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3 text-sky-900 mb-3">
+                        <p className="font-semibold">ملاحظة عامة من المعلم:</p>
+                        <p>{submission.overallNote}</p>
+                      </div>
+                    )}
 
-      </div>
+                    {assignment.status === 'graded' && (
+                      <p className="font-bold mb-3 text-lg">
+                        الدرجة النهائية: {toHindiDigits(submission?.totalGrade ?? 0)}{maxTotal ? ` / ${toHindiDigits(maxTotal)}` : ''}
+                      </p>
+                    )}
+
+                    <div className="space-y-3">
+                      {lesson?.questions.map((question, index) => {
+                        const answer = submission?.answers.find((item) => item.questionId === question.id);
+                        const selectedChoice = question.options?.[answer?.selectedOptionIndex ?? -1];
+
+                        return (
+                          <div key={question.id} className="rounded-xl border border-slate-200 p-3 bg-white/80">
+                            <p className="font-bold mb-2">{index + 1}. {question.text}</p>
+
+                            {question.type === 'text' && (
+                              <p className="text-slate-700">{answer?.answerText || 'لا توجد إجابة نصية.'}</p>
+                            )}
+
+                            {question.type === 'multiple_choice' && (
+                              <p className="text-slate-700">الإجابة المختارة: {selectedChoice || 'غير محددة'}</p>
+                            )}
+
+                            {question.type === 'audio' && (
+                              <div className="space-y-2">
+                                {answer?.audioBase64 ? (
+                                  <audio controls src={answer.audioBase64} className="w-full" />
+                                ) : (
+                                  <p className="text-slate-500 flex items-center gap-2"><FileAudio size={16} /> التسجيل الصوتي محفوظ لدى الإدارة.</p>
+                                )}
+                              </div>
+                            )}
+
+                            {assignment.status === 'graded' && (
+                              <div className="mt-2 text-sm text-slate-700 space-y-1">
+                                <p>درجة السؤال: <strong>{toHindiDigits(answer?.grade ?? 0)}{question.points ? ` / ${toHindiDigits(question.points)}` : ''}</strong></p>
+                                {answer?.teacherNote && <p>ملاحظة المعلم: {answer.teacherNote}</p>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 }
