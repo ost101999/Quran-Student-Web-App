@@ -238,7 +238,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     const STATUS = {
       PRESENT: '1',
@@ -269,6 +269,8 @@
       { id: 'tajweed-meem-idgham', ar: 'الإدغام الشفوي', en: 'idgham shafawi' },
       { id: 'tajweed-meem-izhar', ar: 'الإظهار الشفوي', en: 'izhar shafawi' }
     ];
+
+    const API_BASE = 'https://quran-classes-tracker-default-rtdb.firebaseio.com';
 
     const parseReport = (text) => {
       if (!text) return [];
@@ -408,9 +410,19 @@
       const [error, setError] = useState('');
       const [selectedReport, setSelectedReport] = useState(null);
       const [selectedTajweedQuiz, setSelectedTajweedQuiz] = useState(null);
+      const [quizDraftAnswers, setQuizDraftAnswers] = useState({});
+      const [quizValidationErrors, setQuizValidationErrors] = useState({});
+      const [quizStatusMessage, setQuizStatusMessage] = useState('');
+      const [isQuizSubmitting, setIsQuizSubmitting] = useState(false);
+      const [recordingQuestionKey, setRecordingQuestionKey] = useState(null);
       const [showSchedule, setShowSchedule] = useState(false);
       const [glowReportDay, setGlowReportDay] = useState(null);
       const [tick, setTick] = useState(0); // updates every minute for countdown
+
+      const mediaRecorderRef = useRef(null);
+      const streamRef = useRef(null);
+      const chunksRef = useRef([]);
+      const recordingMetaRef = useRef(null);
 
       // Tour state
       const [isTourMode, setIsTourMode] = useState(false);
@@ -436,7 +448,7 @@
           }
 
           try {
-            const response = await axios.get('https://quran-classes-tracker-default-rtdb.firebaseio.com/appState.json');
+            const response = await axios.get(`${API_BASE}/appState.json`);
             setData(response.data);
           } catch (err) {
             console.error(err);
@@ -456,6 +468,18 @@
       }, []);
 
       useEffect(() => {
+        return () => {
+          if (mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.stop();
+          }
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+          }
+        };
+      }, []);
+
+      useEffect(() => {
         if (!loading && window.lucide) {
           window.lucide.createIcons();
         }
@@ -466,7 +490,7 @@
         const handleKeyDown = (e) => {
           if (e.key === 'Escape') {
             setSelectedReport(null);
-            setSelectedTajweedQuiz(null);
+            closeTajweedQuiz();
             setShowSchedule(false);
           }
         };
@@ -735,6 +759,25 @@ https://is.gd/oL6gEO`;
         openQuiz: "فتح الاختبار",
         tajweedQuizTitle: "اختبار التجويد",
         noTajweedQuiz: "لا يوجد اختبار تجويد متاح لهذا الدرس حالياً.",
+        quizIntro: "أجب عن كل سؤال ثم اضغط إرسال الواجب.",
+        questionTypeText: "سؤال كتابي",
+        questionTypeChoice: "اختيار من متعدد",
+        questionTypeAudio: "إجابة صوتية",
+        writeAnswer: "اكتب إجابتك هنا...",
+        startRecording: "بدء التسجيل",
+        stopRecording: "إيقاف التسجيل",
+        deleteRecording: "حذف التسجيل",
+        recordingHint: "سجّل تلاوتك أو نطقك لهذا السؤال.",
+        allQuestionsRequired: "يرجى حل جميع الأسئلة قبل الإرسال.",
+        fieldRequired: "هذا السؤال مطلوب.",
+        recordingNotSupported: "هذا المتصفح لا يدعم التسجيل الصوتي.",
+        recordingAlreadyRunning: "يوجد تسجيل جارٍ. أوقف التسجيل الحالي أولاً.",
+        recordingPermissionDenied: "تعذر تشغيل الميكروفون. تأكد من منح صلاحية التسجيل.",
+        quizPreviewOnly: "هذا الاختبار للعرض فقط لأنه غير مربوط بواجب مسند حالياً.",
+        submitQuiz: "إرسال الواجب",
+        submittingQuiz: "جارٍ الإرسال...",
+        submitSuccess: "تم إرسال الإجابات بنجاح. بارك الله فيك.",
+        submitFailed: "تعذر إرسال الإجابات حالياً. حاول مرة أخرى.",
         assignedAt: "تاريخ الإسناد",
         questionsCount: "عدد الأسئلة",
         homeworkNextClass: "الواجب والمطلوب",
@@ -803,6 +846,25 @@ https://is.gd/oL6gEO`;
         openQuiz: "Open Quiz",
         tajweedQuizTitle: "Tajweed Quiz",
         noTajweedQuiz: "No Tajweed quiz is currently available for this lesson.",
+        quizIntro: "Answer all questions, then submit your assignment.",
+        questionTypeText: "Written",
+        questionTypeChoice: "Multiple Choice",
+        questionTypeAudio: "Audio Response",
+        writeAnswer: "Write your answer here...",
+        startRecording: "Start Recording",
+        stopRecording: "Stop Recording",
+        deleteRecording: "Delete Recording",
+        recordingHint: "Record your recitation or pronunciation for this question.",
+        allQuestionsRequired: "Please answer all questions before submitting.",
+        fieldRequired: "This question is required.",
+        recordingNotSupported: "Your browser does not support audio recording.",
+        recordingAlreadyRunning: "A recording is already running. Stop it first.",
+        recordingPermissionDenied: "Unable to access the microphone. Please allow microphone permission.",
+        quizPreviewOnly: "This quiz is preview-only because it is not linked to an assigned task.",
+        submitQuiz: "Submit Assignment",
+        submittingQuiz: "Submitting...",
+        submitSuccess: "Answers submitted successfully.",
+        submitFailed: "Unable to submit answers right now. Please try again.",
         assignedAt: "Assigned At",
         questionsCount: "Questions",
         homeworkNextClass: "Homework & Next Class",
@@ -1360,18 +1422,265 @@ https://is.gd/oL6gEO`;
         return matched || pendingTajweedAssignments[0];
       };
 
+      const normalizeQuestionType = (question) => {
+        const rawType = String(question?.type || '').toLowerCase();
+        if (rawType === 'multiple_choice' || rawType.includes('multiple')) return 'multiple_choice';
+        if (rawType === 'audio' || rawType.includes('voice') || rawType.includes('mic')) return 'audio';
+        if (Array.isArray(question?.options) && question.options.length > 0) return 'multiple_choice';
+        return 'text';
+      };
+
+      const getQuestionKey = (question, index) => String(question?.id || `q_${index}`);
+
+      const clearQuizValidationForQuestion = (questionKey) => {
+        setQuizValidationErrors((prev) => {
+          if (!prev[questionKey]) return prev;
+          const next = { ...prev };
+          delete next[questionKey];
+          return next;
+        });
+      };
+
+      const resetQuizDraftState = () => {
+        setQuizDraftAnswers({});
+        setQuizValidationErrors({});
+        setQuizStatusMessage('');
+        setIsQuizSubmitting(false);
+        setRecordingQuestionKey(null);
+      };
+
+      const upsertQuizDraftAnswer = (questionKey, questionId, updates) => {
+        setQuizDraftAnswers((prev) => ({
+          ...prev,
+          [questionKey]: {
+            ...(prev[questionKey] || {}),
+            questionId,
+            ...updates,
+          }
+        }));
+        clearQuizValidationForQuestion(questionKey);
+      };
+
+      const closeTajweedQuiz = () => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          recordingMetaRef.current = null;
+          mediaRecorderRef.current.stop();
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        mediaRecorderRef.current = null;
+        recordingMetaRef.current = null;
+        chunksRef.current = [];
+        resetQuizDraftState();
+        setSelectedTajweedQuiz(null);
+      };
+
+      const stopQuizRecording = () => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+      };
+
+      const startQuizRecording = async (questionKey, questionId) => {
+        setQuizStatusMessage('');
+
+        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+          setQuizStatusMessage(t.recordingNotSupported);
+          return;
+        }
+
+        if (recordingQuestionKey && recordingQuestionKey !== questionKey) {
+          setQuizStatusMessage(t.recordingAlreadyRunning);
+          return;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorder = new MediaRecorder(stream);
+
+          chunksRef.current = [];
+          streamRef.current = stream;
+          mediaRecorderRef.current = recorder;
+          recordingMetaRef.current = { questionKey, questionId };
+          setRecordingQuestionKey(questionKey);
+
+          recorder.ondataavailable = (event) => {
+            if (event.data?.size > 0) {
+              chunksRef.current.push(event.data);
+            }
+          };
+
+          recorder.onstop = () => {
+            const meta = recordingMetaRef.current;
+            const chunks = [...chunksRef.current];
+
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach((track) => track.stop());
+            }
+
+            mediaRecorderRef.current = null;
+            streamRef.current = null;
+            chunksRef.current = [];
+            recordingMetaRef.current = null;
+            setRecordingQuestionKey(null);
+
+            if (!meta || !chunks.length) return;
+
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+              if (!dataUrl) return;
+              upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
+            };
+            reader.readAsDataURL(blob);
+          };
+
+          recorder.start();
+        } catch (err) {
+          console.error(err);
+          setQuizStatusMessage(t.recordingPermissionDenied);
+        }
+      };
+
+      const removeQuizAudioDraft = (questionKey, questionId) => {
+        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined });
+      };
+
+      const submitTajweedQuiz = async () => {
+        if (!selectedTajweedQuiz || selectedTajweedQuiz.missing) return;
+
+        if (!selectedTajweedQuiz.assignmentId || isTourMode) {
+          setQuizStatusMessage(t.quizPreviewOnly);
+          return;
+        }
+
+        const questions = Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : [];
+        const nextErrors = {};
+
+        questions.forEach((question, index) => {
+          const questionKey = getQuestionKey(question, index);
+          const draft = quizDraftAnswers[questionKey] || {};
+          const questionType = normalizeQuestionType(question);
+
+          if (questionType === 'multiple_choice') {
+            if (typeof draft.selectedOptionIndex !== 'number') {
+              nextErrors[questionKey] = true;
+            }
+            return;
+          }
+
+          if (questionType === 'audio') {
+            if (!draft.audioBase64) {
+              nextErrors[questionKey] = true;
+            }
+            return;
+          }
+
+          if (!String(draft.answerText || '').trim()) {
+            nextErrors[questionKey] = true;
+          }
+        });
+
+        if (Object.keys(nextErrors).length > 0) {
+          setQuizValidationErrors(nextErrors);
+          setQuizStatusMessage(t.allQuestionsRequired);
+          return;
+        }
+
+        setQuizValidationErrors({});
+        setQuizStatusMessage('');
+        setIsQuizSubmitting(true);
+
+        const submissionId = `${selectedTajweedQuiz.assignmentId}_sub_${Date.now()}`;
+        const answers = questions.map((question, index) => {
+          const questionKey = getQuestionKey(question, index);
+          const draft = quizDraftAnswers[questionKey] || {};
+          return {
+            questionId: question?.id || questionKey,
+            answerText: draft.answerText,
+            selectedOptionIndex: draft.selectedOptionIndex,
+            audioBase64: draft.audioBase64,
+          };
+        });
+
+        const submission = {
+          id: submissionId,
+          assignmentId: selectedTajweedQuiz.assignmentId,
+          studentId: student.id,
+          submittedAt: Date.now(),
+          answers,
+        };
+
+        try {
+          await axios.put(`${API_BASE}/appState/tajweedSubmissions/${encodeURIComponent(submissionId)}.json`, submission);
+          await axios.patch(`${API_BASE}/appState/tajweedAssignments/${encodeURIComponent(selectedTajweedQuiz.assignmentId)}.json`, {
+            status: 'submitted',
+            submissionId,
+          });
+
+          setData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              tajweedSubmissions: {
+                ...(prev.tajweedSubmissions || {}),
+                [submissionId]: submission,
+              },
+              tajweedAssignments: {
+                ...(prev.tajweedAssignments || {}),
+                [selectedTajweedQuiz.assignmentId]: {
+                  ...(prev.tajweedAssignments?.[selectedTajweedQuiz.assignmentId] || {}),
+                  status: 'submitted',
+                  submissionId,
+                }
+              }
+            };
+          });
+
+          setQuizStatusMessage(t.submitSuccess);
+
+          setTimeout(() => {
+            closeTajweedQuiz();
+          }, 700);
+        } catch (err) {
+          console.error(err);
+          setQuizStatusMessage(t.submitFailed);
+        } finally {
+          setIsQuizSubmitting(false);
+        }
+      };
+
+      const openTajweedQuiz = (payload) => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        mediaRecorderRef.current = null;
+        recordingMetaRef.current = null;
+        chunksRef.current = [];
+        resetQuizDraftState();
+        setSelectedTajweedQuiz(payload);
+      };
+
       const openTajweedQuizFromSection = (section) => {
         const assignment = findMatchingPendingTajweedAssignment(section);
 
         if (!assignment) {
           const sectionResolved = resolveBankLessonFromSection(section);
           if (!sectionResolved) {
-            setSelectedTajweedQuiz({ missing: true });
+            openTajweedQuiz({ missing: true });
             return;
           }
 
-          setSelectedTajweedQuiz({
+          openTajweedQuiz({
             assignmentId: null,
+            lessonId: sectionResolved.lessonId,
             lessonTitle: sectionResolved.lesson?.title || section?.content || t.tajweedSection,
             assignedAt: undefined,
             questions: Array.isArray(sectionResolved.lesson?.questions) ? sectionResolved.lesson.questions : []
@@ -1380,8 +1689,9 @@ https://is.gd/oL6gEO`;
         }
 
         const lesson = assignment.resolvedLesson;
-        setSelectedTajweedQuiz({
+        openTajweedQuiz({
           assignmentId: assignment?.id,
+          lessonId: assignment?.resolvedLessonId,
           lessonTitle: lesson?.title || section?.content || t.tajweedSection,
           assignedAt: assignment?.assignedAt,
           questions: Array.isArray(lesson?.questions) ? lesson.questions : []
@@ -2054,7 +2364,7 @@ https://is.gd/oL6gEO`;
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
               <div className="glass-panel w-full max-w-lg rounded-3xl p-5 relative animate-fade border border-teal-400/30 shadow-[0_0_25px_rgba(20,184,166,0.15)]">
                 <button
-                  onClick={() => setSelectedTajweedQuiz(null)}
+                  onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
                 >
                   <i data-lucide="x" className="w-5 h-5"></i>
@@ -2070,7 +2380,7 @@ https://is.gd/oL6gEO`;
                 {selectedTajweedQuiz.missing ? (
                   <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
                 ) : (
-                  <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                  <div className="space-y-3 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
                     <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 p-3">
                       <p className="font-bold text-teal-200">{selectedTajweedQuiz.lessonTitle}</p>
                       <p className="text-xs text-slate-300 mt-1">{t.assignedAt}: {(() => {
@@ -2081,21 +2391,145 @@ https://is.gd/oL6gEO`;
                           ? `${toArabicNums(d.getDate())} ${arabicMonthNames[d.getMonth()]} ${toArabicNums(d.getFullYear())}`
                           : `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
                       })()}</p>
-                      <p className="text-xs text-slate-300">{t.questionsCount}: {toArabicNums(selectedTajweedQuiz.questions.length)}</p>
+                      <p className="text-xs text-slate-300">{t.questionsCount}: {toArabicNums((Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length)}</p>
+                      <p className="text-xs text-teal-100/80 mt-1">{t.quizIntro}</p>
                     </div>
 
-                    {selectedTajweedQuiz.questions.map((q, i) => (
-                      <div key={q.id || i} className="rounded-xl border border-slate-600/30 bg-slate-800/50 p-3">
-                        <p className="text-sm text-white font-semibold">{toArabicNums(i + 1)}. {q.text || '-'}</p>
-                        {Array.isArray(q.options) && q.options.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {q.options.map((opt, idx) => (
-                              <p key={`${q.id || i}_opt_${idx}`} className="text-xs text-slate-300">- {opt}</p>
-                            ))}
-                          </div>
-                        )}
+                    {!selectedTajweedQuiz.assignmentId && (
+                      <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                        {t.quizPreviewOnly}
                       </div>
-                    ))}
+                    )}
+
+                    {(Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length === 0 && (
+                      <div className="rounded-xl border border-slate-600/30 bg-slate-800/50 p-4 text-center text-slate-300 text-sm">
+                        {t.noTajweedQuiz}
+                      </div>
+                    )}
+
+                    {(Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).map((q, i) => {
+                      const questionType = normalizeQuestionType(q);
+                      const questionKey = getQuestionKey(q, i);
+                      const answer = quizDraftAnswers[questionKey] || {};
+                      const hasError = !!quizValidationErrors[questionKey];
+                      const typeLabel = questionType === 'audio'
+                        ? t.questionTypeAudio
+                        : (questionType === 'multiple_choice' ? t.questionTypeChoice : t.questionTypeText);
+
+                      return (
+                        <div
+                          key={questionKey}
+                          className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="text-sm text-white font-semibold">{toArabicNums(i + 1)}. {q.text || '-'}</p>
+                            <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-teal-300/40 bg-teal-500/10 text-teal-200 shrink-0">
+                              {typeLabel}
+                            </span>
+                          </div>
+
+                          {questionType === 'multiple_choice' && (
+                            <div className="mt-2 space-y-2">
+                              {(Array.isArray(q.options) ? q.options : []).map((opt, idx) => (
+                                <label
+                                  key={`${questionKey}_opt_${idx}`}
+                                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${answer.selectedOptionIndex === idx ? 'border-teal-400/60 bg-teal-500/10 text-teal-100' : 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40'}`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`quiz_${questionKey}`}
+                                    checked={answer.selectedOptionIndex === idx}
+                                    onChange={() => {
+                                      upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
+                                      setQuizStatusMessage('');
+                                    }}
+                                    className="accent-teal-400"
+                                  />
+                                  <span className="text-sm">{opt}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+
+                          {questionType === 'audio' && (
+                            <div className="mt-2 space-y-2">
+                              <div className="flex flex-wrap gap-2">
+                                {recordingQuestionKey === questionKey ? (
+                                  <button
+                                    type="button"
+                                    onClick={stopQuizRecording}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
+                                  >
+                                    <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
+                                    {t.stopRecording}
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => startQuizRecording(questionKey, q.id || questionKey)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                                  >
+                                    <i data-lucide="mic" className="w-3.5 h-3.5"></i>
+                                    {t.startRecording}
+                                  </button>
+                                )}
+
+                                {!!answer.audioBase64 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeQuizAudioDraft(questionKey, q.id || questionKey)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
+                                  >
+                                    <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                                    {t.deleteRecording}
+                                  </button>
+                                )}
+                              </div>
+
+                              {!!answer.audioBase64 ? (
+                                <audio controls src={answer.audioBase64} className="w-full" />
+                              ) : (
+                                <p className="text-xs text-slate-400">{t.recordingHint}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {questionType === 'text' && (
+                            <textarea
+                              value={answer.answerText || ''}
+                              onChange={(event) => {
+                                upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
+                                setQuizStatusMessage('');
+                              }}
+                              placeholder={t.writeAnswer}
+                              className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
+                            />
+                          )}
+
+                          {hasError && (
+                            <p className="text-xs text-rose-300 mt-2">{t.fieldRequired}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {quizStatusMessage && (
+                      <div className={`rounded-xl border px-3 py-2 text-sm ${quizStatusMessage === t.submitSuccess ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100' : 'border-amber-400/35 bg-amber-500/10 text-amber-100'}`}>
+                        {quizStatusMessage}
+                      </div>
+                    )}
+
+                    {selectedTajweedQuiz.assignmentId && !selectedTajweedQuiz.missing && (Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={submitTajweedQuiz}
+                        disabled={isQuizSubmitting}
+                        className="w-full mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-600/80 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <i data-lucide="send" className="w-4 h-4"></i>
+                        {isQuizSubmitting ? t.submittingQuiz : t.submitQuiz}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
