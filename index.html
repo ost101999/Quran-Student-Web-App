@@ -229,19 +229,20 @@
 
     @keyframes roadmapBreathe {
       0%, 100% {
-        transform: translateY(0) scale(1);
-        box-shadow: 0 10px 22px rgba(20, 184, 166, 0.1);
+        box-shadow: 0 0 0 0 rgba(45, 212, 191, 0);
+        border-color: rgba(94, 234, 212, 0.45);
+        background-color: rgba(20, 184, 166, 0.12);
       }
 
       50% {
-        transform: translateY(-1px) scale(1.008);
-        box-shadow: 0 16px 32px rgba(20, 184, 166, 0.18);
+        box-shadow: 0 0 0 6px rgba(45, 212, 191, 0.11);
+        border-color: rgba(94, 234, 212, 0.68);
+        background-color: rgba(20, 184, 166, 0.17);
       }
     }
 
     .animate-roadmap-breathe {
-      animation: roadmapBreathe 2.6s ease-in-out infinite;
-      will-change: transform, box-shadow;
+      animation: roadmapBreathe 2.4s ease-in-out infinite;
     }
   </style>
 </head>
@@ -3260,7 +3261,7 @@ https://is.gd/oL6gEO`;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
-                        ? 'border-teal-300/45 bg-teal-500/12 text-white ring-1 ring-teal-300/35 shadow-[0_12px_28px_rgba(20,184,166,0.14)] animate-roadmap-breathe'
+                        ? 'border-teal-300/45 bg-teal-500/12 text-white ring-1 ring-teal-300/25 animate-roadmap-breathe'
                         : (isSolvedByStudent
                           ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                           : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
