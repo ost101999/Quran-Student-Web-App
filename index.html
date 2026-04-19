@@ -2059,6 +2059,47 @@ https://is.gd/oL6gEO`;
         return pickLocalizedOptions([optionsAr, fallback, optionsEn], 'ar');
       };
 
+      const getRoadmapLessonTitle = (lesson) => {
+        const rawTitle = String(lesson?.title || '').trim();
+
+        if (preferredQuestionLanguage !== 'en') {
+          return rawTitle || t.lessonWithoutTitle;
+        }
+
+        const explicitEnglishTitle = pickLocalizedText([
+          lesson?.titleEn,
+          lesson?.title_en,
+          lesson?.englishTitle,
+          lesson?.nameEn,
+          lesson?.name_en,
+        ], 'en');
+
+        if (explicitEnglishTitle && explicitEnglishTitle !== '-') {
+          return explicitEnglishTitle;
+        }
+
+        const lessonId = String(lesson?.id || '').trim();
+        const normalizedRawTitle = normalizeForMatch(rawTitle);
+
+        const refById = SMART_TAJWEED_REFERENCE.find((item) => String(item?.id || '').trim() === lessonId);
+        if (refById?.en) return refById.en;
+
+        const refByTitle = SMART_TAJWEED_REFERENCE.find((item) => {
+          const normalizedAr = normalizeForMatch(item?.ar || '');
+          const normalizedEn = normalizeForMatch(item?.en || '');
+          if (!normalizedRawTitle) return false;
+
+          return (
+            (normalizedAr && (normalizedRawTitle === normalizedAr || normalizedRawTitle.includes(normalizedAr) || normalizedAr.includes(normalizedRawTitle)))
+            || (normalizedEn && (normalizedRawTitle === normalizedEn || normalizedRawTitle.includes(normalizedEn) || normalizedEn.includes(normalizedRawTitle)))
+          );
+        });
+
+        if (refByTitle?.en) return refByTitle.en;
+
+        return rawTitle || t.lessonWithoutTitle;
+      };
+
       const getQuestionKey = (question, index) => {
         const questionId = String(question?.id || '').trim() || 'noid';
         return `q_${index}_${questionId}`;
@@ -3071,21 +3112,21 @@ https://is.gd/oL6gEO`;
 
           {/* Tajweed Learning Roadmap Page */}
           {selectedTajweedQuiz && showTajweedRoadmapPage && !selectedTajweedQuiz.missing && (
-            <div className="fixed inset-0 bg-slate-950 z-[70] flex items-center justify-center p-4 md:p-5">
-              <div className="w-full max-w-5xl h-[82dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-slate-600/35 bg-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
+            <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4 md:p-5">
+              <div className="glass-panel w-full max-w-5xl h-[82dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] flex flex-col">
                 <button
                   onClick={closeTajweedQuiz}
-                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
+                  className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-300 hover:text-white transition-colors z-[100] bg-islamic-900/55 hover:bg-islamic-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-islamic-gold/20`}
                 >
                   <i data-lucide="x" className="w-5 h-5"></i>
                 </button>
 
                 <div className="text-center mb-4 md:mb-5 pr-9 md:pr-0">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-700/60 text-slate-200 mb-2 border border-slate-500/50">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-islamic-800/80 text-islamic-gold mb-2 border border-islamic-gold/30">
                     <i data-lucide="map" className="w-5 h-5"></i>
                   </div>
-                  <h3 className={`text-xl md:text-2xl font-bold text-slate-100 ${headerFontClass}`}>{t.learningRoadmapTitle}</h3>
-                  <p className="text-xs md:text-sm text-slate-300/95 mt-2">{t.learningRoadmapPageIntro}</p>
+                  <h3 className={`text-xl md:text-2xl font-bold text-islamic-gold ${headerFontClass}`}>{t.learningRoadmapTitle}</h3>
+                  <p className="text-xs md:text-sm text-slate-200/90 mt-2">{t.learningRoadmapPageIntro}</p>
                 </div>
 
                 {roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 && (Array.isArray(selectedTajweedQuiz?.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
@@ -3215,6 +3256,7 @@ https://is.gd/oL6gEO`;
                       const defaultVersion = getAssignmentExamVersion(lesson, {
                         contentLanguage: getDefaultContentLanguageForLesson(lesson),
                       });
+                      const lessonDisplayTitle = getRoadmapLessonTitle(lesson);
                       const lessonQuestions = Array.isArray(defaultVersion?.questions)
                         ? defaultVersion.questions
                         : (Array.isArray(lesson?.questions) ? lesson.questions : []);
@@ -3229,7 +3271,7 @@ https://is.gd/oL6gEO`;
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className={`text-xs md:text-sm font-bold truncate ${isCurrent ? 'text-white' : ''}`}>{toArabicNums(lessonCounter + 1)}. {lesson.title || t.lessonWithoutTitle}</p>
+                              <p className={`text-xs md:text-sm font-bold truncate ${isCurrent ? 'text-white' : ''}`}>{toArabicNums(lessonCounter + 1)}. {lessonDisplayTitle}</p>
                               <p className="text-[10px] md:text-xs mt-1 opacity-90">{t.questionsCount}: {toArabicNums(lessonQuestions.length)}</p>
                             </div>
 
