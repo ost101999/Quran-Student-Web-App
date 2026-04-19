@@ -585,6 +585,12 @@
         if (!container) return;
 
         const frameId = window.requestAnimationFrame(() => {
+          const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
+          if (isMobileViewport) {
+            container.scrollTo({ top: 0, behavior: 'auto' });
+            return;
+          }
+
           const currentLessonEl = container.querySelector('[data-current-roadmap="true"]');
           if (!currentLessonEl) return;
 
@@ -3072,7 +3078,7 @@ https://is.gd/oL6gEO`;
           {/* Tajweed Learning Roadmap Page */}
           {selectedTajweedQuiz && showTajweedRoadmapPage && !selectedTajweedQuiz.missing && (
             <div className="fixed inset-0 bg-slate-950 z-[70] flex items-center justify-center p-3 md:p-5">
-              <div className="w-full max-w-5xl h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-slate-600/35 bg-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
+              <div className="w-full max-w-5xl h-[86dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-slate-600/35 bg-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
@@ -3202,7 +3208,7 @@ https://is.gd/oL6gEO`;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
-                        ? `border-teal-300/45 bg-teal-500/10 text-teal-50 ${roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 ? 'animate-pulse' : ''}`
+                        ? `border-teal-300/45 bg-teal-500/10 text-teal-50 ring-2 ring-teal-300/35 shadow-[0_0_0_1px_rgba(45,212,191,0.35)] ${roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 ? 'animate-pulse' : ''}`
                         : (isSolvedByStudent
                           ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                           : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
@@ -3227,7 +3233,7 @@ https://is.gd/oL6gEO`;
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs md:text-sm font-bold truncate">{toArabicNums(lessonCounter + 1)}. {lesson.title || t.lessonWithoutTitle}</p>
+                              <p className={`text-xs md:text-sm font-bold truncate ${isCurrent ? 'text-white' : ''}`}>{toArabicNums(lessonCounter + 1)}. {lesson.title || t.lessonWithoutTitle}</p>
                               <p className="text-[10px] md:text-xs mt-1 opacity-90">{t.questionsCount}: {toArabicNums(lessonQuestions.length)}</p>
                             </div>
 
@@ -3246,38 +3252,40 @@ https://is.gd/oL6gEO`;
                             )}
                           </div>
 
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <a
-                              href={videoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-500/45 bg-slate-700/55 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/75 transition-colors"
-                            >
-                              <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
-                              {t.watchLessonVideo}
-                            </a>
+                          <div className="mt-3 space-y-2">
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap md:flex-wrap md:overflow-visible md:whitespace-normal">
+                              <a
+                                href={videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-500/45 bg-slate-700/55 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/75 transition-colors shrink-0"
+                              >
+                                <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
+                                {t.watchLessonVideo}
+                              </a>
 
-                            <a
-                              href={pdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-500/45 bg-slate-700/55 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/75 transition-colors"
-                            >
-                              <i data-lucide="file-down" className="w-3.5 h-3.5"></i>
-                              {t.downloadLessonPdf}
-                            </a>
+                              <a
+                                href={pdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-500/45 bg-slate-700/55 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/75 transition-colors shrink-0"
+                              >
+                                <i data-lucide="file-down" className="w-3.5 h-3.5"></i>
+                                {t.downloadLessonPdf}
+                              </a>
 
-                            <button
-                              type="button"
-                              onClick={canStartCurrentQuiz ? openCurrentQuizFromRoadmap : undefined}
-                              disabled={!canStartCurrentQuiz}
-                              className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] md:text-xs font-bold transition-colors ${canStartCurrentQuiz
-                                ? 'border-teal-300/40 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30'
-                                : 'border-slate-500/35 bg-slate-700/35 text-slate-300/80 cursor-not-allowed'}`}
-                            >
-                              <i data-lucide="target" className="w-3.5 h-3.5"></i>
-                              {t.startCurrentQuiz}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={canStartCurrentQuiz ? openCurrentQuizFromRoadmap : undefined}
+                                disabled={!canStartCurrentQuiz}
+                                className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] md:text-xs font-bold transition-colors shrink-0 ${canStartCurrentQuiz
+                                  ? 'border-teal-300/40 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30'
+                                  : 'border-slate-500/35 bg-slate-700/35 text-slate-300/80 cursor-not-allowed'}`}
+                              >
+                                <i data-lucide="target" className="w-3.5 h-3.5"></i>
+                                {t.startCurrentQuiz}
+                              </button>
+                            </div>
 
                             {isSolvedByStudent && (
                               <button
@@ -3357,8 +3365,8 @@ https://is.gd/oL6gEO`;
 
           {/* Tajweed Quiz Modal */}
           {selectedTajweedQuiz && !showTajweedRoadmapPage && (
-            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-              <div className="glass-panel w-full max-w-lg rounded-3xl p-5 relative animate-fade border border-teal-400/30 shadow-[0_0_25px_rgba(20,184,166,0.15)]">
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-3 md:p-4">
+              <div className="glass-panel w-full max-w-lg max-h-[88dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-teal-400/30 shadow-[0_0_25px_rgba(20,184,166,0.15)]">
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
