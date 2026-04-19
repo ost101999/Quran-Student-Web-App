@@ -229,19 +229,18 @@
 
     @keyframes roadmapBreathe {
       0%, 100% {
-        opacity: 1;
-        text-shadow: 0 0 0 rgba(45, 212, 191, 0);
+        border-color: rgba(100, 116, 139, 0.45);
+        box-shadow: 0 0 0 0 rgba(45, 212, 191, 0);
       }
 
       50% {
-        opacity: 0.86;
-        text-shadow: 0 0 10px rgba(45, 212, 191, 0.55), 0 0 2px rgba(45, 212, 191, 0.5);
+        border-color: rgba(94, 234, 212, 0.62);
+        box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.48), 0 0 16px rgba(45, 212, 191, 0.22);
       }
     }
 
     .animate-roadmap-breathe {
-      animation: roadmapBreathe 2.4s ease-in-out infinite;
-      display: inline-block;
+      animation: roadmapBreathe 2.6s ease-in-out infinite;
     }
   </style>
 </head>
@@ -3260,7 +3259,7 @@ https://is.gd/oL6gEO`;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
-                        ? 'border-teal-300/45 bg-teal-500/12 text-white ring-1 ring-teal-300/25'
+                        ? 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200 animate-roadmap-breathe'
                         : (isSolvedByStudent
                           ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                           : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
@@ -3288,7 +3287,7 @@ https://is.gd/oL6gEO`;
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className={`${isArabic ? 'text-lg md:text-xl' : 'text-xs md:text-sm'} font-bold truncate ${isCurrent ? 'text-white animate-roadmap-breathe' : ''}`}>{toArabicNums(lessonCounter + 1)}. {lessonDisplayTitle}</p>
+                              <p className={`${isArabic ? 'text-lg md:text-xl' : 'text-xs md:text-sm'} font-bold truncate`}>{toArabicNums(lessonCounter + 1)}. {lessonDisplayTitle}</p>
                               <p className={`text-[10px] md:text-xs mt-1 ${isArabic ? 'opacity-80' : 'opacity-90'}`}>{t.questionsCount}: {toArabicNums(lessonQuestions.length)}</p>
                             </div>
 
