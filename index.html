@@ -226,6 +226,23 @@
       0%, 100% { filter: drop-shadow(0 0 0px rgba(217,119,6,0)); }
       40%, 60% { filter: drop-shadow(0 0 8px rgba(217,119,6,0.7)) drop-shadow(0 0 3px rgba(217,119,6,0.4)); }
     }
+
+    @keyframes roadmapBreathe {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 10px 22px rgba(20, 184, 166, 0.1);
+      }
+
+      50% {
+        transform: translateY(-1px) scale(1.008);
+        box-shadow: 0 16px 32px rgba(20, 184, 166, 0.18);
+      }
+    }
+
+    .animate-roadmap-breathe {
+      animation: roadmapBreathe 2.6s ease-in-out infinite;
+      will-change: transform, box-shadow;
+    }
   </style>
 </head>
 
@@ -3243,7 +3260,7 @@ https://is.gd/oL6gEO`;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
-                        ? `border-teal-300/45 bg-teal-500/12 text-white ring-1 ring-teal-300/35 shadow-[0_12px_28px_rgba(20,184,166,0.14)] ${roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 ? 'animate-pulse' : ''}`
+                        ? 'border-teal-300/45 bg-teal-500/12 text-white ring-1 ring-teal-300/35 shadow-[0_12px_28px_rgba(20,184,166,0.14)] animate-roadmap-breathe'
                         : (isSolvedByStudent
                           ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                           : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
