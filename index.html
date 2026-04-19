@@ -1579,12 +1579,6 @@ https://is.gd/oL6gEO`;
         return '';
       };
 
-      const getLessonResourceTopic = (lesson) => {
-        const lessonTitle = String(lesson?.title || '').trim();
-        if (lessonTitle) return lessonTitle;
-        return isArabic ? 'درس تجويد' : 'tajweed lesson';
-      };
-
       const getLessonVideoUrl = (lesson) => {
         const directUrl = pickFirstResourceUrl([
           lesson?.videoUrl,
@@ -1594,11 +1588,7 @@ https://is.gd/oL6gEO`;
           lesson?.resources?.videoUrl,
           lesson?.resources?.videoLink,
         ]);
-
-        if (directUrl) return directUrl;
-
-        const query = encodeURIComponent(`${getLessonResourceTopic(lesson)} ${isArabic ? 'شرح تجويد' : 'tajweed lesson'}`);
-        return `https://www.youtube.com/results?search_query=${query}`;
+        return directUrl;
       };
 
       const getLessonPdfUrl = (lesson) => {
@@ -1610,11 +1600,7 @@ https://is.gd/oL6gEO`;
           lesson?.resources?.pdfLink,
           lesson?.resources?.worksheetUrl,
         ]);
-
-        if (directUrl) return directUrl;
-
-        const query = encodeURIComponent(`${getLessonResourceTopic(lesson)} ${isArabic ? 'pdf تجويد' : 'tajweed pdf'}`);
-        return `https://www.google.com/search?q=${query}`;
+        return directUrl;
       };
 
       const formatSubmissionDateTime = (timestamp) => {
@@ -3128,7 +3114,7 @@ https://is.gd/oL6gEO`;
                   </button>
                 </div>
 
-                <div ref={roadmapPageScrollRef} className="flex-1 overflow-y-auto custom-scrollbar pr-1 md:pr-2 space-y-3 md:space-y-4">
+                <div ref={roadmapPageScrollRef} className="flex-1 overflow-y-auto custom-scrollbar pr-1 md:px-3 lg:px-4 space-y-3 md:space-y-4">
                   {(() => {
                     const sortedBankLessons = Object.values(tajweedBank || {})
                       .filter((lesson) => lesson && typeof lesson === 'object')
@@ -3216,13 +3202,15 @@ https://is.gd/oL6gEO`;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
-                        ? `border-teal-200/70 bg-gradient-to-br from-teal-500/25 to-teal-700/10 text-white ring-2 ring-teal-300/55 shadow-[0_0_25px_rgba(45,212,191,0.22)] ${roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 ? 'animate-pulse' : ''}`
+                        ? `border-teal-300/45 bg-teal-500/12 text-white ring-1 ring-teal-300/35 shadow-[0_12px_28px_rgba(20,184,166,0.14)] ${roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 ? 'animate-pulse' : ''}`
                         : (isSolvedByStudent
                           ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                           : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
 
                       const videoUrl = getLessonVideoUrl(lesson);
                       const pdfUrl = getLessonPdfUrl(lesson);
+                      const hasVideoResource = !!videoUrl;
+                      const hasPdfResource = !!pdfUrl;
 
                       const defaultVersion = getAssignmentExamVersion(lesson, {
                         contentLanguage: getDefaultContentLanguageForLesson(lesson),
@@ -3237,7 +3225,7 @@ https://is.gd/oL6gEO`;
                         <div
                           key={`roadmap_page_lesson_${lessonId}`}
                           data-current-roadmap={isCurrent ? 'true' : 'false'}
-                          className={`rounded-2xl border p-3 transition-colors ${cardClass}`}
+                          className={`rounded-[18px] border p-3 transition-colors ${cardClass}`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
@@ -3246,7 +3234,7 @@ https://is.gd/oL6gEO`;
                             </div>
 
                             {isCurrent ? (
-                              <span className="shrink-0 rounded-full border border-teal-200/65 bg-teal-500/30 px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_0_10px_rgba(45,212,191,0.45)]">
+                              <span className="shrink-0 rounded-full border border-teal-300/40 bg-teal-500/20 px-2 py-0.5 text-[10px] font-semibold text-teal-50">
                                 {t.learningRoadmapCurrent}
                               </span>
                             ) : isSolvedByStudent ? (
@@ -3262,25 +3250,47 @@ https://is.gd/oL6gEO`;
 
                           <div className="mt-3 space-y-2">
                             <div className="flex items-center gap-1.5 md:gap-2 flex-nowrap">
-                              <a
-                                href={videoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
-                              >
-                                <i data-lucide="play-circle" className="hidden md:block w-3.5 h-3.5"></i>
-                                {t.watchLessonVideo}
-                              </a>
+                              {hasVideoResource ? (
+                                <a
+                                  href={videoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
+                                >
+                                  <i data-lucide="play-circle" className="hidden md:block w-3.5 h-3.5"></i>
+                                  {t.watchLessonVideo}
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/25 bg-slate-800/25 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-400/70 cursor-not-allowed whitespace-nowrap"
+                                >
+                                  <i data-lucide="play-circle" className="hidden md:block w-3.5 h-3.5"></i>
+                                  {t.watchLessonVideo}
+                                </button>
+                              )}
 
-                              <a
-                                href={pdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
-                              >
-                                <i data-lucide="file-down" className="hidden md:block w-3.5 h-3.5"></i>
-                                {t.downloadLessonPdf}
-                              </a>
+                              {hasPdfResource ? (
+                                <a
+                                  href={pdfUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
+                                >
+                                  <i data-lucide="file-down" className="hidden md:block w-3.5 h-3.5"></i>
+                                  {t.downloadLessonPdf}
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/25 bg-slate-800/25 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-400/70 cursor-not-allowed whitespace-nowrap"
+                                >
+                                  <i data-lucide="file-down" className="hidden md:block w-3.5 h-3.5"></i>
+                                  {t.downloadLessonPdf}
+                                </button>
+                              )}
 
                               <button
                                 type="button"
@@ -3353,8 +3363,11 @@ https://is.gd/oL6gEO`;
 
                           return (
                             <div key={`roadmap_page_group_${section.group.key}_${sectionIndex}`} className="space-y-2">
-                              <div className="px-3 py-2 rounded-xl bg-slate-800/65 border border-slate-600/35 text-xs md:text-sm font-bold text-slate-100">
-                                {section.group.label}
+                              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-300/25">
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-300/85"></span>
+                                <span className="text-[11px] md:text-xs font-semibold uppercase tracking-[0.14em] text-teal-100/95">
+                                  {section.group.label}
+                                </span>
                               </div>
 
                               <div className="space-y-2">
@@ -3373,8 +3386,8 @@ https://is.gd/oL6gEO`;
 
           {/* Tajweed Quiz Modal */}
           {selectedTajweedQuiz && !showTajweedRoadmapPage && (
-            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 md:p-4">
-              <div className="glass-panel w-full max-w-lg max-h-[82dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-teal-400/30 shadow-[0_0_25px_rgba(20,184,166,0.15)] overflow-hidden flex flex-col">
+            <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-[2px] z-[60] flex items-center justify-center p-4 md:p-4">
+              <div className="glass-panel w-full max-w-lg max-h-[82dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] overflow-hidden flex flex-col">
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
@@ -3392,7 +3405,7 @@ https://is.gd/oL6gEO`;
                 {selectedTajweedQuiz.missing ? (
                   <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
                 ) : (
-                  <div ref={quizScrollRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 md:pr-2">
+                  <div ref={quizScrollRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 md:px-3 lg:px-4">
                     <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 p-3">
                       <p className="font-bold text-teal-200">{selectedTajweedQuiz.lessonTitle}</p>
                       <p className="text-xs text-slate-300 mt-1">{t.assignedAt}: {(() => {
