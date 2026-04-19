@@ -841,6 +841,16 @@ https://is.gd/oL6gEO`;
         learningRoadmapCurrent: "موضعك الحالي",
         learningRoadmapCompleted: "تم",
         learningRoadmapUpcoming: "قادم",
+        roadmapLegendCurrent: "الدرس الحالي",
+        roadmapLegendSolved: "محلول من الطالب",
+        roadmapLegendPending: "لم يُحل بعد",
+        previousSolutionsTitle: "حلولك القديمة",
+        previousSolutionsEmpty: "لا توجد حلول محفوظة لهذا الدرس.",
+        previousSolutionsToggle: "عرض حلولك القديمة",
+        previousSolutionsHide: "إخفاء الحلول القديمة",
+        previousSolutionAttempt: "محاولة",
+        previousSolutionSubmittedAt: "تاريخ الحل",
+        previousSolutionPreviewText: "ملخص الإجابة",
         watchLessonVideo: "فيديو الشرح",
         downloadLessonPdf: "تحميل PDF",
         startCurrentQuiz: "ابدأ اختبار الدرس الحالي",
@@ -943,6 +953,16 @@ https://is.gd/oL6gEO`;
         learningRoadmapCurrent: "Current",
         learningRoadmapCompleted: "Done",
         learningRoadmapUpcoming: "Upcoming",
+        roadmapLegendCurrent: "Current Lesson",
+        roadmapLegendSolved: "Solved By Student",
+        roadmapLegendPending: "Not Solved Yet",
+        previousSolutionsTitle: "Your Previous Solutions",
+        previousSolutionsEmpty: "No saved solutions for this lesson yet.",
+        previousSolutionsToggle: "Show Previous Solutions",
+        previousSolutionsHide: "Hide Previous Solutions",
+        previousSolutionAttempt: "Attempt",
+        previousSolutionSubmittedAt: "Submitted At",
+        previousSolutionPreviewText: "Answer Preview",
         watchLessonVideo: "Watch Video",
         downloadLessonPdf: "Download PDF",
         startCurrentQuiz: "Start Current Lesson Quiz",
@@ -1399,6 +1419,7 @@ https://is.gd/oL6gEO`;
 
       const tajweedBank = activeData?.tajweedBank || {};
       const tajweedAssignments = activeData?.tajweedAssignments || {};
+      const tajweedSubmissions = activeData?.tajweedSubmissions || {};
 
       const normalizeForMatch = (value) => {
         return String(value || '')
@@ -1552,6 +1573,46 @@ https://is.gd/oL6gEO`;
 
         const query = encodeURIComponent(`${getLessonResourceTopic(lesson)} ${isArabic ? 'pdf تجويد' : 'tajweed pdf'}`);
         return `https://www.google.com/search?q=${query}`;
+      };
+
+      const formatSubmissionDateTime = (timestamp) => {
+        const value = Number(timestamp || 0);
+        if (!value) return '-';
+
+        try {
+          return new Date(value).toLocaleString(isArabic ? 'ar-EG' : 'en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        } catch {
+          const d = new Date(value);
+          return d.toString();
+        }
+      };
+
+      const getSubmissionAnswerPreview = (attempt) => {
+        const answers = Array.isArray(attempt?.answers) ? attempt.answers : [];
+
+        const firstText = answers.find((answer) => String(answer?.answerText || '').trim());
+        if (firstText) {
+          const value = String(firstText.answerText || '').trim();
+          return value.length > 80 ? `${value.slice(0, 80)}...` : value;
+        }
+
+        const hasChoice = answers.some((answer) => typeof answer?.selectedOptionIndex === 'number');
+        if (hasChoice) {
+          return isArabic ? 'تمت إجابة أسئلة الاختيار من متعدد.' : 'Multiple-choice answers were submitted.';
+        }
+
+        const hasAudio = answers.some((answer) => String(answer?.audioBase64 || '').trim());
+        if (hasAudio) {
+          return isArabic ? 'تم رفع إجابة صوتية.' : 'Audio response uploaded.';
+        }
+
+        return isArabic ? 'تم تسليم الواجب.' : 'Assignment submitted.';
       };
 
       const matchesPreferredLessonLanguage = (lesson, targetLanguage = preferredQuestionLanguage) => {
@@ -1730,6 +1791,125 @@ https://is.gd/oL6gEO`;
           };
         })
         .filter(Boolean);
+
+      const studentSolvedLessonsState = (() => {
+        const byLessonId = new Map();
+        const byLessonTitle = new Map();
+        const allSubmissions = Object.values(tajweedSubmissions || {}).filter(Boolean);
+        const studentIdKey = String(student?.id || '');
+
+        const mergeState = (targetMap, targetKey, payload) => {
+          if (!targetKey) return;
+
+          const previous = targetMap.get(targetKey) || {
+            isSolved: false,
+            latestSolvedAt: 0,
+            attempts: [],
+          };
+
+          targetMap.set(targetKey, {
+            isSolved: previous.isSolved || payload.isSolved,
+            latestSolvedAt: Math.max(Number(previous.latestSolvedAt || 0), Number(payload.latestSolvedAt || 0)),
+            attempts: [...previous.attempts, ...(Array.isArray(payload.attempts) ? payload.attempts : [])],
+          });
+        };
+
+        Object.values(tajweedAssignments || {}).forEach((assignment) => {
+          if (!assignment || String(assignment?.studentId || '') !== studentIdKey) return;
+
+          const resolved = resolveBankLessonForAssignment(assignment);
+          if (!resolved?.lesson) return;
+
+          const assignmentId = String(assignment?.id || '').trim();
+          const lessonIdKey = String(resolved.lessonId || assignment.lessonId || '').trim();
+          const lessonTitleKey = normalizeForMatch(resolved.lesson?.title || '');
+
+          const attemptsMap = new Map();
+          const explicitSubmissionId = String(assignment?.submissionId || '').trim();
+
+          if (explicitSubmissionId) {
+            const explicitSubmission = tajweedSubmissions[explicitSubmissionId];
+            if (explicitSubmission && String(explicitSubmission?.studentId || '') === studentIdKey) {
+              attemptsMap.set(String(explicitSubmission?.id || explicitSubmissionId), explicitSubmission);
+            }
+          }
+
+          if (assignmentId) {
+            allSubmissions.forEach((submission) => {
+              if (String(submission?.studentId || '') !== studentIdKey) return;
+              if (String(submission?.assignmentId || '') !== assignmentId) return;
+
+              const submissionId = String(submission?.id || `${assignmentId}_${submission?.submittedAt || 0}`);
+              attemptsMap.set(submissionId, submission);
+            });
+          }
+
+          const attempts = Array.from(attemptsMap.values())
+            .map((submission, index) => ({
+              id: String(submission?.id || `${assignmentId}_${submission?.submittedAt || 0}_${index}`),
+              assignmentId,
+              submittedAt: Number(submission?.submittedAt || 0),
+              answers: Array.isArray(submission?.answers) ? submission.answers : [],
+            }))
+            .sort((a, b) => Number(b.submittedAt || 0) - Number(a.submittedAt || 0));
+
+          const isSolved = String(assignment?.status || '').toLowerCase() === 'submitted' || attempts.length > 0;
+          if (!isSolved) return;
+
+          const latestSolvedAt = Math.max(
+            Number(assignment?.updatedAt || 0),
+            Number(assignment?.assignedAt || 0),
+            ...(attempts.length > 0 ? attempts.map((attempt) => Number(attempt?.submittedAt || 0)) : [0]),
+          );
+
+          const payload = {
+            isSolved,
+            latestSolvedAt,
+            attempts,
+          };
+
+          mergeState(byLessonId, lessonIdKey, payload);
+          mergeState(byLessonTitle, lessonTitleKey, payload);
+        });
+
+        [byLessonId, byLessonTitle].forEach((targetMap) => {
+          targetMap.forEach((entry, key) => {
+            const dedupedAttempts = new Map();
+            (entry.attempts || []).forEach((attempt, attemptIndex) => {
+              const attemptId = String(attempt?.id || `${key}_${attempt?.submittedAt || 0}_${attemptIndex}`);
+              dedupedAttempts.set(attemptId, {
+                ...attempt,
+                id: attemptId,
+              });
+            });
+
+            const attempts = Array.from(dedupedAttempts.values())
+              .sort((a, b) => Number(b?.submittedAt || 0) - Number(a?.submittedAt || 0));
+
+            targetMap.set(key, {
+              isSolved: !!entry.isSolved || attempts.length > 0,
+              latestSolvedAt: Math.max(Number(entry.latestSolvedAt || 0), Number(attempts[0]?.submittedAt || 0)),
+              attempts,
+            });
+          });
+        });
+
+        return { byLessonId, byLessonTitle };
+      })();
+
+      const getStudentSolvedLessonState = (lesson, lessonIdHint = '') => {
+        const byId = String(lessonIdHint || lesson?.id || '').trim();
+        if (byId && studentSolvedLessonsState.byLessonId.has(byId)) {
+          return studentSolvedLessonsState.byLessonId.get(byId);
+        }
+
+        const byTitle = normalizeForMatch(lesson?.title || '');
+        if (byTitle && studentSolvedLessonsState.byLessonTitle.has(byTitle)) {
+          return studentSolvedLessonsState.byLessonTitle.get(byTitle);
+        }
+
+        return null;
+      };
 
       const findMatchingPendingTajweedAssignment = (section) => {
         if (!pendingTajweedAssignments.length) return null;
@@ -2883,15 +3063,11 @@ https://is.gd/oL6gEO`;
 
                 <div ref={roadmapPageScrollRef} className="flex-1 overflow-y-auto custom-scrollbar pr-1 md:pr-2 space-y-3 md:space-y-4">
                   {(() => {
-                    const bankLessons = Object.values(tajweedBank || {})
+                    const sortedBankLessons = Object.values(tajweedBank || {})
                       .filter((lesson) => lesson && typeof lesson === 'object')
-                      .sort((a, b) => {
-                        const byCreated = Number(a?.createdAt || 0) - Number(b?.createdAt || 0);
-                        if (byCreated !== 0) return byCreated;
-                        return String(a?.title || '').localeCompare(String(b?.title || ''), 'ar');
-                      });
+                      .sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
 
-                    if (bankLessons.length === 0) {
+                    if (sortedBankLessons.length === 0) {
                       return (
                         <div className="rounded-xl border border-slate-600/30 bg-slate-800/40 p-3 text-center text-slate-300 text-xs">
                           {t.noTajweedBankLessons}
@@ -2900,8 +3076,15 @@ https://is.gd/oL6gEO`;
                     }
 
                     const groupedMap = new Map();
-                    bankLessons.forEach((lesson) => {
+                    const independentLessons = [];
+
+                    sortedBankLessons.forEach((lesson) => {
                       const groupKey = getRoadmapLessonGroupKey(lesson);
+                      if (groupKey === 'independent') {
+                        independentLessons.push(lesson);
+                        return;
+                      }
+
                       if (!groupedMap.has(groupKey)) groupedMap.set(groupKey, []);
                       groupedMap.get(groupKey).push(lesson);
                     });
@@ -2911,11 +3094,11 @@ https://is.gd/oL6gEO`;
                       .sort((a, b) => a.localeCompare(b, 'ar'));
 
                     const orderedGroupKeys = [
-                      ...ROADMAP_GROUP_ORDER.filter((key) => groupedMap.has(key)),
+                      ...ROADMAP_GROUP_ORDER.filter((key) => key !== 'independent' && groupedMap.has(key)),
                       ...dynamicGroupKeys,
                     ];
 
-                    const orderedGroups = orderedGroupKeys
+                    const groupedLessons = orderedGroupKeys
                       .map((groupKey) => ({
                         key: groupKey,
                         label: getRoadmapLessonGroupLabel(groupKey),
@@ -2923,7 +3106,25 @@ https://is.gd/oL6gEO`;
                       }))
                       .filter((group) => group.lessons.length > 0);
 
-                    const flatLessons = orderedGroups.flatMap((group) => group.lessons);
+                    const orderedSections = [
+                      ...groupedLessons.map((group) => ({
+                        type: 'group',
+                        id: `group_${group.key}`,
+                        rank: Number(group.lessons[0]?.createdAt || 0),
+                        group,
+                      })),
+                      ...independentLessons.map((lesson, index) => ({
+                        type: 'independent',
+                        id: `independent_${lesson?.id || index}`,
+                        rank: Number(lesson?.createdAt || 0),
+                        lesson,
+                      })),
+                    ].sort((a, b) => Number(b.rank || 0) - Number(a.rank || 0));
+
+                    const flatLessons = orderedSections.flatMap((section) => (
+                      section.type === 'group' ? section.group.lessons : [section.lesson]
+                    ));
+
                     const currentLessonId = String(selectedTajweedQuiz.lessonId || '');
                     const currentLessonTitleHint = normalizeForMatch(selectedTajweedQuiz.lessonTitle || '');
 
@@ -2937,107 +3138,183 @@ https://is.gd/oL6gEO`;
 
                     let lessonCounter = -1;
 
-                    return orderedGroups.map((group, groupIndex) => (
-                      <div key={`roadmap_page_group_${group.key}_${groupIndex}`} className="space-y-2">
-                        <div className="px-3 py-2 rounded-xl bg-sky-500/10 border border-sky-400/25 text-xs md:text-sm font-bold text-sky-200">
-                          {group.label}
+                    const renderLessonCard = (lesson, sectionId, lessonIndex) => {
+                      lessonCounter += 1;
+
+                      const isCurrent = lessonCounter === currentLessonIndex;
+                      const lessonId = String(lesson?.id || '').trim() || `lesson_${sectionId}_${lessonIndex}_${lessonCounter}`;
+                      const solvedState = getStudentSolvedLessonState(lesson, lessonId);
+                      const solvedAttempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
+                      const isSolvedByStudent = !!solvedState?.isSolved || solvedAttempts.length > 0;
+                      const isExpanded = expandedRoadmapLessonId === lessonId;
+
+                      const cardClass = isCurrent
+                        ? 'border-teal-300/55 bg-teal-500/10 text-teal-50 shadow-[0_0_0_1px_rgba(45,212,191,0.25)]'
+                        : (isSolvedByStudent
+                          ? 'border-slate-600/35 bg-slate-900/35 text-slate-300 opacity-55'
+                          : 'border-sky-400/25 bg-sky-950/20 text-sky-50');
+
+                      const videoUrl = getLessonVideoUrl(lesson);
+                      const pdfUrl = getLessonPdfUrl(lesson);
+
+                      const defaultVersion = getAssignmentExamVersion(lesson, {
+                        contentLanguage: getDefaultContentLanguageForLesson(lesson),
+                      });
+                      const lessonQuestions = Array.isArray(defaultVersion?.questions)
+                        ? defaultVersion.questions
+                        : (Array.isArray(lesson?.questions) ? lesson.questions : []);
+
+                      return (
+                        <div
+                          key={`roadmap_page_lesson_${lessonId}`}
+                          data-current-roadmap={isCurrent ? 'true' : 'false'}
+                          className={`rounded-2xl border p-3 transition-colors ${cardClass}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs md:text-sm font-bold truncate">{toArabicNums(lessonCounter + 1)}. {lesson.title || t.lessonWithoutTitle}</p>
+                              <p className="text-[10px] md:text-xs mt-1 opacity-90">{t.questionsCount}: {toArabicNums(lessonQuestions.length)}</p>
+                            </div>
+
+                            {isCurrent && (
+                              <span className="shrink-0 rounded-full border border-teal-300/40 bg-teal-500/20 px-2 py-0.5 text-[10px] font-bold text-teal-100">
+                                {t.learningRoadmapCurrent}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <a
+                              href={videoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md border border-sky-300/40 bg-sky-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-sky-100 hover:bg-sky-500/30 transition-colors"
+                            >
+                              <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
+                              {t.watchLessonVideo}
+                            </a>
+
+                            <a
+                              href={pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md border border-amber-300/40 bg-amber-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-amber-100 hover:bg-amber-500/30 transition-colors"
+                            >
+                              <i data-lucide="file-down" className="w-3.5 h-3.5"></i>
+                              {t.downloadLessonPdf}
+                            </a>
+
+                            {isCurrent && (
+                              <button
+                                type="button"
+                                onClick={openCurrentQuizFromRoadmap}
+                                className="inline-flex items-center gap-1 rounded-md border border-teal-300/40 bg-teal-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                              >
+                                <i data-lucide="target" className="w-3.5 h-3.5"></i>
+                                {t.startCurrentQuiz}
+                              </button>
+                            )}
+
+                            {isSolvedByStudent && (
+                              <button
+                                type="button"
+                                data-roadmap-current-trigger={isCurrent ? 'true' : 'false'}
+                                onClick={() => setExpandedRoadmapLessonId((prev) => prev === lessonId ? '' : lessonId)}
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-400/35 bg-slate-700/45 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/65 transition-colors"
+                              >
+                                <i data-lucide={isExpanded ? 'chevron-up' : 'history'} className="w-3.5 h-3.5"></i>
+                                {isExpanded ? t.previousSolutionsHide : t.previousSolutionsToggle}
+                              </button>
+                            )}
+
+                            {!isSolvedByStudent && isCurrent && (
+                              <button
+                                type="button"
+                                data-roadmap-current-trigger="true"
+                                onClick={() => setExpandedRoadmapLessonId('')}
+                                className="hidden"
+                              >
+                                open-current
+                              </button>
+                            )}
+                          </div>
+
+                          {isSolvedByStudent && isExpanded && (
+                            <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                              <p className="text-[11px] md:text-xs font-bold text-slate-100">{t.previousSolutionsTitle}</p>
+
+                              {solvedAttempts.length === 0 ? (
+                                <p className="text-[10px] md:text-xs text-slate-300/90">{t.previousSolutionsEmpty}</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {solvedAttempts.map((attempt, attemptIndex) => (
+                                    <div
+                                      key={`attempt_${lessonId}_${attempt?.id || attemptIndex}`}
+                                      className="rounded-lg border border-slate-600/30 bg-slate-900/45 px-2.5 py-2"
+                                    >
+                                      <p className="text-[10px] md:text-xs font-bold text-slate-100">
+                                        {t.previousSolutionAttempt} {toArabicNums(attemptIndex + 1)}
+                                      </p>
+                                      <p className="text-[10px] md:text-xs text-slate-300 mt-0.5">
+                                        {t.previousSolutionSubmittedAt}: {formatSubmissionDateTime(attempt?.submittedAt)}
+                                      </p>
+                                      <p className="text-[10px] md:text-xs text-slate-200 mt-1">
+                                        {t.previousSolutionPreviewText}: {getSubmissionAnswerPreview(attempt)}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {lessonQuestions.length === 0 && (
+                            <p className="text-[10px] md:text-xs text-amber-100/90 mt-2">{t.roadmapNoQuestionsYet}</p>
+                          )}
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="rounded-lg border border-teal-400/30 bg-teal-500/10 px-2.5 py-1.5 text-[10px] md:text-xs text-teal-100 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-teal-300"></span>
+                            {t.roadmapLegendCurrent}
+                          </div>
+                          <div className="rounded-lg border border-slate-500/30 bg-slate-700/35 px-2.5 py-1.5 text-[10px] md:text-xs text-slate-200 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-slate-300"></span>
+                            {t.roadmapLegendSolved}
+                          </div>
+                          <div className="rounded-lg border border-sky-400/25 bg-sky-500/10 px-2.5 py-1.5 text-[10px] md:text-xs text-sky-100 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-sky-300"></span>
+                            {t.roadmapLegendPending}
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          {group.lessons.map((lesson, lessonIndex) => {
-                            lessonCounter += 1;
-
-                            const isCurrent = lessonCounter === currentLessonIndex;
-                            const isCompleted = currentLessonIndex >= 0 && lessonCounter < currentLessonIndex;
-                            const statusLabel = isCurrent
-                              ? t.learningRoadmapCurrent
-                              : (isCompleted ? t.learningRoadmapCompleted : t.learningRoadmapUpcoming);
-
-                            const lessonId = String(lesson?.id || '').trim() || `lesson_${group.key}_${lessonIndex}_${lessonCounter}`;
-                            const isExpanded = expandedRoadmapLessonId === lessonId;
-
-                            const statusClass = isCurrent
-                              ? 'border-teal-400/35 bg-teal-500/15 text-teal-100'
-                              : (isCompleted
-                                ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
-                                : 'border-slate-600/30 bg-slate-900/40 text-slate-200');
-
-                            const videoUrl = getLessonVideoUrl(lesson);
-                            const pdfUrl = getLessonPdfUrl(lesson);
-                            const defaultVersion = getAssignmentExamVersion(lesson, { contentLanguage: getDefaultContentLanguageForLesson(lesson) });
-                            const lessonQuestions = Array.isArray(defaultVersion?.questions)
-                              ? defaultVersion.questions
-                              : (Array.isArray(lesson?.questions) ? lesson.questions : []);
-
+                        {orderedSections.map((section, sectionIndex) => {
+                          if (section.type === 'independent') {
                             return (
-                              <div
-                                key={`roadmap_page_lesson_${lessonId}`}
-                                data-current-roadmap={isCurrent ? 'true' : 'false'}
-                                className={`rounded-2xl border p-3 transition-colors ${statusClass}`}
-                              >
-                                <button
-                                  type="button"
-                                  data-roadmap-current-trigger={isCurrent ? 'true' : 'false'}
-                                  onClick={() => setExpandedRoadmapLessonId((prev) => prev === lessonId ? '' : lessonId)}
-                                  className="w-full text-start flex items-center justify-between gap-2"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs md:text-sm font-bold truncate">{toArabicNums(lessonCounter + 1)}. {lesson.title || t.lessonWithoutTitle}</p>
-                                    <p className="text-[10px] md:text-xs mt-1 opacity-90">{statusLabel}</p>
-                                  </div>
-                                  <i data-lucide={isExpanded ? 'chevron-up' : 'chevron-down'} className="w-4 h-4 opacity-80"></i>
-                                </button>
-
-                                {isExpanded && (
-                                  <div className="mt-3 pt-3 border-t border-white/10 space-y-2.5">
-                                    <p className="text-[11px] md:text-xs opacity-90">
-                                      {t.questionsCount}: {toArabicNums(lessonQuestions.length)}
-                                    </p>
-
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <a
-                                        href={videoUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 rounded-md border border-sky-300/40 bg-sky-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-sky-100 hover:bg-sky-500/30 transition-colors"
-                                      >
-                                        <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
-                                        {t.watchLessonVideo}
-                                      </a>
-
-                                      <a
-                                        href={pdfUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 rounded-md border border-amber-300/40 bg-amber-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-amber-100 hover:bg-amber-500/30 transition-colors"
-                                      >
-                                        <i data-lucide="file-down" className="w-3.5 h-3.5"></i>
-                                        {t.downloadLessonPdf}
-                                      </a>
-
-                                      {isCurrent && (
-                                        <button
-                                          type="button"
-                                          onClick={openCurrentQuizFromRoadmap}
-                                          className="inline-flex items-center gap-1 rounded-md border border-teal-300/40 bg-teal-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
-                                        >
-                                          <i data-lucide="target" className="w-3.5 h-3.5"></i>
-                                          {t.startCurrentQuiz}
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    {lessonQuestions.length === 0 && (
-                                      <p className="text-[10px] md:text-xs text-amber-100/90">{t.roadmapNoQuestionsYet}</p>
-                                    )}
-                                  </div>
-                                )}
+                              <div key={`roadmap_page_independent_${section.id}_${sectionIndex}`} className="space-y-2">
+                                {renderLessonCard(section.lesson, section.id, 0)}
                               </div>
                             );
-                          })}
-                        </div>
+                          }
+
+                          return (
+                            <div key={`roadmap_page_group_${section.group.key}_${sectionIndex}`} className="space-y-2">
+                              <div className="px-3 py-2 rounded-xl bg-sky-500/10 border border-sky-400/25 text-xs md:text-sm font-bold text-sky-200">
+                                {section.group.label}
+                              </div>
+
+                              <div className="space-y-2">
+                                {section.group.lessons.map((lesson, lessonIndex) => renderLessonCard(lesson, section.id, lessonIndex))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ));
+                    );
                   })()}
                 </div>
               </div>
