@@ -522,7 +522,33 @@
         ? data.students.find(s => toSlug(s?.name) === nameSlug)
         : data.students.find(s => String(s.id) === String(studentId))) : null;
 
-      const isArabic = urlStudent ? /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(urlStudent.name) : false;
+      const detectPrimaryNameLanguage = (name) => {
+        const fullValue = String(name || '').trim();
+        const baseValue = (fullValue.split(/[\(\)\[\]\-|–—|]/)[0] || '').trim() || fullValue;
+        const value = baseValue;
+        if (!value) return 'ar';
+
+        let arabicCount = 0;
+        let englishCount = 0;
+        let firstScript = null;
+
+        for (const ch of value) {
+          if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(ch)) {
+            arabicCount += 1;
+            if (!firstScript) firstScript = 'ar';
+          } else if (/[A-Za-z]/.test(ch)) {
+            englishCount += 1;
+            if (!firstScript) firstScript = 'en';
+          }
+        }
+
+        if (arabicCount === 0 && englishCount === 0) return 'ar';
+        if (arabicCount === englishCount && firstScript) return firstScript;
+        return arabicCount >= englishCount ? 'ar' : 'en';
+      };
+
+      const preferredQuestionLanguage = detectPrimaryNameLanguage(urlStudent?.name);
+      const isArabic = preferredQuestionLanguage === 'ar';
 
       useEffect(() => {
         if (!selectedTajweedQuiz) return;
@@ -1334,6 +1360,23 @@ https://is.gd/oL6gEO`;
         return [ref.ar, ref.en].filter(Boolean);
       };
 
+      const hasQuestions = (lesson) => Array.isArray(lesson?.questions) && lesson.questions.length > 0;
+
+      const getLessonLanguage = (lesson) => {
+        const rawLanguage = String(lesson?.language || '').toLowerCase();
+        if (rawLanguage === 'en' || rawLanguage === 'both') return rawLanguage;
+        return 'ar';
+      };
+
+      const matchesPreferredLessonLanguage = (lesson) => {
+        const lessonLanguage = getLessonLanguage(lesson);
+        return lessonLanguage === 'both' || lessonLanguage === preferredQuestionLanguage;
+      };
+
+      const resolveQuestionTargetLanguage = () => {
+        return preferredQuestionLanguage;
+      };
+
       const getSmartOrderedBankEntries = () => {
         const entries = Object.entries(tajweedBank);
         const ordered = [];
@@ -1374,29 +1417,64 @@ https://is.gd/oL6gEO`;
         if (!assignment) return null;
 
         const direct = tajweedBank[assignment.lessonId];
-        if (direct) {
+        if (direct && hasQuestions(direct) && matchesPreferredLessonLanguage(direct)) {
           return { lessonId: assignment.lessonId, lesson: direct };
         }
 
         const referenceTitles = getReferenceCandidatesFromId(assignment.lessonId);
-        if (referenceTitles.length === 0) return null;
+        const searchTitles = referenceTitles.length > 0
+          ? referenceTitles
+          : (direct?.title ? [direct.title] : []);
+        if (searchTitles.length === 0) {
+          if (direct && hasQuestions(direct)) return { lessonId: assignment.lessonId, lesson: direct };
+          return direct ? { lessonId: assignment.lessonId, lesson: direct } : null;
+        }
 
         const entries = getSmartOrderedBankEntries();
 
-        for (const refTitle of referenceTitles) {
+        for (const refTitle of searchTitles) {
           const refNorm = normalizeForMatch(refTitle);
-          const exact = entries.find(([_, lesson]) => normalizeForMatch(lesson?.title || '') === refNorm);
+          const exact = entries.find(([_, lesson]) => {
+            const lessonNorm = normalizeForMatch(lesson?.title || '');
+            return lessonNorm === refNorm && hasQuestions(lesson) && matchesPreferredLessonLanguage(lesson);
+          });
           if (exact) return { lessonId: exact[0], lesson: exact[1] };
         }
 
-        for (const refTitle of referenceTitles) {
+        for (const refTitle of searchTitles) {
           const refNorm = normalizeForMatch(refTitle);
           const loose = entries.find(([_, lesson]) => {
             const lessonNorm = normalizeForMatch(lesson?.title || '');
-            return lessonNorm && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm));
+            return lessonNorm
+              && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm))
+              && hasQuestions(lesson)
+              && matchesPreferredLessonLanguage(lesson);
           });
           if (loose) return { lessonId: loose[0], lesson: loose[1] };
         }
+
+        for (const refTitle of searchTitles) {
+          const refNorm = normalizeForMatch(refTitle);
+          const exact = entries.find(([_, lesson]) => {
+            const lessonNorm = normalizeForMatch(lesson?.title || '');
+            return lessonNorm === refNorm && hasQuestions(lesson);
+          });
+          if (exact) return { lessonId: exact[0], lesson: exact[1] };
+        }
+
+        for (const refTitle of searchTitles) {
+          const refNorm = normalizeForMatch(refTitle);
+          const loose = entries.find(([_, lesson]) => {
+            const lessonNorm = normalizeForMatch(lesson?.title || '');
+            return lessonNorm
+              && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm))
+              && hasQuestions(lesson);
+          });
+          if (loose) return { lessonId: loose[0], lesson: loose[1] };
+        }
+
+        if (direct && hasQuestions(direct)) return { lessonId: assignment.lessonId, lesson: direct };
+        if (direct) return { lessonId: assignment.lessonId, lesson: direct };
 
         return null;
       };
@@ -1408,11 +1486,17 @@ https://is.gd/oL6gEO`;
 
         const entries = getSmartOrderedBankEntries();
 
-        const exact = entries.find(([_, lesson]) => {
+        const matches = entries.filter(([_, lesson]) => {
           const lessonTitle = normalizeForMatch(lesson?.title || '');
-          return lessonTitle && (lessonTitle === hint || hint.includes(lessonTitle) || lessonTitle.includes(hint));
+          return lessonTitle
+            && (lessonTitle === hint || hint.includes(lessonTitle) || lessonTitle.includes(hint))
+            && hasQuestions(lesson);
         });
-        if (exact) return { lessonId: exact[0], lesson: exact[1] };
+
+        const preferred = matches.find(([_, lesson]) => matchesPreferredLessonLanguage(lesson));
+        if (preferred) return { lessonId: preferred[0], lesson: preferred[1] };
+
+        if (matches.length > 0) return { lessonId: matches[0][0], lesson: matches[0][1] };
 
         return null;
       };
@@ -1454,36 +1538,106 @@ https://is.gd/oL6gEO`;
         return 'text';
       };
 
-      const getLocalizedQuizQuestionText = (question) => {
+      const detectContentLanguage = (value) => {
+        const text = String(value || '').trim();
+        if (!text) return null;
+
+        const arabicMatches = text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g) || [];
+        const englishMatches = text.match(/[A-Za-z]/g) || [];
+
+        if (arabicMatches.length === 0 && englishMatches.length === 0) return null;
+        return arabicMatches.length >= englishMatches.length ? 'ar' : 'en';
+      };
+
+      const pickLocalizedText = (orderedValues, targetLanguage) => {
+        const values = orderedValues
+          .map((item) => String(item || '').trim())
+          .filter(Boolean);
+
+        if (!values.length) return '-';
+
+        const exact = values.find((value) => detectContentLanguage(value) === targetLanguage);
+        if (exact) return exact;
+
+        const neutral = values.find((value) => detectContentLanguage(value) === null);
+        if (neutral) return neutral;
+
+        return values[0];
+      };
+
+      const pickLocalizedOptions = (orderedOptionSets, targetLanguage) => {
+        const optionSets = orderedOptionSets
+          .map((set) => (Array.isArray(set)
+            ? set.map((item) => String(item ?? '').trim()).filter(Boolean)
+            : []))
+          .filter((set) => set.length > 0);
+
+        if (!optionSets.length) return [];
+
+        const scoreSet = (set) => {
+          let withLanguage = 0;
+          let targetHits = 0;
+
+          set.forEach((option) => {
+            const optionLanguage = detectContentLanguage(option);
+            if (!optionLanguage) return;
+            withLanguage += 1;
+            if (optionLanguage === targetLanguage) targetHits += 1;
+          });
+
+          if (withLanguage === 0) return 0;
+          return targetHits / withLanguage;
+        };
+
+        let best = optionSets[0];
+        let bestScore = scoreSet(best);
+
+        optionSets.forEach((set) => {
+          const score = scoreSet(set);
+          if (score > bestScore) {
+            best = set;
+            bestScore = score;
+          }
+        });
+
+        return best;
+      };
+
+      const getLocalizedQuizQuestionText = (question, lessonLanguage) => {
+        const targetLanguage = resolveQuestionTargetLanguage(lessonLanguage);
         const textAr = String(question?.textAr || '').trim();
         const textEn = String(question?.textEn || '').trim();
         const fallback = String(question?.text || '').trim();
 
-        if (isArabic) {
-          return textAr || fallback || textEn || '-';
+        if (targetLanguage === 'en') {
+          return pickLocalizedText([textEn, fallback, textAr], 'en');
         }
 
-        return textEn || fallback || textAr || '-';
+        return pickLocalizedText([textAr, fallback, textEn], 'ar');
       };
 
-      const getLocalizedQuizQuestionOptions = (question) => {
+      const getLocalizedQuizQuestionOptions = (question, lessonLanguage) => {
+        const targetLanguage = resolveQuestionTargetLanguage(lessonLanguage);
         const cleanArray = (value) => {
           if (!Array.isArray(value)) return [];
-          return value.map((item) => String(item ?? '').trim());
+          return value.map((item) => String(item ?? '').trim()).filter(Boolean);
         };
 
         const optionsAr = cleanArray(question?.optionsAr);
         const optionsEn = cleanArray(question?.optionsEn);
         const fallback = cleanArray(question?.options);
 
-        if (isArabic) {
-          return optionsAr.length > 0 ? optionsAr : (fallback.length > 0 ? fallback : optionsEn);
+        if (targetLanguage === 'en') {
+          return pickLocalizedOptions([optionsEn, fallback, optionsAr], 'en');
         }
 
-        return optionsEn.length > 0 ? optionsEn : (fallback.length > 0 ? fallback : optionsAr);
+        return pickLocalizedOptions([optionsAr, fallback, optionsEn], 'ar');
       };
 
-      const getQuestionKey = (question, index) => String(question?.id || `q_${index}`);
+      const getQuestionKey = (question, index) => {
+        const questionId = String(question?.id || '').trim() || 'noid';
+        return `q_${index}_${questionId}`;
+      };
 
       const clearQuizValidationForQuestion = (questionKey) => {
         setQuizValidationErrors((prev) => {
@@ -1687,6 +1841,8 @@ https://is.gd/oL6gEO`;
           const draft = quizDraftAnswers[questionKey] || {};
           return {
             questionId: question?.id || questionKey,
+            questionKey,
+            questionOrder: index,
             answerText: draft.answerText,
             selectedOptionIndex: draft.selectedOptionIndex,
             audioBase64: draft.audioBase64,
@@ -1769,6 +1925,7 @@ https://is.gd/oL6gEO`;
             assignmentId: null,
             lessonId: sectionResolved.lessonId,
             lessonTitle: sectionResolved.lesson?.title || section?.content || t.tajweedSection,
+            lessonLanguage: getLessonLanguage(sectionResolved.lesson),
             assignedAt: undefined,
             questions: Array.isArray(sectionResolved.lesson?.questions) ? sectionResolved.lesson.questions : []
           });
@@ -1780,6 +1937,7 @@ https://is.gd/oL6gEO`;
           assignmentId: assignment?.id,
           lessonId: assignment?.resolvedLessonId,
           lessonTitle: lesson?.title || section?.content || t.tajweedSection,
+          lessonLanguage: getLessonLanguage(lesson),
           assignedAt: assignment?.assignedAt,
           questions: Array.isArray(lesson?.questions) ? lesson.questions : []
         });
@@ -2520,8 +2678,8 @@ https://is.gd/oL6gEO`;
                               const questionKey = getQuestionKey(q, originalIndex);
                               const answer = quizDraftAnswers[questionKey] || {};
                               const hasError = !!quizValidationErrors[questionKey];
-                              const localizedQuestionText = getLocalizedQuizQuestionText(q);
-                              const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q);
+                              const localizedQuestionText = getLocalizedQuizQuestionText(q, selectedTajweedQuiz.lessonLanguage);
+                              const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q, selectedTajweedQuiz.lessonLanguage);
 
                               return (
                                 <div
