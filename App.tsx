@@ -36,11 +36,21 @@ interface TajweedQuestion {
   points?: number;
 }
 
+interface TajweedExamVersion {
+  id: string;
+  language?: TajweedContentLanguage;
+  targetAge?: 'kids' | 'adults' | 'all';
+  questions: TajweedQuestion[];
+  createdAt?: number;
+}
+
 interface TajweedLesson {
   id: string;
   title: string;
   language?: TajweedLessonLanguage;
+  targetAge?: 'kids' | 'adults' | 'all';
   questions: TajweedQuestion[];
+  examVersions?: TajweedExamVersion[];
 }
 
 interface TajweedAssignment {
@@ -49,6 +59,7 @@ interface TajweedAssignment {
   studentId: string;
   assignedAt: number;
   contentLanguage?: TajweedContentLanguage;
+  versionId?: string;
   status: 'pending' | 'submitted' | 'graded';
   submissionId?: string;
   deadline?: number;
@@ -140,6 +151,51 @@ const getLocalizedQuestionOptions = (
     return question.optionsEn || question.options || question.optionsAr || [];
   }
   return question.optionsAr || question.options || question.optionsEn || [];
+};
+
+const normalizeAssignmentLanguage = (value?: string | null): TajweedContentLanguage | null => {
+  const raw = String(value || '').toLowerCase().trim();
+  if (raw === 'ar' || raw === 'en') return raw;
+  return null;
+};
+
+const getLessonExamVersions = (lesson?: TajweedLesson | null): TajweedExamVersion[] => {
+  if (!lesson) return [];
+
+  const versions = Array.isArray(lesson.examVersions) ? lesson.examVersions : [];
+  if (versions.length > 0) return versions;
+
+  return [
+    {
+      id: `${lesson.id || Date.now().toString()}-legacy-v1`,
+      language: lesson.language === 'en' ? 'en' : 'ar',
+      targetAge: lesson.targetAge || 'all',
+      questions: Array.isArray(lesson.questions) ? lesson.questions : [],
+      createdAt: Date.now(),
+    }
+  ];
+};
+
+const getAssignmentExamVersion = (
+  assignment: TajweedAssignment | null,
+  lesson: TajweedLesson | null,
+): TajweedExamVersion | null => {
+  const versions = getLessonExamVersions(lesson);
+  if (versions.length === 0) return null;
+
+  const requestedVersionId = String(assignment?.versionId || '').trim();
+  if (requestedVersionId) {
+    const byId = versions.find((version) => String(version.id || '').trim() === requestedVersionId);
+    if (byId) return byId;
+  }
+
+  const requestedLanguage = normalizeAssignmentLanguage(assignment?.contentLanguage);
+  if (requestedLanguage) {
+    const byLanguage = versions.find((version) => normalizeAssignmentLanguage(version.language) === requestedLanguage);
+    if (byLanguage) return byLanguage;
+  }
+
+  return versions[0];
 };
 
 function App() {
@@ -290,15 +346,26 @@ function App() {
 
   const selectedAssignment = selectedAssignmentId ? assignments[selectedAssignmentId] : null;
   const selectedLesson = selectedAssignment ? bank[selectedAssignment.lessonId] : null;
+  const selectedAssignmentVersion = useMemo(
+    () => getAssignmentExamVersion(selectedAssignment, selectedLesson),
+    [selectedAssignment, selectedLesson],
+  );
+  const selectedLessonQuestions = useMemo(
+    () => (Array.isArray(selectedAssignmentVersion?.questions) ? selectedAssignmentVersion.questions : (selectedLesson?.questions || [])),
+    [selectedAssignmentVersion, selectedLesson],
+  );
   const latestPendingAssignment = pendingAssignments[0] || null;
   const latestPendingLesson = latestPendingAssignment ? bank[latestPendingAssignment.lessonId] : null;
 
   const selectedAssignmentLanguage = useMemo<TajweedContentLanguage>(() => {
-    const rawLanguage = String(selectedAssignment?.contentLanguage || '').toLowerCase();
-    if (rawLanguage === 'en') return 'en';
-    if (rawLanguage === 'ar') return 'ar';
+    const fromAssignment = normalizeAssignmentLanguage(selectedAssignment?.contentLanguage);
+    if (fromAssignment) return fromAssignment;
+
+    const fromVersion = normalizeAssignmentLanguage(selectedAssignmentVersion?.language);
+    if (fromVersion) return fromVersion;
+
     return preferredQuestionLanguage;
-  }, [selectedAssignment?.contentLanguage, preferredQuestionLanguage]);
+  }, [preferredQuestionLanguage, selectedAssignment?.contentLanguage, selectedAssignmentVersion?.language]);
 
   const selectedLessonQuestionSections = useMemo(() => {
     if (!selectedLesson) return [] as Array<{ type: QuestionType; title: string; questions: TajweedQuestion[] }>;
@@ -307,10 +374,10 @@ function App() {
       .map((type) => ({
         type,
         title: selectedAssignmentLanguage === 'en' ? QUESTION_TYPE_SECTION_LABELS[type].en : QUESTION_TYPE_SECTION_LABELS[type].ar,
-        questions: selectedLesson.questions.filter((question) => question.type === type),
+        questions: selectedLessonQuestions.filter((question) => question.type === type),
       }))
       .filter((section) => section.questions.length > 0);
-  }, [selectedLesson, selectedAssignmentLanguage]);
+  }, [selectedAssignmentLanguage, selectedLesson, selectedLessonQuestions]);
 
   useEffect(() => {
     const shouldLockScroll = activeTab === 'assignments' && !!selectedAssignment && !!selectedLesson;
@@ -820,8 +887,15 @@ function App() {
 
               {historyAssignments.map((assignment) => {
                 const lesson = bank[assignment.lessonId];
+                const lessonVersion = getAssignmentExamVersion(assignment, lesson);
+                const assignmentLanguage = normalizeAssignmentLanguage(assignment.contentLanguage)
+                  || normalizeAssignmentLanguage(lessonVersion?.language)
+                  || preferredQuestionLanguage;
+                const historyQuestions = Array.isArray(lessonVersion?.questions)
+                  ? lessonVersion.questions
+                  : (lesson?.questions || []);
                 const submission = assignment.submissionId ? submissions[assignment.submissionId] : undefined;
-                const maxTotal = lesson?.questions?.reduce((total, question) => total + (question.points || 0), 0) || 0;
+                const maxTotal = historyQuestions.reduce((total, question) => total + (question.points || 0), 0);
 
                 return (
                   <div key={assignment.id} className="glass-card">
@@ -850,9 +924,8 @@ function App() {
                     )}
 
                     <div className="space-y-3">
-                      {lesson?.questions.map((question, index) => {
+                      {historyQuestions.map((question, index) => {
                         const answer = submission?.answers.find((item) => item.questionId === question.id);
-                        const assignmentLanguage = assignment.contentLanguage === 'en' ? 'en' : (assignment.contentLanguage === 'ar' ? 'ar' : preferredQuestionLanguage);
                         const localizedQuestionText = getLocalizedQuestionText(question, lesson, assignmentLanguage);
                         const localizedQuestionOptions = getLocalizedQuestionOptions(question, lesson, assignmentLanguage);
                         const selectedChoice = localizedQuestionOptions?.[answer?.selectedOptionIndex ?? -1];
