@@ -1368,12 +1368,26 @@ https://is.gd/oL6gEO`;
         return 'ar';
       };
 
+      const normalizeAssignmentContentLanguage = (value) => {
+        const rawLanguage = String(value || '').toLowerCase().trim();
+        if (rawLanguage === 'ar' || rawLanguage === 'en') return rawLanguage;
+        return null;
+      };
+
+      const getDefaultContentLanguageForLesson = (lesson) => {
+        const lessonLanguage = getLessonLanguage(lesson);
+        if (lessonLanguage === 'both') return preferredQuestionLanguage;
+        return lessonLanguage;
+      };
+
       const matchesPreferredLessonLanguage = (lesson) => {
         const lessonLanguage = getLessonLanguage(lesson);
         return lessonLanguage === 'both' || lessonLanguage === preferredQuestionLanguage;
       };
 
-      const resolveQuestionTargetLanguage = () => {
+      const resolveQuestionTargetLanguage = (requestedLanguage) => {
+        const normalizedLanguage = normalizeAssignmentContentLanguage(requestedLanguage);
+        if (normalizedLanguage) return normalizedLanguage;
         return preferredQuestionLanguage;
       };
 
@@ -1508,6 +1522,7 @@ https://is.gd/oL6gEO`;
           if (!resolved) return null;
           return {
             ...assignment,
+            contentLanguage: normalizeAssignmentContentLanguage(assignment?.contentLanguage) || getDefaultContentLanguageForLesson(resolved.lesson),
             resolvedLessonId: resolved.lessonId,
             resolvedLesson: resolved.lesson
           };
@@ -1603,8 +1618,8 @@ https://is.gd/oL6gEO`;
         return best;
       };
 
-      const getLocalizedQuizQuestionText = (question, lessonLanguage) => {
-        const targetLanguage = resolveQuestionTargetLanguage(lessonLanguage);
+      const getLocalizedQuizQuestionText = (question, requestedLanguage) => {
+        const targetLanguage = resolveQuestionTargetLanguage(requestedLanguage);
         const textAr = String(question?.textAr || '').trim();
         const textEn = String(question?.textEn || '').trim();
         const fallback = String(question?.text || '').trim();
@@ -1616,8 +1631,8 @@ https://is.gd/oL6gEO`;
         return pickLocalizedText([textAr, fallback, textEn], 'ar');
       };
 
-      const getLocalizedQuizQuestionOptions = (question, lessonLanguage) => {
-        const targetLanguage = resolveQuestionTargetLanguage(lessonLanguage);
+      const getLocalizedQuizQuestionOptions = (question, requestedLanguage) => {
+        const targetLanguage = resolveQuestionTargetLanguage(requestedLanguage);
         const cleanArray = (value) => {
           if (!Array.isArray(value)) return [];
           return value.map((item) => String(item ?? '').trim()).filter(Boolean);
@@ -1925,6 +1940,7 @@ https://is.gd/oL6gEO`;
             assignmentId: null,
             lessonId: sectionResolved.lessonId,
             lessonTitle: sectionResolved.lesson?.title || section?.content || t.tajweedSection,
+            contentLanguage: getDefaultContentLanguageForLesson(sectionResolved.lesson),
             lessonLanguage: getLessonLanguage(sectionResolved.lesson),
             assignedAt: undefined,
             questions: Array.isArray(sectionResolved.lesson?.questions) ? sectionResolved.lesson.questions : []
@@ -1937,6 +1953,7 @@ https://is.gd/oL6gEO`;
           assignmentId: assignment?.id,
           lessonId: assignment?.resolvedLessonId,
           lessonTitle: lesson?.title || section?.content || t.tajweedSection,
+          contentLanguage: normalizeAssignmentContentLanguage(assignment?.contentLanguage) || getDefaultContentLanguageForLesson(lesson),
           lessonLanguage: getLessonLanguage(lesson),
           assignedAt: assignment?.assignedAt,
           questions: Array.isArray(lesson?.questions) ? lesson.questions : []
@@ -2678,8 +2695,9 @@ https://is.gd/oL6gEO`;
                               const questionKey = getQuestionKey(q, originalIndex);
                               const answer = quizDraftAnswers[questionKey] || {};
                               const hasError = !!quizValidationErrors[questionKey];
-                              const localizedQuestionText = getLocalizedQuizQuestionText(q, selectedTajweedQuiz.lessonLanguage);
-                              const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q, selectedTajweedQuiz.lessonLanguage);
+                              const requestedLanguage = selectedTajweedQuiz.contentLanguage || selectedTajweedQuiz.lessonLanguage;
+                              const localizedQuestionText = getLocalizedQuizQuestionText(q, requestedLanguage);
+                              const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q, requestedLanguage);
 
                               return (
                                 <div

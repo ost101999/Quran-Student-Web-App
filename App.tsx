@@ -48,6 +48,7 @@ interface TajweedAssignment {
   lessonId: string;
   studentId: string;
   assignedAt: number;
+  contentLanguage?: TajweedContentLanguage;
   status: 'pending' | 'submitted' | 'graded';
   submissionId?: string;
   deadline?: number;
@@ -292,17 +293,24 @@ function App() {
   const latestPendingAssignment = pendingAssignments[0] || null;
   const latestPendingLesson = latestPendingAssignment ? bank[latestPendingAssignment.lessonId] : null;
 
+  const selectedAssignmentLanguage = useMemo<TajweedContentLanguage>(() => {
+    const rawLanguage = String(selectedAssignment?.contentLanguage || '').toLowerCase();
+    if (rawLanguage === 'en') return 'en';
+    if (rawLanguage === 'ar') return 'ar';
+    return preferredQuestionLanguage;
+  }, [selectedAssignment?.contentLanguage, preferredQuestionLanguage]);
+
   const selectedLessonQuestionSections = useMemo(() => {
     if (!selectedLesson) return [] as Array<{ type: QuestionType; title: string; questions: TajweedQuestion[] }>;
 
     return QUESTION_TYPE_ORDER
       .map((type) => ({
         type,
-        title: preferredQuestionLanguage === 'en' ? QUESTION_TYPE_SECTION_LABELS[type].en : QUESTION_TYPE_SECTION_LABELS[type].ar,
+        title: selectedAssignmentLanguage === 'en' ? QUESTION_TYPE_SECTION_LABELS[type].en : QUESTION_TYPE_SECTION_LABELS[type].ar,
         questions: selectedLesson.questions.filter((question) => question.type === type),
       }))
       .filter((section) => section.questions.length > 0);
-  }, [selectedLesson, preferredQuestionLanguage]);
+  }, [selectedLesson, selectedAssignmentLanguage]);
 
   useEffect(() => {
     const shouldLockScroll = activeTab === 'assignments' && !!selectedAssignment && !!selectedLesson;
@@ -721,8 +729,8 @@ function App() {
                           <div className="space-y-4">
                             {section.questions.map((question, idx) => {
                               const answer = draftAnswersByAssignment[selectedAssignment.id]?.[question.id];
-                              const localizedQuestionText = getLocalizedQuestionText(question, selectedLesson, preferredQuestionLanguage);
-                              const localizedQuestionOptions = getLocalizedQuestionOptions(question, selectedLesson, preferredQuestionLanguage);
+                              const localizedQuestionText = getLocalizedQuestionText(question, selectedLesson, selectedAssignmentLanguage);
+                              const localizedQuestionOptions = getLocalizedQuestionOptions(question, selectedLesson, selectedAssignmentLanguage);
 
                               return (
                                 <div key={question.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -844,8 +852,9 @@ function App() {
                     <div className="space-y-3">
                       {lesson?.questions.map((question, index) => {
                         const answer = submission?.answers.find((item) => item.questionId === question.id);
-                        const localizedQuestionText = getLocalizedQuestionText(question, lesson, preferredQuestionLanguage);
-                        const localizedQuestionOptions = getLocalizedQuestionOptions(question, lesson, preferredQuestionLanguage);
+                        const assignmentLanguage = assignment.contentLanguage === 'en' ? 'en' : (assignment.contentLanguage === 'ar' ? 'ar' : preferredQuestionLanguage);
+                        const localizedQuestionText = getLocalizedQuestionText(question, lesson, assignmentLanguage);
+                        const localizedQuestionOptions = getLocalizedQuestionOptions(question, lesson, assignmentLanguage);
                         const selectedChoice = localizedQuestionOptions?.[answer?.selectedOptionIndex ?? -1];
 
                         return (
