@@ -423,6 +423,7 @@
       const streamRef = useRef(null);
       const chunksRef = useRef([]);
       const recordingMetaRef = useRef(null);
+      const quizScrollRef = useRef(null);
 
       // Tour state
       const [isTourMode, setIsTourMode] = useState(false);
@@ -521,7 +522,30 @@
         ? data.students.find(s => toSlug(s?.name) === nameSlug)
         : data.students.find(s => String(s.id) === String(studentId))) : null;
 
-      const isArabic = urlStudent ? /[\u0600-\u06FF]/.test(urlStudent.name) : false;
+      const isArabic = urlStudent ? /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(urlStudent.name) : false;
+
+      useEffect(() => {
+        if (!selectedTajweedQuiz) return;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const handleWheel = (event) => {
+          const container = quizScrollRef.current;
+          if (!container) return;
+          if (container.scrollHeight <= container.clientHeight) return;
+
+          event.preventDefault();
+          container.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' });
+        };
+
+        window.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+          window.removeEventListener('wheel', handleWheel);
+          document.body.style.overflow = previousOverflow;
+        };
+      }, [selectedTajweedQuiz]);
 
       // Glow animation on last reported day after data loads
       useEffect(() => {
@@ -1430,6 +1454,35 @@ https://is.gd/oL6gEO`;
         return 'text';
       };
 
+      const getLocalizedQuizQuestionText = (question) => {
+        const textAr = String(question?.textAr || '').trim();
+        const textEn = String(question?.textEn || '').trim();
+        const fallback = String(question?.text || '').trim();
+
+        if (isArabic) {
+          return textAr || fallback || textEn || '-';
+        }
+
+        return textEn || fallback || textAr || '-';
+      };
+
+      const getLocalizedQuizQuestionOptions = (question) => {
+        const cleanArray = (value) => {
+          if (!Array.isArray(value)) return [];
+          return value.map((item) => String(item ?? '').trim());
+        };
+
+        const optionsAr = cleanArray(question?.optionsAr);
+        const optionsEn = cleanArray(question?.optionsEn);
+        const fallback = cleanArray(question?.options);
+
+        if (isArabic) {
+          return optionsAr.length > 0 ? optionsAr : (fallback.length > 0 ? fallback : optionsEn);
+        }
+
+        return optionsEn.length > 0 ? optionsEn : (fallback.length > 0 ? fallback : optionsAr);
+      };
+
       const getQuestionKey = (question, index) => String(question?.id || `q_${index}`);
 
       const clearQuizValidationForQuestion = (questionKey) => {
@@ -1497,8 +1550,42 @@ https://is.gd/oL6gEO`;
         }
 
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const recorder = new MediaRecorder(stream);
+          const preferredAudioConstraints = {
+            audio: {
+              channelCount: 1,
+              sampleRate: 48000,
+              sampleSize: 16,
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            }
+          };
+
+          let stream = null;
+          try {
+            stream = await navigator.mediaDevices.getUserMedia(preferredAudioConstraints);
+          } catch {
+            // Fallback to default constraints on devices that reject advanced settings.
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          }
+
+          const mimeCandidates = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/mp4',
+          ];
+
+          const selectedMimeType = (typeof MediaRecorder.isTypeSupported === 'function')
+            ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
+            : '';
+
+          const recorderOptions = {
+            audioBitsPerSecond: 128000,
+            ...(selectedMimeType ? { mimeType: selectedMimeType } : {}),
+          };
+
+          const recorder = new MediaRecorder(stream, recorderOptions);
+          const finalMimeType = recorder.mimeType || selectedMimeType || 'audio/webm';
 
           chunksRef.current = [];
           streamRef.current = stream;
@@ -1528,7 +1615,7 @@ https://is.gd/oL6gEO`;
 
             if (!meta || !chunks.length) return;
 
-            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const blob = new Blob(chunks, { type: finalMimeType });
             const reader = new FileReader();
             reader.onloadend = () => {
               const dataUrl = typeof reader.result === 'string' ? reader.result : '';
@@ -2380,7 +2467,7 @@ https://is.gd/oL6gEO`;
                 {selectedTajweedQuiz.missing ? (
                   <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
                 ) : (
-                  <div className="space-y-3 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
+                  <div ref={quizScrollRef} className="space-y-3 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
                     <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 p-3">
                       <p className="font-bold text-teal-200">{selectedTajweedQuiz.lessonTitle}</p>
                       <p className="text-xs text-slate-300 mt-1">{t.assignedAt}: {(() => {
@@ -2407,111 +2494,132 @@ https://is.gd/oL6gEO`;
                       </div>
                     )}
 
-                    {(Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).map((q, i) => {
-                      const questionType = normalizeQuestionType(q);
-                      const questionKey = getQuestionKey(q, i);
-                      const answer = quizDraftAnswers[questionKey] || {};
-                      const hasError = !!quizValidationErrors[questionKey];
-                      const typeLabel = questionType === 'audio'
-                        ? t.questionTypeAudio
-                        : (questionType === 'multiple_choice' ? t.questionTypeChoice : t.questionTypeText);
+                    {(() => {
+                      const allQuizQuestions = Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : [];
+                      const indexedQuizQuestions = allQuizQuestions.map((question, index) => ({
+                        question,
+                        index,
+                        type: normalizeQuestionType(question),
+                      }));
 
-                      return (
-                        <div
-                          key={questionKey}
-                          className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <p className="text-sm text-white font-semibold">{toArabicNums(i + 1)}. {q.text || '-'}</p>
-                            <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-teal-300/40 bg-teal-500/10 text-teal-200 shrink-0">
-                              {typeLabel}
-                            </span>
+                      const questionSections = [
+                        { type: 'multiple_choice', title: t.questionTypeChoice, questions: indexedQuizQuestions.filter((item) => item.type === 'multiple_choice') },
+                        { type: 'text', title: t.questionTypeText, questions: indexedQuizQuestions.filter((item) => item.type === 'text') },
+                        { type: 'audio', title: t.questionTypeAudio, questions: indexedQuizQuestions.filter((item) => item.type === 'audio') },
+                      ].filter((section) => section.questions.length > 0);
+
+                      return questionSections.map((section) => (
+                        <div key={`section_${section.type}`} className="space-y-3">
+                          <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 px-3 py-2">
+                            <p className="text-xs font-bold text-teal-200">{section.title}</p>
                           </div>
 
-                          {questionType === 'multiple_choice' && (
-                            <div className="mt-2 space-y-2">
-                              {(Array.isArray(q.options) ? q.options : []).map((opt, idx) => (
-                                <label
-                                  key={`${questionKey}_opt_${idx}`}
-                                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${answer.selectedOptionIndex === idx ? 'border-teal-400/60 bg-teal-500/10 text-teal-100' : 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40'}`}
+                          <div className="space-y-3">
+                            {section.questions.map(({ question: q, index: originalIndex }, questionIndex) => {
+                              const questionType = normalizeQuestionType(q);
+                              const questionKey = getQuestionKey(q, originalIndex);
+                              const answer = quizDraftAnswers[questionKey] || {};
+                              const hasError = !!quizValidationErrors[questionKey];
+                              const localizedQuestionText = getLocalizedQuizQuestionText(q);
+                              const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q);
+
+                              return (
+                                <div
+                                  key={questionKey}
+                                  className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
                                 >
-                                  <input
-                                    type="radio"
-                                    name={`quiz_${questionKey}`}
-                                    checked={answer.selectedOptionIndex === idx}
-                                    onChange={() => {
-                                      upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
-                                      setQuizStatusMessage('');
-                                    }}
-                                    className="accent-teal-400"
-                                  />
-                                  <span className="text-sm">{opt}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
+                                  <div className="mb-2">
+                                    <p className="text-sm text-white font-semibold">{toArabicNums(questionIndex + 1)}. {localizedQuestionText}</p>
+                                  </div>
 
-                          {questionType === 'audio' && (
-                            <div className="mt-2 space-y-2">
-                              <div className="flex flex-wrap gap-2">
-                                {recordingQuestionKey === questionKey ? (
-                                  <button
-                                    type="button"
-                                    onClick={stopQuizRecording}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
-                                  >
-                                    <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
-                                    {t.stopRecording}
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => startQuizRecording(questionKey, q.id || questionKey)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
-                                  >
-                                    <i data-lucide="mic" className="w-3.5 h-3.5"></i>
-                                    {t.startRecording}
-                                  </button>
-                                )}
+                                  {questionType === 'multiple_choice' && (
+                                    <div className="mt-2 space-y-2">
+                                      {localizedQuestionOptions.map((opt, idx) => (
+                                        <label
+                                          key={`${questionKey}_opt_${idx}`}
+                                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${answer.selectedOptionIndex === idx ? 'border-teal-400/60 bg-teal-500/10 text-teal-100' : 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40'}`}
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`quiz_${questionKey}`}
+                                            checked={answer.selectedOptionIndex === idx}
+                                            onChange={() => {
+                                              upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
+                                              setQuizStatusMessage('');
+                                            }}
+                                            className="accent-teal-400"
+                                          />
+                                          <span className="text-sm">{opt}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  )}
 
-                                {!!answer.audioBase64 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeQuizAudioDraft(questionKey, q.id || questionKey)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
-                                  >
-                                    <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
-                                    {t.deleteRecording}
-                                  </button>
-                                )}
-                              </div>
+                                  {questionType === 'audio' && (
+                                    <div className="mt-2 space-y-2">
+                                      <div className="flex flex-wrap gap-2">
+                                        {recordingQuestionKey === questionKey ? (
+                                          <button
+                                            type="button"
+                                            onClick={stopQuizRecording}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
+                                          >
+                                            <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
+                                            {t.stopRecording}
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => startQuizRecording(questionKey, q.id || questionKey)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                                          >
+                                            <i data-lucide="mic" className="w-3.5 h-3.5"></i>
+                                            {t.startRecording}
+                                          </button>
+                                        )}
 
-                              {!!answer.audioBase64 ? (
-                                <audio controls src={answer.audioBase64} className="w-full" />
-                              ) : (
-                                <p className="text-xs text-slate-400">{t.recordingHint}</p>
-                              )}
-                            </div>
-                          )}
+                                        {!!answer.audioBase64 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => removeQuizAudioDraft(questionKey, q.id || questionKey)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
+                                          >
+                                            <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                                            {t.deleteRecording}
+                                          </button>
+                                        )}
+                                      </div>
 
-                          {questionType === 'text' && (
-                            <textarea
-                              value={answer.answerText || ''}
-                              onChange={(event) => {
-                                upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
-                                setQuizStatusMessage('');
-                              }}
-                              placeholder={t.writeAnswer}
-                              className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
-                            />
-                          )}
+                                      {!!answer.audioBase64 ? (
+                                        <audio controls src={answer.audioBase64} className="w-full" />
+                                      ) : (
+                                        <p className="text-xs text-slate-400">{t.recordingHint}</p>
+                                      )}
+                                    </div>
+                                  )}
 
-                          {hasError && (
-                            <p className="text-xs text-rose-300 mt-2">{t.fieldRequired}</p>
-                          )}
+                                  {questionType === 'text' && (
+                                    <textarea
+                                      value={answer.answerText || ''}
+                                      onChange={(event) => {
+                                        upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
+                                        setQuizStatusMessage('');
+                                      }}
+                                      placeholder={t.writeAnswer}
+                                      className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
+                                    />
+                                  )}
+
+                                  {hasError && (
+                                    <p className="text-xs text-rose-300 mt-2">{t.fieldRequired}</p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
 
                     {quizStatusMessage && (
                       <div className={`rounded-xl border px-3 py-2 text-sm ${quizStatusMessage === t.submitSuccess ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100' : 'border-amber-400/35 bg-amber-500/10 text-amber-100'}`}>
