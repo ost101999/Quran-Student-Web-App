@@ -230,18 +230,44 @@
     @keyframes roadmapBreathe {
       0%, 100% {
         border-color: rgba(148, 163, 184, 0.44);
-        box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.14), 0 0 14px rgba(45, 212, 191, 0.12);
+        background-color: rgba(15, 23, 42, 0.74);
       }
 
       50% {
-        border-color: rgba(94, 234, 212, 0.66);
-        box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.52), 0 0 20px rgba(45, 212, 191, 0.24);
+        border-color: rgba(94, 234, 212, 0.68);
+        background-color: rgba(15, 23, 42, 0.79);
+      }
+    }
+
+    @keyframes roadmapHaloPulse {
+      0%, 100% {
+        opacity: 0.5;
+        filter: blur(8px);
+      }
+
+      50% {
+        opacity: 0.82;
+        filter: blur(10px);
       }
     }
 
     .animate-roadmap-breathe {
+      position: relative;
+      isolation: isolate;
+      overflow: visible;
       animation: roadmapBreathe 2.6s ease-in-out infinite;
       transform-origin: 50% 50%;
+    }
+
+    .animate-roadmap-breathe::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 22px;
+      pointer-events: none;
+      z-index: -1;
+      background: radial-gradient(125% 125% at 50% 50%, rgba(45, 212, 191, 0.36) 0%, rgba(45, 212, 191, 0.17) 40%, rgba(45, 212, 191, 0) 72%);
+      animation: roadmapHaloPulse 2.6s ease-in-out infinite;
     }
   </style>
 </head>
