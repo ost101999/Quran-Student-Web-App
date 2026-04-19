@@ -5,6 +5,15 @@ import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock3, FileAudio, FileT
 import './App.css';
 
 type QuestionType = 'multiple_choice' | 'text' | 'audio';
+type TajweedContentLanguage = 'ar' | 'en';
+type TajweedLessonLanguage = 'ar' | 'en' | 'both';
+
+const QUESTION_TYPE_ORDER: QuestionType[] = ['multiple_choice', 'text', 'audio'];
+const QUESTION_TYPE_SECTION_LABELS: Record<QuestionType, { ar: string; en: string }> = {
+  multiple_choice: { ar: 'أسئلة الاختيار من متعدد', en: 'Multiple Choice' },
+  text: { ar: 'الأسئلة المقالية', en: 'Written Questions' },
+  audio: { ar: 'أسئلة التسجيل الصوتي', en: 'Audio Questions' },
+};
 
 interface Student {
   id: string;
@@ -19,6 +28,10 @@ interface TajweedQuestion {
   type: QuestionType;
   text: string;
   options?: string[];
+  textAr?: string;
+  textEn?: string;
+  optionsAr?: string[];
+  optionsEn?: string[];
   correctOptionIndex?: number;
   points?: number;
 }
@@ -26,6 +39,7 @@ interface TajweedQuestion {
 interface TajweedLesson {
   id: string;
   title: string;
+  language?: TajweedLessonLanguage;
   questions: TajweedQuestion[];
 }
 
@@ -99,6 +113,34 @@ const getScheduleLink = (durationStr?: string) => {
   return null;
 };
 
+const getStudentPreferredQuestionLanguage = (studentName?: string): TajweedContentLanguage => {
+  const name = String(studentName || '').trim();
+  if (!name) return 'ar';
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(name) ? 'ar' : 'en';
+};
+
+const getLocalizedQuestionText = (
+  question: TajweedQuestion,
+  _lesson: TajweedLesson | null,
+  preferredLanguage: TajweedContentLanguage,
+): string => {
+  if (preferredLanguage === 'en') {
+    return question.textEn || question.text || question.textAr || '';
+  }
+  return question.textAr || question.text || question.textEn || '';
+};
+
+const getLocalizedQuestionOptions = (
+  question: TajweedQuestion,
+  _lesson: TajweedLesson | null,
+  preferredLanguage: TajweedContentLanguage,
+): string[] => {
+  if (preferredLanguage === 'en') {
+    return question.optionsEn || question.options || question.optionsAr || [];
+  }
+  return question.optionsAr || question.options || question.optionsEn || [];
+};
+
 function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const studentId = searchParams.get('student');
@@ -119,6 +161,7 @@ function App() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingMetaRef = useRef<{ assignmentId: string; questionId: string } | null>(null);
+  const assignmentScrollRef = useRef<HTMLDivElement | null>(null);
 
   const fetchData = async () => {
     if (!studentId) {
@@ -160,6 +203,10 @@ function App() {
   }, [draftAnswersByAssignment]);
 
   const student = useMemo(() => data?.students?.find((s) => s.id === studentId), [data, studentId]);
+  const preferredQuestionLanguage = useMemo<TajweedContentLanguage>(
+    () => getStudentPreferredQuestionLanguage(student?.name),
+    [student?.name],
+  );
 
   const attendance = data?.attendance || {};
   const availableMonths = useMemo(() => {
@@ -245,6 +292,42 @@ function App() {
   const latestPendingAssignment = pendingAssignments[0] || null;
   const latestPendingLesson = latestPendingAssignment ? bank[latestPendingAssignment.lessonId] : null;
 
+  const selectedLessonQuestionSections = useMemo(() => {
+    if (!selectedLesson) return [] as Array<{ type: QuestionType; title: string; questions: TajweedQuestion[] }>;
+
+    return QUESTION_TYPE_ORDER
+      .map((type) => ({
+        type,
+        title: preferredQuestionLanguage === 'en' ? QUESTION_TYPE_SECTION_LABELS[type].en : QUESTION_TYPE_SECTION_LABELS[type].ar,
+        questions: selectedLesson.questions.filter((question) => question.type === type),
+      }))
+      .filter((section) => section.questions.length > 0);
+  }, [selectedLesson, preferredQuestionLanguage]);
+
+  useEffect(() => {
+    const shouldLockScroll = activeTab === 'assignments' && !!selectedAssignment && !!selectedLesson;
+    if (!shouldLockScroll) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleWheel = (event: WheelEvent) => {
+      const container = assignmentScrollRef.current;
+      if (!container) return;
+      if (container.scrollHeight <= container.clientHeight) return;
+
+      event.preventDefault();
+      container.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' });
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeTab, selectedAssignment, selectedLesson]);
+
   const upsertDraft = (assignmentId: string, questionId: string, updates: Partial<DraftAnswer>) => {
     setDraftAnswersByAssignment((prev) => {
       const currentAssignmentAnswers = prev[assignmentId] || {};
@@ -280,8 +363,45 @@ function App() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const preferredAudioConstraints: MediaStreamConstraints = {
+        audio: {
+          channelCount: 1,
+          sampleRate: 48000,
+          sampleSize: 16,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      };
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(preferredAudioConstraints);
+      } catch {
+        // Fallback to browser defaults if advanced constraints are rejected.
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      const mimeCandidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+      ];
+
+      const selectedMimeType = typeof MediaRecorder.isTypeSupported === 'function'
+        ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
+        : '';
+
+      const recorderOptions: MediaRecorderOptions = {
+        audioBitsPerSecond: 128000,
+      };
+
+      if (selectedMimeType) {
+        recorderOptions.mimeType = selectedMimeType;
+      }
+
+      const recorder = new MediaRecorder(stream, recorderOptions);
+      const finalMimeType = recorder.mimeType || selectedMimeType || 'audio/webm';
 
       chunksRef.current = [];
       streamRef.current = stream;
@@ -299,7 +419,7 @@ function App() {
         const meta = recordingMetaRef.current;
         if (!meta) return;
 
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: finalMimeType });
         const fileReader = new FileReader();
         const previewUrl = URL.createObjectURL(blob);
 
@@ -581,7 +701,7 @@ function App() {
                 </div>
               </aside>
 
-              <div className="glass-card">
+              <div ref={assignmentScrollRef} className="glass-card max-h-[78vh] overflow-y-auto overscroll-contain">
                 {!selectedLesson || !selectedAssignment ? (
                   <p className="text-slate-500">اختر واجبًا من القائمة لبدء الحل.</p>
                 ) : (
@@ -591,67 +711,80 @@ function App() {
                       <p className="text-slate-500 mt-1">أجب على جميع الأسئلة ثم اضغط إرسال.</p>
                     </div>
 
-                    <div className="space-y-4">
-                      {selectedLesson.questions.map((question, idx) => {
-                        const answer = draftAnswersByAssignment[selectedAssignment.id]?.[question.id];
-                        return (
-                          <div key={question.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                            <p className="font-bold mb-3">{idx + 1}. {question.text}</p>
+                    <div className="space-y-5">
+                      {selectedLessonQuestionSections.map((section) => (
+                        <section key={section.type} className="space-y-3">
+                          <div className="rounded-xl bg-slate-100/80 px-3 py-2">
+                            <h4 className="font-bold text-slate-700">{section.title}</h4>
+                          </div>
 
-                            {question.type === 'text' && (
-                              <textarea
-                                value={answer?.answerText || ''}
-                                onChange={(event) => upsertDraft(selectedAssignment.id, question.id, { questionId: question.id, answerText: event.target.value })}
-                                placeholder="اكتب إجابتك هنا"
-                                className="w-full rounded-xl border border-slate-300 p-3 min-h-24 outline-none focus:border-sky-500"
-                              />
-                            )}
+                          <div className="space-y-4">
+                            {section.questions.map((question, idx) => {
+                              const answer = draftAnswersByAssignment[selectedAssignment.id]?.[question.id];
+                              const localizedQuestionText = getLocalizedQuestionText(question, selectedLesson, preferredQuestionLanguage);
+                              const localizedQuestionOptions = getLocalizedQuestionOptions(question, selectedLesson, preferredQuestionLanguage);
 
-                            {question.type === 'multiple_choice' && (
-                              <div className="space-y-2">
-                                {(question.options || []).map((option, optionIdx) => (
-                                  <label key={`${question.id}_${optionIdx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      checked={answer?.selectedOptionIndex === optionIdx}
-                                      onChange={() => upsertDraft(selectedAssignment.id, question.id, {
-                                        questionId: question.id,
-                                        selectedOptionIndex: optionIdx,
-                                      })}
+                              return (
+                                <div key={question.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                                  <p className="font-bold mb-3">{toHindiDigits(idx + 1)}. {localizedQuestionText}</p>
+
+                                  {question.type === 'text' && (
+                                    <textarea
+                                      value={answer?.answerText || ''}
+                                      onChange={(event) => upsertDraft(selectedAssignment.id, question.id, { questionId: question.id, answerText: event.target.value })}
+                                      placeholder="اكتب إجابتك هنا"
+                                      className="w-full rounded-xl border border-slate-300 p-3 min-h-24 outline-none focus:border-sky-500"
                                     />
-                                    <span>{option}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-
-                            {question.type === 'audio' && (
-                              <div className="space-y-3">
-                                <div className="flex flex-wrap gap-2">
-                                  {recordingQuestionId === question.id ? (
-                                    <button onClick={stopRecording} className="record-btn bg-rose-600 text-white">
-                                      <PauseCircle size={16} /> إيقاف التسجيل
-                                    </button>
-                                  ) : (
-                                    <button onClick={() => startRecording(selectedAssignment.id, question.id)} className="record-btn bg-sky-700 text-white">
-                                      <Mic size={16} /> بدء التسجيل
-                                    </button>
                                   )}
-                                  {!!answer?.audioBase64 && (
-                                    <button onClick={() => removeAudioDraft(selectedAssignment.id, question.id)} className="record-btn bg-slate-200 text-slate-700">
-                                      حذف التسجيل
-                                    </button>
+
+                                  {question.type === 'multiple_choice' && (
+                                    <div className="space-y-2">
+                                      {localizedQuestionOptions.map((option, optionIdx) => (
+                                        <label key={`${question.id}_${optionIdx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            checked={answer?.selectedOptionIndex === optionIdx}
+                                            onChange={() => upsertDraft(selectedAssignment.id, question.id, {
+                                              questionId: question.id,
+                                              selectedOptionIndex: optionIdx,
+                                            })}
+                                          />
+                                          <span>{option}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {question.type === 'audio' && (
+                                    <div className="space-y-3">
+                                      <div className="flex flex-wrap gap-2">
+                                        {recordingQuestionId === question.id ? (
+                                          <button onClick={stopRecording} className="record-btn bg-rose-600 text-white">
+                                            <PauseCircle size={16} /> إيقاف التسجيل
+                                          </button>
+                                        ) : (
+                                          <button onClick={() => startRecording(selectedAssignment.id, question.id)} className="record-btn bg-sky-700 text-white">
+                                            <Mic size={16} /> بدء التسجيل
+                                          </button>
+                                        )}
+                                        {!!answer?.audioBase64 && (
+                                          <button onClick={() => removeAudioDraft(selectedAssignment.id, question.id)} className="record-btn bg-slate-200 text-slate-700">
+                                            حذف التسجيل
+                                          </button>
+                                        )}
+                                      </div>
+                                      {!!answer?.audioPreviewUrl && (
+                                        <audio controls src={answer.audioPreviewUrl} className="w-full" />
+                                      )}
+                                      {!answer?.audioPreviewUrl && <p className="text-sm text-slate-500">سجل تلاوتك أو نطقك لهذا السؤال.</p>}
+                                    </div>
                                   )}
                                 </div>
-                                {!!answer?.audioPreviewUrl && (
-                                  <audio controls src={answer.audioPreviewUrl} className="w-full" />
-                                )}
-                                {!answer?.audioPreviewUrl && <p className="text-sm text-slate-500">سجل تلاوتك أو نطقك لهذا السؤال.</p>}
-                              </div>
-                            )}
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </section>
+                      ))}
                     </div>
 
                     {statusMessage && (
@@ -711,11 +844,13 @@ function App() {
                     <div className="space-y-3">
                       {lesson?.questions.map((question, index) => {
                         const answer = submission?.answers.find((item) => item.questionId === question.id);
-                        const selectedChoice = question.options?.[answer?.selectedOptionIndex ?? -1];
+                        const localizedQuestionText = getLocalizedQuestionText(question, lesson, preferredQuestionLanguage);
+                        const localizedQuestionOptions = getLocalizedQuestionOptions(question, lesson, preferredQuestionLanguage);
+                        const selectedChoice = localizedQuestionOptions?.[answer?.selectedOptionIndex ?? -1];
 
                         return (
                           <div key={question.id} className="rounded-xl border border-slate-200 p-3 bg-white/80">
-                            <p className="font-bold mb-2">{index + 1}. {question.text}</p>
+                            <p className="font-bold mb-2">{index + 1}. {localizedQuestionText}</p>
 
                             {question.type === 'text' && (
                               <p className="text-slate-700">{answer?.answerText || 'لا توجد إجابة نصية.'}</p>
