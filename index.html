@@ -411,6 +411,8 @@
       const [selectedReport, setSelectedReport] = useState(null);
       const [selectedTajweedQuiz, setSelectedTajweedQuiz] = useState(null);
       const [showTajweedRoadmapPage, setShowTajweedRoadmapPage] = useState(false);
+      const [roadmapAutoStartEnabled, setRoadmapAutoStartEnabled] = useState(false);
+      const [roadmapAutoStartCountdown, setRoadmapAutoStartCountdown] = useState(0);
       const [expandedRoadmapLessonId, setExpandedRoadmapLessonId] = useState('');
       const [quizDraftAnswers, setQuizDraftAnswers] = useState({});
       const [quizValidationErrors, setQuizValidationErrors] = useState({});
@@ -583,11 +585,6 @@
         if (!container) return;
 
         const frameId = window.requestAnimationFrame(() => {
-          const currentTrigger = container.querySelector('[data-roadmap-current-trigger="true"]');
-          if (currentTrigger) {
-            currentTrigger.click();
-          }
-
           const currentLessonEl = container.querySelector('[data-current-roadmap="true"]');
           if (!currentLessonEl) return;
 
@@ -597,6 +594,35 @@
 
         return () => window.cancelAnimationFrame(frameId);
       }, [showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.lessonTitle, selectedTajweedQuiz?.assignmentId]);
+
+      useEffect(() => {
+        if (!selectedTajweedQuiz || !showTajweedRoadmapPage || !roadmapAutoStartEnabled) {
+          setRoadmapAutoStartCountdown(0);
+          return;
+        }
+
+        const hasQuizQuestions = Array.isArray(selectedTajweedQuiz?.questions) && selectedTajweedQuiz.questions.length > 0;
+        if (!hasQuizQuestions) {
+          setRoadmapAutoStartCountdown(0);
+          return;
+        }
+
+        const totalSeconds = 4;
+        setRoadmapAutoStartCountdown(totalSeconds);
+
+        const intervalId = window.setInterval(() => {
+          setRoadmapAutoStartCountdown((prev) => {
+            if (prev <= 1) {
+              window.clearInterval(intervalId);
+              openCurrentQuizFromRoadmap();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        return () => window.clearInterval(intervalId);
+      }, [roadmapAutoStartEnabled, showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.assignmentId]);
 
       // Glow animation on last reported day after data loads
       useEffect(() => {
@@ -851,9 +877,10 @@ https://is.gd/oL6gEO`;
         previousSolutionAttempt: "محاولة",
         previousSolutionSubmittedAt: "تاريخ الحل",
         previousSolutionPreviewText: "ملخص الإجابة",
-        watchLessonVideo: "فيديو الشرح",
-        downloadLessonPdf: "تحميل PDF",
-        startCurrentQuiz: "ابدأ اختبار الدرس الحالي",
+        autoStartQuizIn: "سيبدأ اختبار قصير خلال",
+        watchLessonVideo: "شاهد الشرح",
+        downloadLessonPdf: "الشرح مكتوب",
+        startCurrentQuiz: "اختبار قصير",
         openLearningRoadmap: "فتح صفحة المسار",
         openLessonQuizPreview: "فتح اختبار هذا الدرس",
         lessonWithoutTitle: "درس بدون عنوان",
@@ -963,6 +990,7 @@ https://is.gd/oL6gEO`;
         previousSolutionAttempt: "Attempt",
         previousSolutionSubmittedAt: "Submitted At",
         previousSolutionPreviewText: "Answer Preview",
+        autoStartQuizIn: "Auto-starting short quiz in",
         watchLessonVideo: "Watch Video",
         downloadLessonPdf: "Download PDF",
         startCurrentQuiz: "Start Current Lesson Quiz",
@@ -2078,6 +2106,8 @@ https://is.gd/oL6gEO`;
         recordingMetaRef.current = null;
         chunksRef.current = [];
         resetQuizDraftState();
+        setRoadmapAutoStartCountdown(0);
+        setRoadmapAutoStartEnabled(false);
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(false);
         setSelectedTajweedQuiz(null);
@@ -2307,6 +2337,8 @@ https://is.gd/oL6gEO`;
         recordingMetaRef.current = null;
         chunksRef.current = [];
         resetQuizDraftState();
+        setRoadmapAutoStartCountdown(0);
+        setRoadmapAutoStartEnabled(!payload?.missing);
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(!payload?.missing);
         setSelectedTajweedQuiz(payload);
@@ -2314,11 +2346,16 @@ https://is.gd/oL6gEO`;
 
       const openLearningRoadmapPage = () => {
         if (!selectedTajweedQuiz || selectedTajweedQuiz.missing) return;
+        setRoadmapAutoStartEnabled(false);
+        setRoadmapAutoStartCountdown(0);
+        setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(true);
       };
 
       const openCurrentQuizFromRoadmap = () => {
         if (!selectedTajweedQuiz || selectedTajweedQuiz.missing) return;
+        setRoadmapAutoStartEnabled(false);
+        setRoadmapAutoStartCountdown(0);
         setShowTajweedRoadmapPage(false);
       };
 
@@ -3034,8 +3071,8 @@ https://is.gd/oL6gEO`;
 
           {/* Tajweed Learning Roadmap Page */}
           {selectedTajweedQuiz && showTajweedRoadmapPage && !selectedTajweedQuiz.missing && (
-            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[70] flex items-center justify-center p-3 md:p-5">
-              <div className="glass-panel w-full max-w-5xl h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-sky-400/30 shadow-[0_0_40px_rgba(14,165,233,0.2)] flex flex-col">
+            <div className="fixed inset-0 bg-slate-950/92 backdrop-blur-sm z-[70] flex items-center justify-center p-3 md:p-5">
+              <div className="glass-panel w-full max-w-5xl h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-slate-600/35 shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
@@ -3044,12 +3081,28 @@ https://is.gd/oL6gEO`;
                 </button>
 
                 <div className="text-center mb-4 md:mb-5 pr-9 md:pr-0">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-sky-500/20 text-sky-300 mb-2 border border-sky-400/30">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-700/60 text-slate-200 mb-2 border border-slate-500/50">
                     <i data-lucide="map" className="w-5 h-5"></i>
                   </div>
-                  <h3 className={`text-xl md:text-2xl font-bold text-sky-200 ${headerFontClass}`}>{t.learningRoadmapTitle}</h3>
-                  <p className="text-xs md:text-sm text-slate-300 mt-2">{t.learningRoadmapPageIntro}</p>
+                  <h3 className={`text-xl md:text-2xl font-bold text-slate-100 ${headerFontClass}`}>{t.learningRoadmapTitle}</h3>
+                  <p className="text-xs md:text-sm text-slate-300/95 mt-2">{t.learningRoadmapPageIntro}</p>
                 </div>
+
+                {roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 && (Array.isArray(selectedTajweedQuiz?.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
+                  <div className="mb-3 rounded-xl border border-teal-300/30 bg-teal-500/10 px-3 py-2 animate-pulse">
+                    <p className="text-xs md:text-sm font-bold text-teal-100">
+                      {isArabic
+                        ? `${t.autoStartQuizIn} ${toArabicNums(roadmapAutoStartCountdown)} ث`
+                        : `${t.autoStartQuizIn} ${roadmapAutoStartCountdown}s`}
+                    </p>
+                    <div className="mt-2 h-1.5 rounded-full bg-slate-800/70 overflow-hidden">
+                      <div
+                        className="h-full bg-teal-400 transition-all duration-1000"
+                        style={{ width: `${Math.max(0, (roadmapAutoStartCountdown / 4) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-center mb-4">
                   <button
@@ -3149,10 +3202,10 @@ https://is.gd/oL6gEO`;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
-                        ? 'border-teal-300/55 bg-teal-500/10 text-teal-50 shadow-[0_0_0_1px_rgba(45,212,191,0.25)]'
+                        ? `border-teal-300/50 bg-teal-500/10 text-teal-50 ${roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 ? 'animate-pulse' : ''}`
                         : (isSolvedByStudent
-                          ? 'border-slate-600/35 bg-slate-900/35 text-slate-300 opacity-55'
-                          : 'border-sky-400/25 bg-sky-950/20 text-sky-50');
+                          ? 'border-slate-600/35 bg-slate-900/35 text-slate-300 opacity-60'
+                          : 'border-slate-600/35 bg-slate-900/45 text-slate-100');
 
                       const videoUrl = getLessonVideoUrl(lesson);
                       const pdfUrl = getLessonPdfUrl(lesson);
@@ -3163,6 +3216,8 @@ https://is.gd/oL6gEO`;
                       const lessonQuestions = Array.isArray(defaultVersion?.questions)
                         ? defaultVersion.questions
                         : (Array.isArray(lesson?.questions) ? lesson.questions : []);
+                      const hasQuizQuestions = lessonQuestions.length > 0;
+                      const canStartCurrentQuiz = isCurrent && hasQuizQuestions;
 
                       return (
                         <div
@@ -3188,7 +3243,7 @@ https://is.gd/oL6gEO`;
                               href={videoUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md border border-sky-300/40 bg-sky-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-sky-100 hover:bg-sky-500/30 transition-colors"
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-500/45 bg-slate-700/55 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/75 transition-colors"
                             >
                               <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
                               {t.watchLessonVideo}
@@ -3198,43 +3253,32 @@ https://is.gd/oL6gEO`;
                               href={pdfUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md border border-amber-300/40 bg-amber-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-amber-100 hover:bg-amber-500/30 transition-colors"
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-500/45 bg-slate-700/55 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/75 transition-colors"
                             >
                               <i data-lucide="file-down" className="w-3.5 h-3.5"></i>
                               {t.downloadLessonPdf}
                             </a>
 
-                            {isCurrent && (
-                              <button
-                                type="button"
-                                onClick={openCurrentQuizFromRoadmap}
-                                className="inline-flex items-center gap-1 rounded-md border border-teal-300/40 bg-teal-500/20 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
-                              >
-                                <i data-lucide="target" className="w-3.5 h-3.5"></i>
-                                {t.startCurrentQuiz}
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={canStartCurrentQuiz ? openCurrentQuizFromRoadmap : undefined}
+                              disabled={!canStartCurrentQuiz}
+                              className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] md:text-xs font-bold transition-colors ${canStartCurrentQuiz
+                                ? 'border-teal-300/40 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30'
+                                : 'border-slate-500/35 bg-slate-700/35 text-slate-300/80 cursor-not-allowed'}`}
+                            >
+                              <i data-lucide="target" className="w-3.5 h-3.5"></i>
+                              {t.startCurrentQuiz}
+                            </button>
 
                             {isSolvedByStudent && (
                               <button
                                 type="button"
-                                data-roadmap-current-trigger={isCurrent ? 'true' : 'false'}
                                 onClick={() => setExpandedRoadmapLessonId((prev) => prev === lessonId ? '' : lessonId)}
                                 className="inline-flex items-center gap-1 rounded-md border border-slate-400/35 bg-slate-700/45 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/65 transition-colors"
                               >
                                 <i data-lucide={isExpanded ? 'chevron-up' : 'history'} className="w-3.5 h-3.5"></i>
                                 {isExpanded ? t.previousSolutionsHide : t.previousSolutionsToggle}
-                              </button>
-                            )}
-
-                            {!isSolvedByStudent && isCurrent && (
-                              <button
-                                type="button"
-                                data-roadmap-current-trigger="true"
-                                onClick={() => setExpandedRoadmapLessonId('')}
-                                className="hidden"
-                              >
-                                open-current
                               </button>
                             )}
                           </div>
@@ -3268,9 +3312,6 @@ https://is.gd/oL6gEO`;
                             </div>
                           )}
 
-                          {lessonQuestions.length === 0 && (
-                            <p className="text-[10px] md:text-xs text-amber-100/90 mt-2">{t.roadmapNoQuestionsYet}</p>
-                          )}
                         </div>
                       );
                     };
@@ -3286,8 +3327,8 @@ https://is.gd/oL6gEO`;
                             <span className="w-2 h-2 rounded-full bg-slate-300"></span>
                             {t.roadmapLegendSolved}
                           </div>
-                          <div className="rounded-lg border border-sky-400/25 bg-sky-500/10 px-2.5 py-1.5 text-[10px] md:text-xs text-sky-100 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-sky-300"></span>
+                          <div className="rounded-lg border border-slate-600/35 bg-slate-900/45 px-2.5 py-1.5 text-[10px] md:text-xs text-slate-200 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-slate-400"></span>
                             {t.roadmapLegendPending}
                           </div>
                         </div>
@@ -3303,7 +3344,7 @@ https://is.gd/oL6gEO`;
 
                           return (
                             <div key={`roadmap_page_group_${section.group.key}_${sectionIndex}`} className="space-y-2">
-                              <div className="px-3 py-2 rounded-xl bg-sky-500/10 border border-sky-400/25 text-xs md:text-sm font-bold text-sky-200">
+                              <div className="px-3 py-2 rounded-xl bg-slate-800/65 border border-slate-600/35 text-xs md:text-sm font-bold text-slate-100">
                                 {section.group.label}
                               </div>
 
