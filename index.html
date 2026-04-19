@@ -1380,9 +1380,9 @@ https://is.gd/oL6gEO`;
         return lessonLanguage;
       };
 
-      const matchesPreferredLessonLanguage = (lesson) => {
+      const matchesPreferredLessonLanguage = (lesson, targetLanguage = preferredQuestionLanguage) => {
         const lessonLanguage = getLessonLanguage(lesson);
-        return lessonLanguage === 'both' || lessonLanguage === preferredQuestionLanguage;
+        return lessonLanguage === 'both' || lessonLanguage === targetLanguage;
       };
 
       const resolveQuestionTargetLanguage = (requestedLanguage) => {
@@ -1429,9 +1429,10 @@ https://is.gd/oL6gEO`;
 
       const resolveBankLessonForAssignment = (assignment) => {
         if (!assignment) return null;
+        const assignmentLanguage = normalizeAssignmentContentLanguage(assignment?.contentLanguage) || preferredQuestionLanguage;
 
         const direct = tajweedBank[assignment.lessonId];
-        if (direct && hasQuestions(direct) && matchesPreferredLessonLanguage(direct)) {
+        if (direct && hasQuestions(direct) && matchesPreferredLessonLanguage(direct, assignmentLanguage)) {
           return { lessonId: assignment.lessonId, lesson: direct };
         }
 
@@ -1450,7 +1451,7 @@ https://is.gd/oL6gEO`;
           const refNorm = normalizeForMatch(refTitle);
           const exact = entries.find(([_, lesson]) => {
             const lessonNorm = normalizeForMatch(lesson?.title || '');
-            return lessonNorm === refNorm && hasQuestions(lesson) && matchesPreferredLessonLanguage(lesson);
+            return lessonNorm === refNorm && hasQuestions(lesson) && matchesPreferredLessonLanguage(lesson, assignmentLanguage);
           });
           if (exact) return { lessonId: exact[0], lesson: exact[1] };
         }
@@ -1462,7 +1463,7 @@ https://is.gd/oL6gEO`;
             return lessonNorm
               && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm))
               && hasQuestions(lesson)
-              && matchesPreferredLessonLanguage(lesson);
+              && matchesPreferredLessonLanguage(lesson, assignmentLanguage);
           });
           if (loose) return { lessonId: loose[0], lesson: loose[1] };
         }
@@ -1517,6 +1518,7 @@ https://is.gd/oL6gEO`;
 
       const pendingTajweedAssignments = Object.values(tajweedAssignments)
         .filter((assignment) => assignment && assignment.studentId === student.id && assignment.status === 'pending')
+        .sort((a, b) => Number(b?.assignedAt || 0) - Number(a?.assignedAt || 0))
         .map((assignment) => {
           const resolved = resolveBankLessonForAssignment(assignment);
           if (!resolved) return null;
