@@ -1622,8 +1622,12 @@ https://is.gd/oL6gEO`;
         return '';
       };
 
-      const getLessonVideoUrl = (lesson) => {
+      const getLessonVideoUrl = (lesson, version) => {
         const directUrl = pickFirstResourceUrl([
+          version?.videoUrl,
+          version?.videoLink,
+          version?.resources?.videoUrl,
+          version?.resources?.videoLink,
           lesson?.videoUrl,
           lesson?.videoLink,
           lesson?.lessonVideoUrl,
@@ -1631,11 +1635,35 @@ https://is.gd/oL6gEO`;
           lesson?.resources?.videoUrl,
           lesson?.resources?.videoLink,
         ]);
-        return directUrl;
+
+        if (directUrl) return directUrl;
+
+        const selectedVersionId = String(version?.id || '').trim();
+        const allVersions = getLessonExamVersions(lesson);
+
+        for (const candidate of allVersions) {
+          const candidateVersionId = String(candidate?.id || '').trim();
+          if (selectedVersionId && candidateVersionId && selectedVersionId === candidateVersionId) continue;
+
+          const fallbackUrl = pickFirstResourceUrl([
+            candidate?.videoUrl,
+            candidate?.videoLink,
+            candidate?.resources?.videoUrl,
+            candidate?.resources?.videoLink,
+          ]);
+          if (fallbackUrl) return fallbackUrl;
+        }
+
+        return '';
       };
 
-      const getLessonPdfUrl = (lesson) => {
+      const getLessonPdfUrl = (lesson, version) => {
         const directUrl = pickFirstResourceUrl([
+          version?.pdfUrl,
+          version?.pdfLink,
+          version?.resources?.pdfUrl,
+          version?.resources?.pdfLink,
+          version?.resources?.worksheetUrl,
           lesson?.pdfUrl,
           lesson?.pdfLink,
           lesson?.lessonPdfUrl,
@@ -1643,7 +1671,27 @@ https://is.gd/oL6gEO`;
           lesson?.resources?.pdfLink,
           lesson?.resources?.worksheetUrl,
         ]);
-        return directUrl;
+
+        if (directUrl) return directUrl;
+
+        const selectedVersionId = String(version?.id || '').trim();
+        const allVersions = getLessonExamVersions(lesson);
+
+        for (const candidate of allVersions) {
+          const candidateVersionId = String(candidate?.id || '').trim();
+          if (selectedVersionId && candidateVersionId && selectedVersionId === candidateVersionId) continue;
+
+          const fallbackUrl = pickFirstResourceUrl([
+            candidate?.pdfUrl,
+            candidate?.pdfLink,
+            candidate?.resources?.pdfUrl,
+            candidate?.resources?.pdfLink,
+            candidate?.resources?.worksheetUrl,
+          ]);
+          if (fallbackUrl) return fallbackUrl;
+        }
+
+        return '';
       };
 
       const formatSubmissionDateTime = (timestamp) => {
@@ -3291,14 +3339,24 @@ https://is.gd/oL6gEO`;
                           ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                           : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
 
-                      const videoUrl = getLessonVideoUrl(lesson);
-                      const pdfUrl = getLessonPdfUrl(lesson);
+                      const currentRequestedVersionId = isCurrent
+                        ? String(selectedTajweedQuiz?.versionId || '').trim()
+                        : '';
+                      const currentRequestedLanguage = isCurrent
+                        ? (normalizeAssignmentContentLanguage(selectedTajweedQuiz?.contentLanguage)
+                          || normalizeAssignmentContentLanguage(selectedTajweedQuiz?.lessonLanguage)
+                          || getDefaultContentLanguageForLesson(lesson))
+                        : getDefaultContentLanguageForLesson(lesson);
+
+                      const defaultVersion = getAssignmentExamVersion(lesson, {
+                        versionId: currentRequestedVersionId || undefined,
+                        contentLanguage: currentRequestedLanguage,
+                      });
+                      const videoUrl = getLessonVideoUrl(lesson, defaultVersion);
+                      const pdfUrl = getLessonPdfUrl(lesson, defaultVersion);
                       const hasVideoResource = !!videoUrl;
                       const hasPdfResource = !!pdfUrl;
 
-                      const defaultVersion = getAssignmentExamVersion(lesson, {
-                        contentLanguage: getDefaultContentLanguageForLesson(lesson),
-                      });
                       const lessonDisplayTitle = getRoadmapLessonTitle(lesson);
                       const lessonQuestions = Array.isArray(defaultVersion?.questions)
                         ? defaultVersion.questions
