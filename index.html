@@ -1112,11 +1112,7 @@ https://is.gd/oL6gEO`;
         tourTajweedOpenTitle: "ابدأ مسار التجويد",
         tourTajweedOpenDesc: "اضغط مرة واحدة على زر فتح الاختبار لفتح مسار التعلم أولاً.",
         tourTajweedRoadmapTitle: "مسار تعلم التجويد",
-        tourTajweedRoadmapDesc: "هذه الخريطة ترتب الدروس حتى موضعك الحالي وتوضح ما تم وما هو قادم.",
-        tourTajweedStartQuizTitle: "بعد المسار: الاختبار",
-        tourTajweedStartQuizDesc: "بعد مراجعة المسار اضغط اختبار قصير للانتقال إلى أسئلة هذا الدرس.",
-        tourTajweedQuizTitle: "أسئلة التجويد",
-        tourTajweedQuizDesc: "هنا تظهر أسئلة الدرس الحالي بعد المرور على مسار التعلم.",
+        tourTajweedRoadmapDesc: "هذا المسار مبني على منهجية واضحة بدروس مرتبة، وكل درس يحتوي على فيديو شرح وملف PDF مشروح واختبار.",
         tourStatsTitle: "الإحصائيات",
         tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
         tourActionsTitle: "مواعيد وإجراءات الحصص",
@@ -1238,11 +1234,7 @@ https://is.gd/oL6gEO`;
         tourTajweedOpenTitle: "Open Tajweed Path",
         tourTajweedOpenDesc: "Click once on Open Quiz to enter the learning path first.",
         tourTajweedRoadmapTitle: "Tajweed Learning Path",
-        tourTajweedRoadmapDesc: "This roadmap organizes lessons up to your current point and shows done vs upcoming.",
-        tourTajweedStartQuizTitle: "Then Start Questions",
-        tourTajweedStartQuizDesc: "After reviewing the roadmap, press Start Quiz to move to this lesson's questions.",
-        tourTajweedQuizTitle: "Tajweed Questions",
-        tourTajweedQuizDesc: "These are the questions of the current Tajweed lesson after the roadmap step.",
+        tourTajweedRoadmapDesc: "This path follows a clear methodology with ordered lessons, and each lesson includes an explained video, an explained PDF, and a quiz.",
         tourStatsTitle: "Statistics",
         tourStatsDesc: "Summary of total attended and missed classes for the month.",
         tourActionsTitle: "Schedule & Quick Actions",
@@ -1495,31 +1487,6 @@ https://is.gd/oL6gEO`;
                     description: t.tourTajweedRoadmapDesc,
                     side: 'top',
                     align: 'center'
-                  }
-                },
-                {
-                  element: '#tour-start-current-quiz',
-                  popover: {
-                    title: t.tourTajweedStartQuizTitle,
-                    description: t.tourTajweedStartQuizDesc,
-                    side: 'bottom',
-                    align: 'center',
-                    showButtons: ['close']
-                  }
-                },
-                {
-                  element: '#tour-tajweed-quiz-modal',
-                  popover: {
-                    title: t.tourTajweedQuizTitle,
-                    description: t.tourTajweedQuizDesc,
-                    side: 'top',
-                    align: 'center'
-                  },
-                  onPrevClick: () => {
-                    setShowTajweedRoadmapPage(true);
-                    setTimeout(() => {
-                      window.driverObjInstance.movePrevious();
-                    }, 180);
                   }
                 }
               ]
