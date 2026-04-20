@@ -1521,7 +1521,14 @@ https://is.gd/oL6gEO`;
         return [ref.ar, ref.en].filter(Boolean);
       };
 
-      const hasQuestions = (lesson) => Array.isArray(lesson?.questions) && lesson.questions.length > 0;
+      const hasQuestions = (lesson) => {
+        if (Array.isArray(lesson?.questions) && lesson.questions.length > 0) {
+          return true;
+        }
+
+        const versions = getLessonExamVersions(lesson);
+        return versions.some((version) => Array.isArray(version?.questions) && version.questions.length > 0);
+      };
 
       const getLessonLanguage = (lesson) => {
         const rawLanguage = String(lesson?.language || '').toLowerCase();
@@ -1623,7 +1630,18 @@ https://is.gd/oL6gEO`;
       };
 
       const getLessonVideoUrl = (lesson, version) => {
-        const directUrl = pickFirstResourceUrl([
+        const hasVersionScopedContent = Array.isArray(lesson?.examVersions) && lesson.examVersions.length > 0;
+
+        if (hasVersionScopedContent) {
+          return pickFirstResourceUrl([
+            version?.videoUrl,
+            version?.videoLink,
+            version?.resources?.videoUrl,
+            version?.resources?.videoLink,
+          ]);
+        }
+
+        return pickFirstResourceUrl([
           version?.videoUrl,
           version?.videoLink,
           version?.resources?.videoUrl,
@@ -1635,30 +1653,22 @@ https://is.gd/oL6gEO`;
           lesson?.resources?.videoUrl,
           lesson?.resources?.videoLink,
         ]);
-
-        if (directUrl) return directUrl;
-
-        const selectedVersionId = String(version?.id || '').trim();
-        const allVersions = getLessonExamVersions(lesson);
-
-        for (const candidate of allVersions) {
-          const candidateVersionId = String(candidate?.id || '').trim();
-          if (selectedVersionId && candidateVersionId && selectedVersionId === candidateVersionId) continue;
-
-          const fallbackUrl = pickFirstResourceUrl([
-            candidate?.videoUrl,
-            candidate?.videoLink,
-            candidate?.resources?.videoUrl,
-            candidate?.resources?.videoLink,
-          ]);
-          if (fallbackUrl) return fallbackUrl;
-        }
-
-        return '';
       };
 
       const getLessonPdfUrl = (lesson, version) => {
-        const directUrl = pickFirstResourceUrl([
+        const hasVersionScopedContent = Array.isArray(lesson?.examVersions) && lesson.examVersions.length > 0;
+
+        if (hasVersionScopedContent) {
+          return pickFirstResourceUrl([
+            version?.pdfUrl,
+            version?.pdfLink,
+            version?.resources?.pdfUrl,
+            version?.resources?.pdfLink,
+            version?.resources?.worksheetUrl,
+          ]);
+        }
+
+        return pickFirstResourceUrl([
           version?.pdfUrl,
           version?.pdfLink,
           version?.resources?.pdfUrl,
@@ -1671,27 +1681,6 @@ https://is.gd/oL6gEO`;
           lesson?.resources?.pdfLink,
           lesson?.resources?.worksheetUrl,
         ]);
-
-        if (directUrl) return directUrl;
-
-        const selectedVersionId = String(version?.id || '').trim();
-        const allVersions = getLessonExamVersions(lesson);
-
-        for (const candidate of allVersions) {
-          const candidateVersionId = String(candidate?.id || '').trim();
-          if (selectedVersionId && candidateVersionId && selectedVersionId === candidateVersionId) continue;
-
-          const fallbackUrl = pickFirstResourceUrl([
-            candidate?.pdfUrl,
-            candidate?.pdfLink,
-            candidate?.resources?.pdfUrl,
-            candidate?.resources?.pdfLink,
-            candidate?.resources?.worksheetUrl,
-          ]);
-          if (fallbackUrl) return fallbackUrl;
-        }
-
-        return '';
       };
 
       const formatSubmissionDateTime = (timestamp) => {
@@ -1785,6 +1774,38 @@ https://is.gd/oL6gEO`;
         return ordered;
       };
 
+      const getLessonTitleSearchKeys = (lesson, preferredVersion = null) => {
+        const keys = [];
+
+        const pushKey = (value) => {
+          const normalized = normalizeForMatch(value || '');
+          if (!normalized) return;
+          if (!keys.includes(normalized)) keys.push(normalized);
+        };
+
+        pushKey(lesson?.title);
+
+        if (preferredVersion) {
+          pushKey(preferredVersion?.lessonTitle);
+        }
+
+        getLessonExamVersions(lesson).forEach((version) => {
+          pushKey(version?.lessonTitle);
+        });
+
+        return keys;
+      };
+
+      const doesHintMatchLesson = (hint, lesson, preferredVersion = null) => {
+        const normalizedHint = normalizeForMatch(hint || '');
+        if (!normalizedHint) return false;
+
+        const titleKeys = getLessonTitleSearchKeys(lesson, preferredVersion);
+        return titleKeys.some((key) => (
+          key === normalizedHint || key.includes(normalizedHint) || normalizedHint.includes(key)
+        ));
+      };
+
       const resolveBankLessonForAssignment = (assignment) => {
         if (!assignment) return null;
 
@@ -1819,8 +1840,11 @@ https://is.gd/oL6gEO`;
         for (const refTitle of searchTitles) {
           const refNorm = normalizeForMatch(refTitle);
           const exact = entries.find(([_, lesson]) => {
-            const lessonNorm = normalizeForMatch(lesson?.title || '');
-            return lessonNorm === refNorm && hasQuestions(lesson) && matchesPreferredLessonLanguage(lesson, assignmentLanguage);
+            if (!hasQuestions(lesson) || !matchesPreferredLessonLanguage(lesson, assignmentLanguage)) {
+              return false;
+            }
+
+            return getLessonTitleSearchKeys(lesson).some((key) => key === refNorm);
           });
           if (exact) return { lessonId: exact[0], lesson: exact[1] };
         }
@@ -1828,11 +1852,13 @@ https://is.gd/oL6gEO`;
         for (const refTitle of searchTitles) {
           const refNorm = normalizeForMatch(refTitle);
           const loose = entries.find(([_, lesson]) => {
-            const lessonNorm = normalizeForMatch(lesson?.title || '');
-            return lessonNorm
-              && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm))
-              && hasQuestions(lesson)
-              && matchesPreferredLessonLanguage(lesson, assignmentLanguage);
+            if (!hasQuestions(lesson) || !matchesPreferredLessonLanguage(lesson, assignmentLanguage)) {
+              return false;
+            }
+
+            return getLessonTitleSearchKeys(lesson).some((key) => (
+              key && (key.includes(refNorm) || refNorm.includes(key))
+            ));
           });
           if (loose) return { lessonId: loose[0], lesson: loose[1] };
         }
@@ -1871,10 +1897,7 @@ https://is.gd/oL6gEO`;
         const entries = getSmartOrderedBankEntries();
 
         const matches = entries.filter(([_, lesson]) => {
-          const lessonTitle = normalizeForMatch(lesson?.title || '');
-          return lessonTitle
-            && (lessonTitle === hint || hint.includes(lessonTitle) || lessonTitle.includes(hint))
-            && hasQuestions(lesson);
+          return hasQuestions(lesson) && doesHintMatchLesson(hint, lesson);
         });
 
         const preferred = matches.find(([_, lesson]) => matchesPreferredLessonLanguage(lesson));
@@ -2040,8 +2063,7 @@ https://is.gd/oL6gEO`;
         if (!hint) return pendingTajweedAssignments[0];
 
         const matched = pendingTajweedAssignments.find((assignment) => {
-          const lessonTitle = normalizeForMatch(assignment?.resolvedLesson?.title || '');
-          return lessonTitle && (lessonTitle.includes(hint) || hint.includes(lessonTitle));
+          return doesHintMatchLesson(hint, assignment?.resolvedLesson, assignment?.resolvedVersion || null);
         });
 
         return matched || pendingTajweedAssignments[0];
@@ -2571,7 +2593,7 @@ https://is.gd/oL6gEO`;
         const quizContentLanguage = normalizeAssignmentContentLanguage(assignment?.contentLanguage)
           || normalizeAssignmentContentLanguage(assignment?.resolvedVersionLanguage)
           || getDefaultContentLanguageForLesson(lesson);
-        const assignmentQuestions = Array.isArray(assignment?.resolvedQuestions) && assignment.resolvedQuestions.length > 0
+        const assignmentQuestions = Array.isArray(assignment?.resolvedQuestions)
           ? assignment.resolvedQuestions
           : (Array.isArray(lesson?.questions) ? lesson.questions : []);
         const resolvedVersion = assignment?.resolvedVersion || getAssignmentExamVersion(lesson, assignment);
