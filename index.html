@@ -716,6 +716,42 @@
       const fontClass = isArabic ? "font-amiri" : "font-sans";
       const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
 
+      const TOUR_TAJWEED_LESSON_ID = 'tour-tajweed-1';
+      const TOUR_TAJWEED_LESSON = {
+        id: TOUR_TAJWEED_LESSON_ID,
+        title: 'النون والميم المشددتان',
+        language: 'both',
+        targetAge: 'all',
+        group: 'foundation',
+        createdAt: 1713916800000,
+        questions: [
+          {
+            id: 'tour_tajweed_q1',
+            type: 'multiple_choice',
+            textAr: 'ما حكم النون المشددة والميم المشددة؟',
+            textEn: 'What is the rule of stressed Noon and stressed Meem?',
+            optionsAr: ['غنة مقدارها حركتان', 'إظهار شفوي', 'إخفاء شفوي'],
+            optionsEn: ['Ghunnah for two counts', 'Izhar Shafawi', 'Ikhfa Shafawi'],
+            correctOptionIndex: 0,
+          },
+          {
+            id: 'tour_tajweed_q2',
+            type: 'text',
+            textAr: 'اكتب مثالاً من القرآن فيه ميم مشددة.',
+            textEn: 'Write one Quranic example that contains a stressed Meem.',
+          },
+          {
+            id: 'tour_tajweed_q3',
+            type: 'audio',
+            textAr: 'سجّل تلاوة قصيرة تتضمن غنة النون المشددة.',
+            textEn: 'Record a short recitation that includes stressed Noon ghunnah.',
+          }
+        ],
+      };
+      const TOUR_TAJWEED_BANK = {
+        [TOUR_TAJWEED_LESSON_ID]: TOUR_TAJWEED_LESSON,
+      };
+
       // Mock Data for Tour Mode
       const mockReportTextEn = `📖 *Class Report*
 
@@ -739,7 +775,7 @@ Surah Al-Baqara (From 1 to 50)
 From Surah An-Naba to Surah Al-A'la
 
 *• Tajweed:*
-The Idgham Shafawi
+Stressed Noon and Meem
 
 〰️〰️〰️〰️〰️
 
@@ -755,7 +791,7 @@ From Surah Al-Baqara Ayah 51 to Surah Al-Imran Ayah 30
 From Surah Al-Ghashiyah to Surah An-Nas
 
 *• Tajweed:*
-The Ikhfa Shafawi
+Stressed Noon and Meem
 
 ــــــــــــــــــــــــــــــ
 
@@ -777,6 +813,18 @@ https://is.gd/oL6gEO`;
         }],
         month: 2, // March (0-indexed)
         year: 2026,
+        tajweedBank: TOUR_TAJWEED_BANK,
+        tajweedAssignments: {
+          mock_tour_tajweed_en: {
+            id: 'mock_tour_tajweed_en',
+            lessonId: TOUR_TAJWEED_LESSON_ID,
+            studentId: 'mock',
+            assignedAt: 1713916800000,
+            contentLanguage: 'en',
+            status: 'pending',
+          }
+        },
+        tajweedSubmissions: {},
         attendance: {
           "mock_2_2_2026": "1", // Present
           "mock_4_2_2026": "!", // Paid Absence
@@ -809,7 +857,7 @@ https://is.gd/oL6gEO`;
 من سورة الغاشية آية ٥ إلى سورة الناس آية ٦
 
 *• التجويد:*
-الإدغام الشفوي
+النون والميم المشددتان
 
 〰️〰️〰️〰️〰️
 
@@ -825,7 +873,7 @@ https://is.gd/oL6gEO`;
 سورة الناس (٧)
 
 *• التجويد:*
-الإخفاء الشفوي
+النون والميم المشددتان
 
 ــــــــــــــــــــــــــــــ
 
@@ -847,6 +895,18 @@ https://is.gd/oL6gEO`;
         }],
         month: 2, // March (0-indexed)
         year: 2026,
+        tajweedBank: TOUR_TAJWEED_BANK,
+        tajweedAssignments: {
+          mock_tour_tajweed_ar: {
+            id: 'mock_tour_tajweed_ar',
+            lessonId: TOUR_TAJWEED_LESSON_ID,
+            studentId: 'mock',
+            assignedAt: 1713916800000,
+            contentLanguage: 'ar',
+            status: 'pending',
+          }
+        },
+        tajweedSubmissions: {},
         attendance: {
           "mock_2_2_2026": "1", // Present
           "mock_4_2_2026": "!", // Paid Absence
