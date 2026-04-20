@@ -1904,6 +1904,7 @@ https://is.gd/oL6gEO`;
             contentLanguage: normalizeAssignmentContentLanguage(assignment?.contentLanguage) || resolvedVersionLanguage,
             resolvedLessonId: resolved.lessonId,
             resolvedLesson: resolved.lesson,
+            resolvedVersion,
             resolvedVersionId: resolvedVersion?.id,
             resolvedVersionLanguage,
             resolvedQuestions,
@@ -2150,11 +2151,56 @@ https://is.gd/oL6gEO`;
         return pickLocalizedOptions([optionsAr, fallback, optionsEn], 'ar');
       };
 
-      const getRoadmapLessonTitle = (lesson) => {
+      const getVersionLocalizedLessonTitle = (lesson, version, requestedLanguage = preferredQuestionLanguage) => {
+        const targetLanguage = normalizeAssignmentContentLanguage(requestedLanguage) || preferredQuestionLanguage;
+        const versions = getLessonExamVersions(lesson);
+        const readVersionTitle = (candidate) => String(candidate?.lessonTitle || '').trim();
+        const resolveVersionLanguage = (candidate) => (
+          normalizeAssignmentContentLanguage(candidate?.language) || getDefaultContentLanguageForLesson(lesson)
+        );
+        const resolveVersionTargetAge = (candidate) => {
+          const versionAge = String(candidate?.targetAge || '').toLowerCase();
+          if (versionAge === 'kids' || versionAge === 'adults' || versionAge === 'all') return versionAge;
+
+          const lessonAge = String(lesson?.targetAge || '').toLowerCase();
+          if (lessonAge === 'kids' || lessonAge === 'adults' || lessonAge === 'all') return lessonAge;
+
+          return 'all';
+        };
+
+        if (version) {
+          const selectedTitle = readVersionTitle(version);
+          if (selectedTitle && resolveVersionLanguage(version) === targetLanguage) {
+            return selectedTitle;
+          }
+        }
+
+        const findBy = (predicate) => versions.find((candidate) => (
+          predicate(candidate) && !!readVersionTitle(candidate)
+        ));
+
+        const byLanguageAll = findBy((candidate) => (
+          resolveVersionLanguage(candidate) === targetLanguage
+          && resolveVersionTargetAge(candidate) === 'all'
+        ));
+        if (byLanguageAll) return readVersionTitle(byLanguageAll);
+
+        const byLanguage = findBy((candidate) => resolveVersionLanguage(candidate) === targetLanguage);
+        if (byLanguage) return readVersionTitle(byLanguage);
+
+        return '';
+      };
+
+      const getRoadmapLessonTitle = (lesson, version) => {
         const rawTitle = String(lesson?.title || '').trim();
+        const localizedVersionTitle = getVersionLocalizedLessonTitle(lesson, version, preferredQuestionLanguage);
 
         if (preferredQuestionLanguage !== 'en') {
-          return rawTitle || t.lessonWithoutTitle;
+          return localizedVersionTitle || rawTitle || t.lessonWithoutTitle;
+        }
+
+        if (localizedVersionTitle && localizedVersionTitle !== '-') {
+          return localizedVersionTitle;
         }
 
         const explicitEnglishTitle = pickLocalizedText([
@@ -2506,11 +2552,12 @@ https://is.gd/oL6gEO`;
           const previewQuestions = Array.isArray(previewVersion?.questions)
             ? previewVersion.questions
             : (Array.isArray(sectionResolved.lesson?.questions) ? sectionResolved.lesson.questions : []);
+          const previewLessonTitle = getRoadmapLessonTitle(sectionResolved.lesson, previewVersion);
 
           openTajweedQuiz({
             assignmentId: null,
             lessonId: sectionResolved.lessonId,
-            lessonTitle: sectionResolved.lesson?.title || section?.content || t.tajweedSection,
+            lessonTitle: previewLessonTitle || sectionResolved.lesson?.title || section?.content || t.tajweedSection,
             contentLanguage: normalizeAssignmentContentLanguage(previewVersion?.language) || previewContentLanguage,
             versionId: previewVersion?.id,
             lessonLanguage: getLessonLanguage(sectionResolved.lesson),
@@ -2527,11 +2574,13 @@ https://is.gd/oL6gEO`;
         const assignmentQuestions = Array.isArray(assignment?.resolvedQuestions) && assignment.resolvedQuestions.length > 0
           ? assignment.resolvedQuestions
           : (Array.isArray(lesson?.questions) ? lesson.questions : []);
+        const resolvedVersion = assignment?.resolvedVersion || getAssignmentExamVersion(lesson, assignment);
+        const resolvedLessonTitle = getRoadmapLessonTitle(lesson, resolvedVersion);
 
         openTajweedQuiz({
           assignmentId: assignment?.id,
           lessonId: assignment?.resolvedLessonId,
-          lessonTitle: lesson?.title || section?.content || t.tajweedSection,
+          lessonTitle: resolvedLessonTitle || lesson?.title || section?.content || t.tajweedSection,
           contentLanguage: quizContentLanguage,
           versionId: assignment?.resolvedVersionId || assignment?.versionId,
           lessonLanguage: getLessonLanguage(lesson),
@@ -3357,7 +3406,7 @@ https://is.gd/oL6gEO`;
                       const hasVideoResource = !!videoUrl;
                       const hasPdfResource = !!pdfUrl;
 
-                      const lessonDisplayTitle = getRoadmapLessonTitle(lesson);
+                      const lessonDisplayTitle = getRoadmapLessonTitle(lesson, defaultVersion);
                       const lessonQuestions = Array.isArray(defaultVersion?.questions)
                         ? defaultVersion.questions
                         : (Array.isArray(lesson?.questions) ? lesson.questions : []);

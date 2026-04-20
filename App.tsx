@@ -38,8 +38,11 @@ interface TajweedQuestion {
 
 interface TajweedExamVersion {
   id: string;
+  lessonTitle?: string;
   language?: TajweedContentLanguage;
   targetAge?: 'kids' | 'adults' | 'all';
+  videoUrl?: string;
+  pdfUrl?: string;
   questions: TajweedQuestion[];
   createdAt?: number;
 }
