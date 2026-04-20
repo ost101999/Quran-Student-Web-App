@@ -1259,7 +1259,7 @@ https://is.gd/oL6gEO`;
               nextBtnText: t.next,
               prevBtnText: t.prev,
               doneBtnText: t.done,
-              popoverClass: isArabic ? 'driver-rtl' : '',
+              popoverClass: isArabic ? 'driver-rtl' : 'driver-ltr',
               overlayColor: 'rgba(0, 0, 0, 0.75)',
               stagePadding: 8,
               stageRadius: 12,
@@ -1267,6 +1267,11 @@ https://is.gd/oL6gEO`;
               onDestroyed: () => {
                 setIsTourMode(false);
                 setSelectedReport(null);
+                setRoadmapAutoStartEnabled(false);
+                setRoadmapAutoStartCountdown(0);
+                setExpandedRoadmapLessonId('');
+                setShowTajweedRoadmapPage(false);
+                setSelectedTajweedQuiz(null);
               },
               steps: [
                 {
@@ -3144,6 +3149,25 @@ https://is.gd/oL6gEO`;
             .driver-rtl .driver-popover-navigation-btns {
               display: flex !important;
               flex-direction: row-reverse !important;
+              gap: 0.5rem !important;
+            }
+            .driver-ltr {
+              direction: ltr !important;
+              font-family: 'Outfit', sans-serif !important;
+            }
+            .driver-ltr .driver-popover-title,
+            .driver-ltr .driver-popover-description {
+              direction: ltr !important;
+              text-align: left !important;
+              unicode-bidi: plaintext !important;
+            }
+            .driver-ltr .driver-popover-footer {
+              flex-direction: row !important;
+              justify-content: space-between !important;
+            }
+            .driver-ltr .driver-popover-navigation-btns {
+              display: flex !important;
+              flex-direction: row !important;
               gap: 0.5rem !important;
             }
           `}} />
