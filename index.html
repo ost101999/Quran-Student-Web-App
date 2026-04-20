@@ -921,6 +921,9 @@ https://is.gd/oL6gEO`;
         learningRoadmapTitle: "خطة التعلم في التجويد",
         learningRoadmapSubtitle: "تدرج في الدروس حسب المجموعات حتى تصل إلى موضعك الحالي، ثم أكمل الاختبار.",
         learningRoadmapPageIntro: "هذه صفحة مستقلة لمسار التعلم، وتم فتح درسك الحالي تلقائياً.",
+        latestTajweedRoadmapTitle: "متابعة مسار التجويد",
+        latestTajweedRoadmapDesc: "إذا كان لديك درس تجويد في تقرير سابق، افتح مسار التعلم مباشرة من هنا.",
+        openLatestTajweedRoadmap: "فتح مسار التجويد من آخر تقرير",
         learningRoadmapCurrent: "موضعك الحالي",
         learningRoadmapCompleted: "تم",
         learningRoadmapUpcoming: "قادم",
@@ -1001,6 +1004,16 @@ https://is.gd/oL6gEO`;
         tourFeedbackDesc: "ملاحظات وتوجيهات هامة من المعلم.",
         tourAudioTitle: "الصوتيات",
         tourAudioDesc: "روابط للتسجيلات الصوتية من المعلم للمساعدة في التدريب.",
+        tourTajweedTitle: "قسم التجويد",
+        tourTajweedDesc: "هنا يظهر درس التجويد داخل التقرير، وبضغطة واحدة تبدأ رحلة التعلم.",
+        tourTajweedOpenTitle: "ابدأ مسار التجويد",
+        tourTajweedOpenDesc: "اضغط مرة واحدة على زر فتح الاختبار لفتح مسار التعلم أولاً.",
+        tourTajweedRoadmapTitle: "مسار تعلم التجويد",
+        tourTajweedRoadmapDesc: "هذه الخريطة ترتب الدروس حتى موضعك الحالي وتوضح ما تم وما هو قادم.",
+        tourTajweedStartQuizTitle: "بعد المسار: الاختبار",
+        tourTajweedStartQuizDesc: "بعد مراجعة المسار اضغط اختبار قصير للانتقال إلى أسئلة هذا الدرس.",
+        tourTajweedQuizTitle: "أسئلة التجويد",
+        tourTajweedQuizDesc: "هنا تظهر أسئلة الدرس الحالي بعد المرور على مسار التعلم.",
         tourStatsTitle: "الإحصائيات",
         tourStatsDesc: "ملخص لإجمالي حصص الحضور والغياب خلال الشهر.",
         tourActionsTitle: "مواعيد وإجراءات الحصص",
@@ -1034,6 +1047,9 @@ https://is.gd/oL6gEO`;
         learningRoadmapTitle: "Tajweed Learning Path",
         learningRoadmapSubtitle: "Follow lesson groups to your current position, then complete the quiz.",
         learningRoadmapPageIntro: "This is a standalone learning path page, and your current lesson opens automatically.",
+        latestTajweedRoadmapTitle: "Continue Tajweed Path",
+        latestTajweedRoadmapDesc: "If a previous report includes Tajweed, open its learning path directly from here.",
+        openLatestTajweedRoadmap: "Open Tajweed Path From Last Report",
         learningRoadmapCurrent: "Current",
         learningRoadmapCompleted: "Done",
         learningRoadmapUpcoming: "Upcoming",
@@ -1114,6 +1130,16 @@ https://is.gd/oL6gEO`;
         tourFeedbackDesc: "Important observations and tips from your teacher.",
         tourAudioTitle: "Audio Corrections",
         tourAudioDesc: "Links to voice recordings from your teacher to help you practice.",
+        tourTajweedTitle: "Tajweed Section",
+        tourTajweedDesc: "Your Tajweed lesson appears here in the report, and one click starts the learning flow.",
+        tourTajweedOpenTitle: "Open Tajweed Path",
+        tourTajweedOpenDesc: "Click once on Open Quiz to enter the learning path first.",
+        tourTajweedRoadmapTitle: "Tajweed Learning Path",
+        tourTajweedRoadmapDesc: "This roadmap organizes lessons up to your current point and shows done vs upcoming.",
+        tourTajweedStartQuizTitle: "Then Start Questions",
+        tourTajweedStartQuizDesc: "After reviewing the roadmap, press Start Quiz to move to this lesson's questions.",
+        tourTajweedQuizTitle: "Tajweed Questions",
+        tourTajweedQuizDesc: "These are the questions of the current Tajweed lesson after the roadmap step.",
         tourStatsTitle: "Statistics",
         tourStatsDesc: "Summary of total attended and missed classes for the month.",
         tourActionsTitle: "Schedule & Quick Actions",
@@ -1280,6 +1306,67 @@ https://is.gd/oL6gEO`;
                   }
                 },
                 {
+                  element: '#tour-tajweed',
+                  popover: {
+                    title: t.tourTajweedTitle,
+                    description: t.tourTajweedDesc,
+                    side: 'right',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-tajweed');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                },
+                {
+                  element: '#tour-open-tajweed-quiz',
+                  popover: {
+                    title: t.tourTajweedOpenTitle,
+                    description: t.tourTajweedOpenDesc,
+                    side: 'right',
+                    align: 'center',
+                    showButtons: ['close']
+                  },
+                  onHighlightStarted: () => {
+                    const el = document.getElementById('tour-open-tajweed-quiz');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                },
+                {
+                  element: '#tour-tajweed-roadmap',
+                  popover: {
+                    title: t.tourTajweedRoadmapTitle,
+                    description: t.tourTajweedRoadmapDesc,
+                    side: 'top',
+                    align: 'center'
+                  }
+                },
+                {
+                  element: '#tour-start-current-quiz',
+                  popover: {
+                    title: t.tourTajweedStartQuizTitle,
+                    description: t.tourTajweedStartQuizDesc,
+                    side: 'bottom',
+                    align: 'center',
+                    showButtons: ['close']
+                  }
+                },
+                {
+                  element: '#tour-tajweed-quiz-modal',
+                  popover: {
+                    title: t.tourTajweedQuizTitle,
+                    description: t.tourTajweedQuizDesc,
+                    side: 'top',
+                    align: 'center'
+                  },
+                  onPrevClick: () => {
+                    setShowTajweedRoadmapPage(true);
+                    setTimeout(() => {
+                      window.driverObjInstance.movePrevious();
+                    }, 180);
+                  }
+                },
+                {
                   element: '#tour-stats',
                   popover: {
                     title: t.tourStatsTitle,
@@ -1289,12 +1376,25 @@ https://is.gd/oL6gEO`;
                   },
                   onHighlightStarted: () => {
                     setSelectedReport(null);
+                    setRoadmapAutoStartEnabled(false);
+                    setRoadmapAutoStartCountdown(0);
+                    setExpandedRoadmapLessonId('');
+                    setShowTajweedRoadmapPage(false);
+                    setSelectedTajweedQuiz(null);
                   },
                   onPrevClick: () => {
-                    setSelectedReport({ day: 2, text: mockReportTextEn }); // Use English mock report for tour
+                    const tourReportText = isArabic ? mockReportTextAr : mockReportTextEn;
+                    setSelectedReport({ day: 2, text: tourReportText });
+
+                    const tajweedSection = parseReport(tourReportText).find((section) => section?.type === 'tajweed') || null;
+                    if (tajweedSection) {
+                      openTajweedQuizFromSection(tajweedSection);
+                      setShowTajweedRoadmapPage(false);
+                    }
+
                     setTimeout(() => {
                       window.driverObjInstance.movePrevious();
-                    }, 150);
+                    }, 220);
                   }
                 },
                 {
@@ -2667,6 +2767,64 @@ https://is.gd/oL6gEO`;
         });
       };
 
+      const parseStudentReportDateFromKey = (reportKey) => {
+        const parts = String(reportKey || '').split('_');
+        if (parts.length < 4) return null;
+
+        const day = Number(parts[parts.length - 3]);
+        const monthFromKey = Number(parts[parts.length - 2]);
+        const yearFromKey = Number(parts[parts.length - 1]);
+        const studentIdFromKey = parts.slice(0, -3).join('_');
+
+        if (String(studentIdFromKey || '') !== String(student?.id || '')) return null;
+        if (!Number.isFinite(day) || !Number.isFinite(monthFromKey) || !Number.isFinite(yearFromKey)) return null;
+        if (day < 1 || day > 31 || monthFromKey < 0 || monthFromKey > 11 || yearFromKey < 1000) return null;
+
+        const timestamp = new Date(yearFromKey, monthFromKey, day).getTime();
+        if (!Number.isFinite(timestamp)) return null;
+
+        return { day, month: monthFromKey, year: yearFromKey, timestamp };
+      };
+
+      const latestTajweedReportEntry = useMemo(() => {
+        if (!student?.id || !savedReports || typeof savedReports !== 'object') return null;
+
+        let latest = null;
+
+        Object.entries(savedReports).forEach(([reportKey, reportPayload]) => {
+          const reportDate = parseStudentReportDateFromKey(reportKey);
+          if (!reportDate) return;
+
+          const reportText = typeof reportPayload === 'string'
+            ? reportPayload
+            : String(reportPayload?.reportText || '').trim();
+
+          if (!reportText) return;
+
+          const tajweedSection = parseReport(reportText).find((section) => (
+            section?.type === 'tajweed' && String(section?.content || '').trim()
+          ));
+
+          if (!tajweedSection) return;
+
+          if (!latest || reportDate.timestamp > latest.timestamp) {
+            latest = {
+              ...reportDate,
+              section: tajweedSection,
+            };
+          }
+        });
+
+        return latest;
+      }, [savedReports, student?.id]);
+
+      const openLatestTajweedRoadmap = () => {
+        if (!latestTajweedReportEntry?.section) return;
+
+        setSelectedReport(null);
+        openTajweedQuizFromSection(latestTajweedReportEntry.section);
+      };
+
       // Calendar Calculations
       const daysInMonth = new Date(effectiveYear, effectiveMonth + 1, 0).getDate();
       const firstDayIndex = new Date(effectiveYear, effectiveMonth, 1).getDay();
@@ -2844,7 +3002,15 @@ https://is.gd/oL6gEO`;
                       })()}
                       {options.showQuizAction && (
                         <button
-                          onClick={() => options.onOpenQuiz && options.onOpenQuiz(section)}
+                          id={options.quizButtonId && idx === 0 ? options.quizButtonId : undefined}
+                          onClick={() => {
+                            if (options.onOpenQuiz) {
+                              options.onOpenQuiz(section);
+                            }
+                            if (options.onAfterOpenQuiz) {
+                              options.onAfterOpenQuiz(section, idx);
+                            }
+                          }}
                           className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-teal-400/40 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-200 hover:bg-teal-500/30 transition-colors"
                         >
                           <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
@@ -2964,6 +3130,25 @@ https://is.gd/oL6gEO`;
             )}
 
           </div>
+
+          {latestTajweedReportEntry && !selectedTajweedQuiz && (
+            <div className="glass-panel rounded-2xl p-4 md:p-5 mb-4 border border-teal-400/25 animate-fade delay-[350ms]">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className={isArabic ? 'text-center md:text-right' : 'text-center md:text-left'}>
+                  <p className={`text-sm md:text-base font-bold text-teal-200 ${headerFontClass}`}>{t.latestTajweedRoadmapTitle}</p>
+                  <p className="text-xs md:text-sm text-slate-300 mt-1">{t.latestTajweedRoadmapDesc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openLatestTajweedRoadmap}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-300/40 bg-teal-500/20 px-4 py-2 text-xs md:text-sm font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                >
+                  <i data-lucide="map" className="w-4 h-4"></i>
+                  {t.openLatestTajweedRoadmap}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Schedule Message moved to Sticky Top Bar */}
 
@@ -3280,8 +3465,19 @@ https://is.gd/oL6gEO`;
                           "text-teal-300/80",
                           "border-teal-400/40",
                           t.tajweedSection,
-                          undefined,
-                          { showQuizAction: true, onOpenQuiz: openTajweedQuizFromSection }
+                          isTourMode ? "tour-tajweed" : undefined,
+                          {
+                            showQuizAction: true,
+                            onOpenQuiz: openTajweedQuizFromSection,
+                            quizButtonId: isTourMode ? 'tour-open-tajweed-quiz' : undefined,
+                            onAfterOpenQuiz: () => {
+                              if (isTourMode && window.driverObjInstance) {
+                                setTimeout(() => {
+                                  window.driverObjInstance.moveNext();
+                                }, 180);
+                              }
+                            }
+                          }
                         )}
                         {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", t.feedbackNotes, isTourMode ? "tour-feedback" : undefined)}
                         {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", t.otherDetails)}
@@ -3331,7 +3527,7 @@ https://is.gd/oL6gEO`;
           {/* Tajweed Learning Roadmap Page */}
           {selectedTajweedQuiz && showTajweedRoadmapPage && !selectedTajweedQuiz.missing && (
             <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4 md:p-5">
-              <div className="glass-panel w-full max-w-5xl h-[82dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] flex flex-col">
+              <div id={isTourMode ? 'tour-tajweed-roadmap' : undefined} className="glass-panel w-full max-w-5xl h-[82dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] flex flex-col">
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-300 hover:text-white transition-colors z-[100] bg-islamic-900/55 hover:bg-islamic-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-islamic-gold/20`}
@@ -3365,7 +3561,15 @@ https://is.gd/oL6gEO`;
 
                 <div className="flex items-center justify-center mb-4">
                   <button
-                    onClick={openCurrentQuizFromRoadmap}
+                    id={isTourMode ? 'tour-start-current-quiz' : undefined}
+                    onClick={() => {
+                      openCurrentQuizFromRoadmap();
+                      if (isTourMode && window.driverObjInstance) {
+                        setTimeout(() => {
+                          window.driverObjInstance.moveNext();
+                        }, 180);
+                      }
+                    }}
                     className="inline-flex items-center gap-2 rounded-xl border border-teal-300/40 bg-teal-500/20 px-4 py-2 text-sm font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
                   >
                     <i data-lucide="play-circle" className="w-4 h-4"></i>
@@ -3657,7 +3861,7 @@ https://is.gd/oL6gEO`;
           {/* Tajweed Quiz Modal */}
           {selectedTajweedQuiz && !showTajweedRoadmapPage && (
             <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-[2px] z-[60] flex items-center justify-center p-4 md:p-4">
-              <div className="glass-panel w-full max-w-lg max-h-[82dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] overflow-hidden flex flex-col">
+              <div id={isTourMode ? 'tour-tajweed-quiz-modal' : undefined} className="glass-panel w-full max-w-lg max-h-[82dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] overflow-hidden flex flex-col">
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
