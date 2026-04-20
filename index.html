@@ -630,6 +630,11 @@
         let mobileResetTimerId = null;
 
         const frameId = window.requestAnimationFrame(() => {
+          if (isTourMode) {
+            container.scrollTo({ top: 0, behavior: 'auto' });
+            return;
+          }
+
           const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
           if (isMobileViewport) {
             container.scrollTo({ top: 0, behavior: 'auto' });
@@ -650,10 +655,10 @@
           window.cancelAnimationFrame(frameId);
           if (mobileResetTimerId) window.clearTimeout(mobileResetTimerId);
         };
-      }, [showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.lessonTitle, selectedTajweedQuiz?.assignmentId]);
+      }, [isTourMode, showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.lessonTitle, selectedTajweedQuiz?.assignmentId]);
 
       useEffect(() => {
-        if (!selectedTajweedQuiz || !showTajweedRoadmapPage || !roadmapAutoStartEnabled) {
+        if (isTourMode || !selectedTajweedQuiz || !showTajweedRoadmapPage || !roadmapAutoStartEnabled) {
           setRoadmapAutoStartCountdown(0);
           return;
         }
@@ -679,7 +684,7 @@
         }, 1000);
 
         return () => window.clearInterval(intervalId);
-      }, [roadmapAutoStartEnabled, showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.assignmentId]);
+      }, [isTourMode, roadmapAutoStartEnabled, showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.assignmentId]);
 
       // Glow animation on last reported day after data loads
       useEffect(() => {
@@ -716,10 +721,12 @@
       const fontClass = isArabic ? "font-amiri" : "font-sans";
       const headerFontClass = isArabic ? "font-amiri" : "font-cinzel";
 
-      const TOUR_TAJWEED_LESSON_ID = 'tour-tajweed-1';
+      const TOUR_TAJWEED_LESSON_ID = 'tajweed-foundation';
       const TOUR_TAJWEED_LESSON = {
         id: TOUR_TAJWEED_LESSON_ID,
         title: 'النون والميم المشددتان',
+        titleAr: 'النون والميم المشددتان',
+        titleEn: 'Stressed Noon and Meem',
         language: 'both',
         targetAge: 'all',
         group: 'foundation',
@@ -748,9 +755,33 @@
           }
         ],
       };
-      const TOUR_TAJWEED_BANK = {
-        [TOUR_TAJWEED_LESSON_ID]: TOUR_TAJWEED_LESSON,
+      const getTourLessonGroup = (lessonId) => {
+        const id = String(lessonId || '').toLowerCase();
+        if (id.startsWith('tajweed-nun-')) return 'nun';
+        if (id.startsWith('tajweed-meem-')) return 'meem';
+        if (id === 'tajweed-foundation') return 'foundation';
+        return 'independent';
       };
+      const TOUR_TAJWEED_BANK = SMART_TAJWEED_REFERENCE.reduce((acc, reference, index) => {
+        const lessonId = String(reference?.id || `tour-ref-${index + 1}`);
+        const fallbackLesson = {
+          id: lessonId,
+          title: String(reference?.ar || '').trim() || `درس ${index + 1}`,
+          titleAr: String(reference?.ar || '').trim(),
+          titleEn: String(reference?.en || '').trim(),
+          language: 'both',
+          targetAge: 'all',
+          group: getTourLessonGroup(lessonId),
+          createdAt: 1713916800000 - ((index + 1) * 60000),
+          questions: [],
+        };
+
+        acc[lessonId] = lessonId === TOUR_TAJWEED_LESSON_ID
+          ? { ...fallbackLesson, ...TOUR_TAJWEED_LESSON, createdAt: 1713916800000 }
+          : fallbackLesson;
+
+        return acc;
+      }, {});
 
       // Mock Data for Tour Mode
       const mockReportTextEn = `📖 *Class Report*
@@ -2766,7 +2797,7 @@ https://is.gd/oL6gEO`;
         chunksRef.current = [];
         resetQuizDraftState();
         setRoadmapAutoStartCountdown(0);
-        setRoadmapAutoStartEnabled(!payload?.missing);
+        setRoadmapAutoStartEnabled(!payload?.missing && !isTourMode);
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(!payload?.missing);
         setSelectedTajweedQuiz(payload);
@@ -3599,7 +3630,11 @@ https://is.gd/oL6gEO`;
           {/* Tajweed Learning Roadmap Page */}
           {selectedTajweedQuiz && showTajweedRoadmapPage && !selectedTajweedQuiz.missing && (
             <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4 md:p-5">
-              <div id={isTourMode ? 'tour-tajweed-roadmap' : undefined} className="glass-panel w-full max-w-5xl h-[82dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] flex flex-col">
+              <div
+                id={isTourMode ? 'tour-tajweed-roadmap' : undefined}
+                dir={isTourMode && !isArabic ? 'ltr' : undefined}
+                className="glass-panel w-full max-w-5xl h-[82dvh] md:h-[92vh] rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] flex flex-col"
+              >
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-300 hover:text-white transition-colors z-[100] bg-islamic-900/55 hover:bg-islamic-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-islamic-gold/20`}
@@ -3933,7 +3968,11 @@ https://is.gd/oL6gEO`;
           {/* Tajweed Quiz Modal */}
           {selectedTajweedQuiz && !showTajweedRoadmapPage && (
             <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-[2px] z-[60] flex items-center justify-center p-4 md:p-4">
-              <div id={isTourMode ? 'tour-tajweed-quiz-modal' : undefined} className="glass-panel w-full max-w-lg max-h-[82dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] overflow-hidden flex flex-col">
+              <div
+                id={isTourMode ? 'tour-tajweed-quiz-modal' : undefined}
+                dir={isTourMode && !isArabic ? 'ltr' : undefined}
+                className="glass-panel w-full max-w-lg max-h-[82dvh] md:max-h-[92vh] rounded-3xl p-5 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)] overflow-hidden flex flex-col"
+              >
                 <button
                   onClick={closeTajweedQuiz}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
