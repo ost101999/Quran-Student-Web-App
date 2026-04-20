@@ -2786,7 +2786,7 @@ https://is.gd/oL6gEO`;
         return { day, month: monthFromKey, year: yearFromKey, timestamp };
       };
 
-      const latestTajweedReportEntry = useMemo(() => {
+      const latestTajweedReportEntry = (() => {
         if (!student?.id || !savedReports || typeof savedReports !== 'object') return null;
 
         let latest = null;
@@ -2816,7 +2816,7 @@ https://is.gd/oL6gEO`;
         });
 
         return latest;
-      }, [savedReports, student?.id]);
+      })();
 
       const openLatestTajweedRoadmap = () => {
         if (!latestTajweedReportEntry?.section) return;
