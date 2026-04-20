@@ -1882,29 +1882,17 @@ https://is.gd/oL6gEO`;
         if (!assignment) return null;
 
         const direct = tajweedBank[assignment.lessonId];
-        const versionLanguageHint = (() => {
-          if (!direct) return null;
-          const versionId = String(assignment?.versionId || '').trim();
-          if (!versionId) return null;
-
-          const version = getLessonExamVersions(direct).find((item) => String(item?.id || '').trim() === versionId);
-          return normalizeAssignmentContentLanguage(version?.language);
-        })();
-        const assignmentLanguage = normalizeAssignmentContentLanguage(assignment?.contentLanguage)
-          || versionLanguageHint
-          || preferredQuestionLanguage;
-
-        if (direct && hasQuestions(direct) && matchesPreferredLessonLanguage(direct, assignmentLanguage)) {
+        if (direct) {
           return { lessonId: assignment.lessonId, lesson: direct };
         }
 
+        const assignmentLanguage = normalizeAssignmentContentLanguage(assignment?.contentLanguage)
+          || preferredQuestionLanguage;
+
         const referenceTitles = getReferenceCandidatesFromId(assignment.lessonId);
-        const searchTitles = referenceTitles.length > 0
-          ? referenceTitles
-          : (direct?.title ? [direct.title] : []);
+        const searchTitles = referenceTitles.length > 0 ? referenceTitles : [];
         if (searchTitles.length === 0) {
-          if (direct && hasQuestions(direct)) return { lessonId: assignment.lessonId, lesson: direct };
-          return direct ? { lessonId: assignment.lessonId, lesson: direct } : null;
+          return null;
         }
 
         const entries = getSmartOrderedBankEntries();
@@ -1912,7 +1900,7 @@ https://is.gd/oL6gEO`;
         for (const refTitle of searchTitles) {
           const refNorm = normalizeForMatch(refTitle);
           const exact = entries.find(([_, lesson]) => {
-            if (!hasQuestions(lesson) || !matchesPreferredLessonLanguage(lesson, assignmentLanguage)) {
+            if (!matchesPreferredLessonLanguage(lesson, assignmentLanguage)) {
               return false;
             }
 
@@ -1924,7 +1912,7 @@ https://is.gd/oL6gEO`;
         for (const refTitle of searchTitles) {
           const refNorm = normalizeForMatch(refTitle);
           const loose = entries.find(([_, lesson]) => {
-            if (!hasQuestions(lesson) || !matchesPreferredLessonLanguage(lesson, assignmentLanguage)) {
+            if (!matchesPreferredLessonLanguage(lesson, assignmentLanguage)) {
               return false;
             }
 
@@ -1939,7 +1927,7 @@ https://is.gd/oL6gEO`;
           const refNorm = normalizeForMatch(refTitle);
           const exact = entries.find(([_, lesson]) => {
             const lessonNorm = normalizeForMatch(lesson?.title || '');
-            return lessonNorm === refNorm && hasQuestions(lesson);
+            return lessonNorm === refNorm;
           });
           if (exact) return { lessonId: exact[0], lesson: exact[1] };
         }
@@ -1949,14 +1937,10 @@ https://is.gd/oL6gEO`;
           const loose = entries.find(([_, lesson]) => {
             const lessonNorm = normalizeForMatch(lesson?.title || '');
             return lessonNorm
-              && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm))
-              && hasQuestions(lesson);
+              && (lessonNorm.includes(refNorm) || refNorm.includes(lessonNorm));
           });
           if (loose) return { lessonId: loose[0], lesson: loose[1] };
         }
-
-        if (direct && hasQuestions(direct)) return { lessonId: assignment.lessonId, lesson: direct };
-        if (direct) return { lessonId: assignment.lessonId, lesson: direct };
 
         return null;
       };
@@ -1969,7 +1953,7 @@ https://is.gd/oL6gEO`;
         const entries = getSmartOrderedBankEntries();
 
         const matches = entries.filter(([_, lesson]) => {
-          return hasQuestions(lesson) && doesHintMatchLesson(hint, lesson);
+          return doesHintMatchLesson(hint, lesson);
         });
 
         const preferred = matches.find(([_, lesson]) => matchesPreferredLessonLanguage(lesson));
