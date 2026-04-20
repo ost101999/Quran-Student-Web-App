@@ -1332,6 +1332,59 @@ https://is.gd/oL6gEO`;
                   }
                 },
                 {
+                  element: '#tour-stats',
+                  popover: {
+                    title: t.tourStatsTitle,
+                    description: t.tourStatsDesc,
+                    side: 'top',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    setSelectedReport(null);
+                    setRoadmapAutoStartEnabled(false);
+                    setRoadmapAutoStartCountdown(0);
+                    setExpandedRoadmapLessonId('');
+                    setShowTajweedRoadmapPage(false);
+                    setSelectedTajweedQuiz(null);
+                  }
+                },
+                {
+                  element: '#tour-join-class',
+                  popover: {
+                    title: t.tourJoinClassTitle,
+                    description: t.tourJoinClassDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                },
+                {
+                  element: '#tour-book-session',
+                  popover: {
+                    title: t.tourBookSessionTitle,
+                    description: t.tourBookSessionDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                },
+                {
+                  element: '#tour-my-schedule',
+                  popover: {
+                    title: t.tourMyScheduleTitle,
+                    description: t.tourMyScheduleDesc,
+                    side: 'bottom',
+                    align: 'center'
+                  },
+                  onHighlightStarted: () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                },
+                {
                   element: '#tour-report-btn',
                   popover: {
                     title: t.tourViewReportTitle,
@@ -1467,73 +1520,6 @@ https://is.gd/oL6gEO`;
                     setTimeout(() => {
                       window.driverObjInstance.movePrevious();
                     }, 180);
-                  }
-                },
-                {
-                  element: '#tour-stats',
-                  popover: {
-                    title: t.tourStatsTitle,
-                    description: t.tourStatsDesc,
-                    side: 'top',
-                    align: 'center'
-                  },
-                  onHighlightStarted: () => {
-                    setSelectedReport(null);
-                    setRoadmapAutoStartEnabled(false);
-                    setRoadmapAutoStartCountdown(0);
-                    setExpandedRoadmapLessonId('');
-                    setShowTajweedRoadmapPage(false);
-                    setSelectedTajweedQuiz(null);
-                  },
-                  onPrevClick: () => {
-                    const tourReportText = isArabic ? mockReportTextAr : mockReportTextEn;
-                    setSelectedReport({ day: 2, text: tourReportText });
-
-                    const tajweedSection = parseReport(tourReportText).find((section) => section?.type === 'tajweed') || null;
-                    if (tajweedSection) {
-                      openTajweedQuizFromSection(tajweedSection);
-                      setShowTajweedRoadmapPage(false);
-                    }
-
-                    setTimeout(() => {
-                      window.driverObjInstance.movePrevious();
-                    }, 220);
-                  }
-                },
-                {
-                  element: '#tour-join-class',
-                  popover: {
-                    title: t.tourJoinClassTitle,
-                    description: t.tourJoinClassDesc,
-                    side: 'bottom',
-                    align: 'center'
-                  },
-                  onHighlightStarted: () => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                },
-                {
-                  element: '#tour-book-session',
-                  popover: {
-                    title: t.tourBookSessionTitle,
-                    description: t.tourBookSessionDesc,
-                    side: 'bottom',
-                    align: 'center'
-                  },
-                  onHighlightStarted: () => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                },
-                {
-                  element: '#tour-my-schedule',
-                  popover: {
-                    title: t.tourMyScheduleTitle,
-                    description: t.tourMyScheduleDesc,
-                    side: 'bottom',
-                    align: 'center'
-                  },
-                  onHighlightStarted: () => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }
               ]
@@ -4198,3 +4184,4 @@ https://is.gd/oL6gEO`;
 </body>
 
 </html>
+
