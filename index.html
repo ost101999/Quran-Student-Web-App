@@ -1354,7 +1354,16 @@ https://is.gd/oL6gEO`;
                     align: 'center'
                   },
                   onHighlightStarted: () => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'auto' });
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        const el = document.getElementById('tour-join-class');
+                        if (el) el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+                        if (window.driverObjInstance && typeof window.driverObjInstance.refresh === 'function') {
+                          window.driverObjInstance.refresh();
+                        }
+                      });
+                    });
                   }
                 },
                 {
@@ -1366,7 +1375,16 @@ https://is.gd/oL6gEO`;
                     align: 'center'
                   },
                   onHighlightStarted: () => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'auto' });
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        const el = document.getElementById('tour-book-session');
+                        if (el) el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+                        if (window.driverObjInstance && typeof window.driverObjInstance.refresh === 'function') {
+                          window.driverObjInstance.refresh();
+                        }
+                      });
+                    });
                   }
                 },
                 {
@@ -1378,7 +1396,16 @@ https://is.gd/oL6gEO`;
                     align: 'center'
                   },
                   onHighlightStarted: () => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'auto' });
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        const el = document.getElementById('tour-my-schedule');
+                        if (el) el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+                        if (window.driverObjInstance && typeof window.driverObjInstance.refresh === 'function') {
+                          window.driverObjInstance.refresh();
+                        }
+                      });
+                    });
                   }
                 },
                 {
