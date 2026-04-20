@@ -1532,7 +1532,26 @@ https://is.gd/oL6gEO`;
 
       const getLessonLanguage = (lesson) => {
         const rawLanguage = String(lesson?.language || '').toLowerCase();
-        if (rawLanguage === 'en' || rawLanguage === 'both') return rawLanguage;
+
+        if (rawLanguage === 'both') return 'both';
+
+        const versions = Array.isArray(lesson?.examVersions) ? lesson.examVersions : [];
+        if (versions.length > 0) {
+          let hasArabic = false;
+          let hasEnglish = false;
+
+          versions.forEach((version) => {
+            const versionLanguage = String(version?.language || '').toLowerCase();
+            if (versionLanguage === 'en') hasEnglish = true;
+            else hasArabic = true;
+          });
+
+          if (hasArabic && hasEnglish) return 'both';
+          if (hasEnglish) return 'en';
+          return 'ar';
+        }
+
+        if (rawLanguage === 'en') return 'en';
         return 'ar';
       };
 
@@ -1544,6 +1563,17 @@ https://is.gd/oL6gEO`;
 
       const getDefaultContentLanguageForLesson = (lesson) => {
         const lessonLanguage = getLessonLanguage(lesson);
+
+        if (Array.isArray(lesson?.examVersions) && lesson.examVersions.length > 0) {
+          const hasPreferredLanguageVersion = lesson.examVersions.some((version) => (
+            normalizeAssignmentContentLanguage(version?.language) === preferredQuestionLanguage
+          ));
+
+          if (hasPreferredLanguageVersion) {
+            return preferredQuestionLanguage;
+          }
+        }
+
         if (lessonLanguage === 'both') return preferredQuestionLanguage;
         return lessonLanguage;
       };
@@ -1566,17 +1596,59 @@ https://is.gd/oL6gEO`;
         const versions = getLessonExamVersions(lesson);
         if (versions.length === 0) return null;
 
+        const preferredTargetAge = student?.targetAge === 'kids' || student?.targetAge === 'adults'
+          ? student.targetAge
+          : null;
+        const requestedLanguage = normalizeAssignmentContentLanguage(assignment?.contentLanguage);
+        const getVersionLanguage = (version) => (
+          normalizeAssignmentContentLanguage(version?.language) || getDefaultContentLanguageForLesson(lesson)
+        );
+        const getVersionTargetAge = (version) => {
+          const versionTargetAge = String(version?.targetAge || '').toLowerCase();
+          if (versionTargetAge === 'kids' || versionTargetAge === 'adults' || versionTargetAge === 'all') {
+            return versionTargetAge;
+          }
+
+          const lessonTargetAge = String(lesson?.targetAge || '').toLowerCase();
+          if (lessonTargetAge === 'kids' || lessonTargetAge === 'adults' || lessonTargetAge === 'all') {
+            return lessonTargetAge;
+          }
+
+          return 'all';
+        };
+        const matchesLanguage = (version) => {
+          if (!requestedLanguage) return true;
+          return getVersionLanguage(version) === requestedLanguage;
+        };
+        const matchesTargetAge = (version) => {
+          if (!preferredTargetAge) return true;
+          const versionTargetAge = getVersionTargetAge(version);
+          return versionTargetAge === 'all' || versionTargetAge === preferredTargetAge;
+        };
+
         const requestedVersionId = String(assignment?.versionId || '').trim();
         if (requestedVersionId) {
           const byId = versions.find((version) => String(version?.id || '').trim() === requestedVersionId);
-          if (byId) return byId;
+          if (byId) {
+            const hasLanguageMismatch = !!requestedLanguage && getVersionLanguage(byId) !== requestedLanguage;
+            const hasTargetAgeMismatch = !!preferredTargetAge
+              && getVersionTargetAge(byId) !== 'all'
+              && getVersionTargetAge(byId) !== preferredTargetAge;
+
+            if (!hasLanguageMismatch && !hasTargetAgeMismatch) {
+              return byId;
+            }
+          }
         }
 
-        const requestedLanguage = normalizeAssignmentContentLanguage(assignment?.contentLanguage);
-        if (requestedLanguage) {
-          const byLanguage = versions.find((version) => normalizeAssignmentContentLanguage(version?.language) === requestedLanguage);
-          if (byLanguage) return byLanguage;
-        }
+        const strict = versions.find((version) => matchesLanguage(version) && matchesTargetAge(version));
+        if (strict) return strict;
+
+        const byLanguage = versions.find((version) => matchesLanguage(version));
+        if (byLanguage) return byLanguage;
+
+        const byTargetAge = versions.find((version) => matchesTargetAge(version));
+        if (byTargetAge) return byTargetAge;
 
         return versions[0];
       };
