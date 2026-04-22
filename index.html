@@ -342,11 +342,13 @@
       // Track repeated titles: same title twice → second becomes homework
       const seenTitles = new Set();
 
-      const getSectionMeta = (title) => {
+      const getSectionMeta = (title, scope = 'unknown') => {
         const lowerT = title.toLowerCase().trim();
         for (const kw of keywords) {
           if (kw.match.some(m => lowerT.includes(m))) {
             if (kw.type === 'classwork') {
+              if (scope === 'next') return { icon: 'pen-tool', type: 'homework' };
+              if (scope === 'session') return { icon: kw.icon, type: 'classwork' };
               if (seenTitles.has(lowerT)) return { icon: 'pen-tool', type: 'homework' };
               seenTitles.add(lowerT);
               return { icon: kw.icon, type: 'classwork' };
@@ -361,6 +363,18 @@
       };
 
       let currentArabicSubject = null;
+      let reportScope = 'unknown';
+      let currentSectionScope = 'unknown';
+
+      const isSessionSummaryHeader = (title) => {
+        const lower = title.toLowerCase();
+        return lower.includes('session summary') || title.includes('إنجاز الحصة');
+      };
+
+      const isNextSessionHeader = (title) => {
+        const lower = title.toLowerCase();
+        return lower.includes('next session plan') || title.includes('حصتنا القادمة') || title.includes('ما سيتم');
+      };
 
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i].replace(/\*/g, '').replace(/_/g, '').replace(/〰️/g, '').replace(/ـ/g, '').trim();
@@ -392,6 +406,9 @@
           const parts = line.split(':');
           let potentialTitle = parts[0].replace(/^[•\-\s]+/, '').trim();
 
+          if (isSessionSummaryHeader(potentialTitle)) reportScope = 'session';
+          else if (isNextSessionHeader(potentialTitle)) reportScope = 'next';
+
           // Intercept specific English headers to unify them under 'Arabic'
           if (potentialTitle.toLowerCase().includes('session summary') || potentialTitle.toLowerCase().includes('next session plan')) {
             potentialTitle = 'Arabic';
@@ -416,10 +433,11 @@
 
           if (isSectionHeader) {
             if (currentContent.length > 0 && currentTitle !== 'Summary') {
-              const meta = getSectionMeta(currentTitle);
+              const meta = getSectionMeta(currentTitle, currentSectionScope);
               sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
             }
             currentTitle = potentialTitle;
+            currentSectionScope = reportScope;
             const contentAfter = parts.slice(1).join(':').trim();
             currentContent = contentAfter ? [contentAfter] : [];
             continue;
@@ -429,7 +447,7 @@
       }
 
       if (currentContent.length > 0 && currentTitle !== 'Summary') {
-        const meta = getSectionMeta(currentTitle);
+        const meta = getSectionMeta(currentTitle, currentSectionScope);
         sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
       }
 
