@@ -158,7 +158,35 @@ const getLocalizedQuestionOptions = (
 
 const normalizeAssignmentLanguage = (value?: string | null): TajweedContentLanguage | null => {
   const raw = String(value || '').toLowerCase().trim();
-  if (raw === 'ar' || raw === 'en') return raw;
+  if (!raw) return null;
+
+  if (
+    raw === 'ar'
+    || raw === 'arabic'
+    || raw === 'ara'
+    || raw === 'ar-sa'
+    || raw === 'ar-eg'
+    || raw === 'عربي'
+    || raw === 'عربى'
+    || raw === 'العربية'
+  ) {
+    return 'ar';
+  }
+
+  if (
+    raw === 'en'
+    || raw === 'english'
+    || raw === 'eng'
+    || raw === 'en-us'
+    || raw === 'en-gb'
+    || raw === 'إنجليزي'
+    || raw === 'انجليزي'
+    || raw === 'الإنجليزية'
+    || raw === 'الانجليزية'
+  ) {
+    return 'en';
+  }
+
   return null;
 };
 
@@ -182,6 +210,7 @@ const getLessonExamVersions = (lesson?: TajweedLesson | null): TajweedExamVersio
 const getAssignmentExamVersion = (
   assignment: TajweedAssignment | null,
   lesson: TajweedLesson | null,
+  fallbackLanguage?: TajweedContentLanguage | null,
 ): TajweedExamVersion | null => {
   const versions = getLessonExamVersions(lesson);
   if (versions.length === 0) return null;
@@ -196,6 +225,12 @@ const getAssignmentExamVersion = (
   if (requestedLanguage) {
     const byLanguage = versions.find((version) => normalizeAssignmentLanguage(version.language) === requestedLanguage);
     if (byLanguage) return byLanguage;
+  }
+
+  const normalizedFallbackLanguage = normalizeAssignmentLanguage(fallbackLanguage);
+  if (normalizedFallbackLanguage) {
+    const byFallbackLanguage = versions.find((version) => normalizeAssignmentLanguage(version.language) === normalizedFallbackLanguage);
+    if (byFallbackLanguage) return byFallbackLanguage;
   }
 
   return versions[0];
@@ -350,8 +385,8 @@ function App() {
   const selectedAssignment = selectedAssignmentId ? assignments[selectedAssignmentId] : null;
   const selectedLesson = selectedAssignment ? bank[selectedAssignment.lessonId] : null;
   const selectedAssignmentVersion = useMemo(
-    () => getAssignmentExamVersion(selectedAssignment, selectedLesson),
-    [selectedAssignment, selectedLesson],
+    () => getAssignmentExamVersion(selectedAssignment, selectedLesson, preferredQuestionLanguage),
+    [preferredQuestionLanguage, selectedAssignment, selectedLesson],
   );
   const selectedLessonQuestions = useMemo(
     () => (Array.isArray(selectedAssignmentVersion?.questions) ? selectedAssignmentVersion.questions : (selectedLesson?.questions || [])),
@@ -890,7 +925,7 @@ function App() {
 
               {historyAssignments.map((assignment) => {
                 const lesson = bank[assignment.lessonId];
-                const lessonVersion = getAssignmentExamVersion(assignment, lesson);
+                const lessonVersion = getAssignmentExamVersion(assignment, lesson, preferredQuestionLanguage);
                 const assignmentLanguage = normalizeAssignmentLanguage(assignment.contentLanguage)
                   || normalizeAssignmentLanguage(lessonVersion?.language)
                   || preferredQuestionLanguage;
