@@ -209,6 +209,15 @@
       animation: reportGlow 2.5s ease-in-out forwards;
     }
 
+    @keyframes reportIconPulse {
+      0%, 100% { box-shadow: 0 0 0 rgba(217,119,6,0); background-color: rgba(217,119,6,0.2); color: #d97706; transform: scale(1); }
+      50% { box-shadow: 0 0 15px 2px rgba(217,119,6,0.8); background-color: #d97706; color: #0f172a; transform: scale(1.15); }
+    }
+
+    .animate-report-icon-pulse {
+      animation: reportIconPulse 2s ease-in-out infinite;
+    }
+
     @keyframes nextClassPulse {
       0%, 100% { box-shadow: 0 0 8px rgba(217,119,6,0.2); }
       50% { box-shadow: 0 0 20px rgba(217,119,6,0.5); }
@@ -3107,7 +3116,7 @@ https://is.gd/oL6gEO`;
                     setTimeout(() => window.driverObjInstance.moveNext(), 150);
                   }
                 }}
-                className={`absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-125 shadow-lg z-10 ${glowReportDay === day ? 'animate-pulse scale-125 ring-2 ring-islamic-gold shadow-[0_0_15px_rgba(217,119,6,0.8)] bg-islamic-gold text-islamic-900' : ''}`}
+                className={`absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 shadow-lg z-10 ${glowReportDay === day ? 'animate-report-icon-pulse' : 'transform hover:scale-110'}`}
                 title="View Report"
               >
                 <i data-lucide="file-text" className="w-2.5 h-2.5 md:w-4 md:h-4"></i>
@@ -3221,7 +3230,7 @@ https://is.gd/oL6gEO`;
                          const zoomUrl = student.zoomLink;
                          const newTab = window.open('about:blank', '_blank');
                          if (newTab) {
-                           newTab.document.write(`<body style="background:#0f172a;color:#10b981;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس...' : 'Redirecting to Classroom...'}</h2></body>`);
+                           newTab.document.write(`<body style="background:#0f172a;color:#10b981;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس...' : 'Redirecting to Classroom...'}</h2><div style="margin-top:20px;padding:15px 30px;border:1px solid rgba(16,185,129,0.3);border-radius:15px;display:flex;align-items:center;gap:15px;background:rgba(16,185,129,0.1);box-shadow:0 0 20px rgba(16,185,129,0.2);"><span style="font-size:1.2rem;font-weight:bold;">${isArabic ? 'الرقم السري' : 'Passcode'}:</span><span style="font-size:1.8rem;font-weight:bold;color:#fff;letter-spacing:2px;">0000</span></div></body>`);
                          }
                          
                          setTimeout(() => {
