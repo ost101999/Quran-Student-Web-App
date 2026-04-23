@@ -211,11 +211,12 @@
 
     @keyframes reportIconPulse {
       0%, 100% { box-shadow: 0 0 0 rgba(217,119,6,0); background-color: rgba(217,119,6,0.2); color: #d97706; transform: scale(1); }
-      50% { box-shadow: 0 0 15px 2px rgba(217,119,6,0.8); background-color: #d97706; color: #0f172a; transform: scale(1.15); }
+      30%, 70% { box-shadow: 0 0 15px 2px rgba(217,119,6,0.8); background-color: #d97706; color: #0f172a; transform: scale(1.15); }
+      50% { box-shadow: 0 0 5px 0px rgba(217,119,6,0.4); background-color: rgba(217,119,6,0.5); color: #d97706; transform: scale(1.05); }
     }
 
     .animate-report-icon-pulse {
-      animation: reportIconPulse 2s ease-in-out infinite;
+      animation: reportIconPulse 4.5s ease-in-out forwards;
     }
 
     @keyframes nextClassPulse {
@@ -733,13 +734,16 @@
           }
           if (lastDay) {
             const timer = setTimeout(() => {
-              setGlowReportDay(lastDay);
+              const el = document.getElementById(`calendar-day-${lastDay}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              // Wait for smooth scroll to finish before glowing
               setTimeout(() => {
-                const el = document.getElementById(`calendar-day-${lastDay}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }, 50);
+                setGlowReportDay(lastDay);
+              }, 600);
             }, 800);
-            const stop = setTimeout(() => setGlowReportDay(null), 4000);
+            
+            const stop = setTimeout(() => setGlowReportDay(null), 800 + 600 + 4500);
             return () => { clearTimeout(timer); clearTimeout(stop); };
           }
         }
@@ -3230,7 +3234,7 @@ https://is.gd/oL6gEO`;
                          const zoomUrl = student.zoomLink;
                          const newTab = window.open('about:blank', '_blank');
                          if (newTab) {
-                           newTab.document.write(`<body style="background:#0f172a;color:#10b981;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس...' : 'Redirecting to Classroom...'}</h2><div style="margin-top:20px;padding:15px 30px;border:1px solid rgba(16,185,129,0.3);border-radius:15px;display:flex;align-items:center;gap:15px;background:rgba(16,185,129,0.1);box-shadow:0 0 20px rgba(16,185,129,0.2);"><span style="font-size:1.2rem;font-weight:bold;">${isArabic ? 'الرقم السري' : 'Passcode'}:</span><span style="font-size:1.8rem;font-weight:bold;color:#fff;letter-spacing:2px;">0000</span></div></body>`);
+                           newTab.document.write(`<body style="background:#0f172a;color:#10b981;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس...' : 'Redirecting to Classroom...'}</h2><div style="margin-top:20px;padding:15px 30px;border:1px solid rgba(16,185,129,0.3);border-radius:15px;display:flex;align-items:center;gap:15px;background:rgba(16,185,129,0.1);box-shadow:0 0 20px rgba(16,185,129,0.2);" dir="${isArabic ? 'rtl' : 'ltr'}"><span style="font-size:1.2rem;font-weight:bold;">${isArabic ? 'الرقم السري' : 'Passcode'}:</span><span style="font-size:1.8rem;font-weight:bold;color:#fff;letter-spacing:2px;direction:ltr;unicode-bidi:embed;">0000</span></div></body>`);
                          }
                          
                          setTimeout(() => {
