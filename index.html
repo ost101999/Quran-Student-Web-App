@@ -3107,7 +3107,7 @@ https://is.gd/oL6gEO`;
                     setTimeout(() => window.driverObjInstance.moveNext(), 150);
                   }
                 }}
-                className={`absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg z-10 ${glowReportDay === day ? 'animate-bounce' : ''}`}
+                className={`absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-125 shadow-lg z-10 ${glowReportDay === day ? 'animate-pulse scale-125 ring-2 ring-islamic-gold shadow-[0_0_15px_rgba(217,119,6,0.8)] bg-islamic-gold text-islamic-900' : ''}`}
                 title="View Report"
               >
                 <i data-lucide="file-text" className="w-2.5 h-2.5 md:w-4 md:h-4"></i>
@@ -3215,9 +3215,23 @@ https://is.gd/oL6gEO`;
                 <div className={`flex gap-3 shrink-0 order-2 sm:order-1 ${!student.scheduleMessage ? 'w-full' : 'w-full sm:w-auto'}`}>
                   {student.zoomLink && (
                     <a id="tour-join-class" href={student.zoomLink} target="_blank" rel="noopener noreferrer" 
-                       onClick={() => {
+                       onClick={(e) => {
+                         e.preventDefault();
                          setPasscodeToast(true);
-                         setTimeout(() => setPasscodeToast(false), 3000);
+                         const zoomUrl = student.zoomLink;
+                         const newTab = window.open('about:blank', '_blank');
+                         if (newTab) {
+                           newTab.document.write(`<body style="background:#0f172a;color:#10b981;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس...' : 'Redirecting to Classroom...'}</h2></body>`);
+                         }
+                         
+                         setTimeout(() => {
+                           if (newTab) {
+                             newTab.location.href = zoomUrl;
+                           } else {
+                             window.location.href = zoomUrl;
+                           }
+                           setPasscodeToast(false);
+                         }, 2500);
                        }}
                        className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
                       <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 md:w-5 md:h-5 shrink-0">
