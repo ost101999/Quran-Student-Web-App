@@ -210,9 +210,9 @@
     }
 
     @keyframes reportIconPulse {
-      0%, 100% { box-shadow: 0 0 0 rgba(217,119,6,0); background-color: rgba(217,119,6,0.2); color: #d97706; transform: scale(1); }
-      30%, 70% { box-shadow: 0 0 15px 2px rgba(217,119,6,0.8); background-color: #d97706; color: #0f172a; transform: scale(1.15); }
-      50% { box-shadow: 0 0 5px 0px rgba(217,119,6,0.4); background-color: rgba(217,119,6,0.5); color: #d97706; transform: scale(1.05); }
+      0%, 100% { box-shadow: 0 0 0 rgba(217,119,6,0); background-color: rgba(217,119,6,0.2); color: #d97706; }
+      30%, 70% { box-shadow: 0 0 15px 2px rgba(217,119,6,0.8); background-color: #d97706; color: #01140e; }
+      50% { box-shadow: 0 0 5px 0px rgba(217,119,6,0.4); background-color: rgba(217,119,6,0.5); color: #d97706; }
     }
 
     .animate-report-icon-pulse {
@@ -735,15 +735,30 @@
           if (lastDay) {
             const timer = setTimeout(() => {
               const el = document.getElementById(`calendar-day-${lastDay}`);
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              if (el) {
+                const targetPosition = el.getBoundingClientRect().top + window.pageYOffset - (window.innerHeight / 2) + (el.offsetHeight / 2);
+                const startPosition = window.pageYOffset;
+                const distance = targetPosition - startPosition;
+                const duration = 1500;
+                let start = null;
+
+                window.requestAnimationFrame(function step(timestamp) {
+                  if (!start) start = timestamp;
+                  const progress = timestamp - start;
+                  const easeInOutCubic = (t) => t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+                  const percentage = Math.min(progress / duration, 1);
+                  window.scrollTo(0, startPosition + distance * easeInOutCubic(percentage));
+                  if (progress < duration) window.requestAnimationFrame(step);
+                });
+              }
               
-              // Wait for smooth scroll to finish before glowing
+              // Wait for custom smooth scroll to finish before glowing
               setTimeout(() => {
                 setGlowReportDay(lastDay);
-              }, 600);
+              }, 1600);
             }, 800);
             
-            const stop = setTimeout(() => setGlowReportDay(null), 800 + 600 + 4500);
+            const stop = setTimeout(() => setGlowReportDay(null), 800 + 1600 + 4500);
             return () => { clearTimeout(timer); clearTimeout(stop); };
           }
         }
@@ -3234,7 +3249,8 @@ https://is.gd/oL6gEO`;
                          const zoomUrl = student.zoomLink;
                          const newTab = window.open('about:blank', '_blank');
                          if (newTab) {
-                           newTab.document.write(`<body style="background:#0f172a;color:#10b981;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس...' : 'Redirecting to Classroom...'}</h2><div style="margin-top:20px;padding:15px 30px;border:1px solid rgba(16,185,129,0.3);border-radius:15px;display:flex;align-items:center;gap:15px;background:rgba(16,185,129,0.1);box-shadow:0 0 20px rgba(16,185,129,0.2);" dir="${isArabic ? 'rtl' : 'ltr'}"><span style="font-size:1.2rem;font-weight:bold;">${isArabic ? 'الرقم السري' : 'Passcode'}:</span><span style="font-size:1.8rem;font-weight:bold;color:#fff;letter-spacing:2px;direction:ltr;unicode-bidi:embed;">0000</span></div></body>`);
+                           newTab.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${isArabic ? 'دخول الحصة' : 'Join Class'}</title><style>body { background:#0f172a; color:#10b981; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; padding:20px; box-sizing:border-box; text-align:center; }</style></head><body><h2>${isArabic ? 'جاري تحويلك إلى قاعة الدرس' : 'Redirecting to Classroom'}</h2><div style="margin-top:30px;padding:20px 30px;border:1px solid rgba(16,185,129,0.3);border-radius:16px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:20px;background:rgba(16,185,129,0.1);box-shadow:0 10px 25px rgba(16,185,129,0.15);max-width:100%;" dir="${isArabic ? 'rtl' : 'ltr'}"><span style="font-size:1.3rem;font-weight:bold;opacity:0.9;">${isArabic ? 'الرقم السري' : 'Passcode'}:</span><span style="font-size:2.2rem;font-weight:900;color:#fff;letter-spacing:3px;direction:ltr;unicode-bidi:embed;background:rgba(0,0,0,0.3);padding:5px 15px;border-radius:10px;">0000</span></div></body></html>`);
+                           newTab.document.close();
                          }
                          
                          setTimeout(() => {
