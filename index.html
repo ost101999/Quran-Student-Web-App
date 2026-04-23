@@ -482,6 +482,7 @@
       const [recordingQuestionKey, setRecordingQuestionKey] = useState(null);
       const [showSchedule, setShowSchedule] = useState(false);
       const [glowReportDay, setGlowReportDay] = useState(null);
+      const [passcodeToast, setPasscodeToast] = useState(false);
       const [tick, setTick] = useState(0); // updates every minute for countdown
 
       const mediaRecorderRef = useRef(null);
@@ -722,7 +723,13 @@
             if (txt) { lastDay = d; break; }
           }
           if (lastDay) {
-            const timer = setTimeout(() => setGlowReportDay(lastDay), 800);
+            const timer = setTimeout(() => {
+              setGlowReportDay(lastDay);
+              setTimeout(() => {
+                const el = document.getElementById(`calendar-day-${lastDay}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 50);
+            }, 800);
             const stop = setTimeout(() => setGlowReportDay(null), 4000);
             return () => { clearTimeout(timer); clearTimeout(stop); };
           }
@@ -3082,7 +3089,7 @@ https://is.gd/oL6gEO`;
 
         return (
           <div
-            id={isTourMode && [2, 4, 9].includes(day) ? `tour-day-${day}` : undefined}
+            id={isTourMode && [2, 4, 9].includes(day) ? `tour-day-${day}` : `calendar-day-${day}`}
             key={day}
             className={`relative flex flex-col items-center justify-center p-2 rounded-xl border ${bgColor} ${borderColor} ${opacityClass} transition-all duration-300 hover:border-islamic-gold/70 group aspect-square ${glowReportDay === day ? 'animate-report-glow' : ''}`}
           >
@@ -3100,7 +3107,7 @@ https://is.gd/oL6gEO`;
                     setTimeout(() => window.driverObjInstance.moveNext(), 150);
                   }
                 }}
-                className="absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg z-10"
+                className={`absolute bottom-1 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-mb-1 w-4 h-4 md:w-8 md:h-8 rounded-full bg-islamic-gold/20 text-islamic-gold hover:bg-islamic-gold hover:text-islamic-900 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-lg z-10 ${glowReportDay === day ? 'animate-bounce' : ''}`}
                 title="View Report"
               >
                 <i data-lucide="file-text" className="w-2.5 h-2.5 md:w-4 md:h-4"></i>
@@ -3207,7 +3214,12 @@ https://is.gd/oL6gEO`;
                 {/* Action Buttons Group */}
                 <div className={`flex gap-3 shrink-0 order-2 sm:order-1 ${!student.scheduleMessage ? 'w-full' : 'w-full sm:w-auto'}`}>
                   {student.zoomLink && (
-                    <a id="tour-join-class" href={student.zoomLink} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
+                    <a id="tour-join-class" href={student.zoomLink} target="_blank" rel="noopener noreferrer" 
+                       onClick={() => {
+                         setPasscodeToast(true);
+                         setTimeout(() => setPasscodeToast(false), 3000);
+                       }}
+                       className={`flex-1 sm:flex-none px-4 flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl transition-all active:scale-95 shadow-inner`}>
                       <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 md:w-5 md:h-5 shrink-0">
                         <path d="M16.033 9.07v5.86c0 .825-.675 1.5-1.5 1.5H3.5c-.825 0-1.5-.675-1.5-1.5v-5.86c0-.825.675-1.5 1.5-1.5h11.033c.825 0 1.5.675 1.5 1.5zm6.467-1.396-4.667 3.5v1.652l4.667 3.5c.367.275.833.013.833-.45V8.125c0-.463-.466-.725-.833-.45z" />
                       </svg>
@@ -3284,6 +3296,16 @@ https://is.gd/oL6gEO`;
 
           <FloatingHelpButton />
           <InstallPrompt />
+
+          {/* Passcode Toast */}
+          {passcodeToast && (
+            <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-down" style={{ transition: 'opacity 0.5s', opacity: passcodeToast ? 1 : 0 }}>
+              <div className="flex items-center gap-2 bg-emerald-900/95 backdrop-blur border border-emerald-500 text-emerald-50 px-5 py-2.5 rounded-2xl shadow-[0_5px_15px_rgba(16,185,129,0.3)] pointer-events-none">
+                <i data-lucide="key" className="w-5 h-5 text-emerald-400"></i>
+                <span className={`font-bold whitespace-nowrap ${isArabic ? 'text-sm' : 'text-sm uppercase tracking-wider'}`}>{isArabic ? 'الرقم السري' : 'Passcode'}: <span className="font-english tracking-widest text-white">0000</span></span>
+              </div>
+            </div>
+          )}
 
           {/* Header Section */}
           <div id="tour-header" className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
