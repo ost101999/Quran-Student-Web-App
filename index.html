@@ -53,7 +53,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Acme&family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -66,6 +66,7 @@
             cinzel: ['Cinzel', 'serif'],
             amiri: ['Amiri', 'serif'],
             uthman: ['"KFGQPC Uthman Taha"', 'Amiri', 'serif'],
+            acme: ['Acme', 'sans-serif'],
           },
           colors: {
             islamic: {
@@ -511,6 +512,7 @@
       const audioRef = useRef(null);
       const [isPlaying, setIsPlaying] = useState(false);
       const [progress, setProgress] = useState(0);
+      const [duration, setDuration] = useState(0);
 
       const togglePlay = () => {
         if (!audioRef.current) return;
@@ -527,6 +529,13 @@
         const current = audioRef.current.currentTime;
         const dur = audioRef.current.duration || 0;
         setProgress(dur > 0 ? (current / dur) * 100 : 0);
+        if (dur > 0 && duration !== dur) setDuration(dur);
+      };
+
+      const handleLoadedMetadata = () => {
+        if (audioRef.current && isFinite(audioRef.current.duration)) {
+          setDuration(audioRef.current.duration);
+        }
       };
 
       const formatTime = (time) => {
@@ -556,6 +565,7 @@
             ref={audioRef} 
             src={src} 
             onTimeUpdate={handleTimeUpdate} 
+            onLoadedMetadata={handleLoadedMetadata}
             className="hidden" 
           />
           <button 
@@ -566,15 +576,15 @@
             <i data-lucide={isPlaying ? 'pause' : 'play'} className={`w-3 h-3 ${isPlaying ? '' : 'ml-0.5'}`}></i>
           </button>
           
-          <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden shrink-0">
+          <div className="flex-1 h-[2px] bg-slate-800 rounded-full overflow-hidden shrink-0">
             <div 
               className="h-full bg-slate-400 rounded-full transition-all duration-100 ease-linear"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
           
-          <span className="text-[10px] text-slate-400 font-mono shrink-0 mr-2 w-7 text-left">
-            {audioRef.current ? formatTime(audioRef.current.currentTime) : '0:00'}
+          <span className="text-[11px] text-slate-400 font-acme font-normal shrink-0 mr-2 min-w-[3.5rem] text-left">
+            {formatTime(audioRef.current?.currentTime || 0)} / {formatTime(duration)}
           </span>
         </div>
       );
