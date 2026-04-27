@@ -693,14 +693,7 @@
             return;
           }
 
-          const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
-          if (isMobileViewport) {
-            container.scrollTo({ top: 0, behavior: 'auto' });
-            mobileResetTimerId = window.setTimeout(() => {
-              container.scrollTo({ top: 0, behavior: 'auto' });
-            }, 140);
-            return;
-          }
+
 
           const currentLessonEl = container.querySelector('[data-current-roadmap="true"]');
           if (!currentLessonEl) return;
