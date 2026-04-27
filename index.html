@@ -189,7 +189,7 @@
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background-color: rgba(217, 119, 6, 0.5);
+      background-color: rgba(148, 163, 184, 0.4);
       border-radius: 20px;
     }
 
@@ -4443,10 +4443,10 @@ https://is.gd/oL6gEO`;
                       ].filter((section) => section.questions.length > 0);
 
                       return questionSections.map((section) => (
-                        <div key={`section_${section.type}`} className="space-y-3">
+                        <div key={`section_${section.type}`} className="space-y-4 md:space-y-5">
 
 
-                          <div className="space-y-3">
+                          <div className="space-y-5 md:space-y-6">
                             {section.questions.map(({ question: q, index: originalIndex }, questionIndex) => {
                               const questionType = normalizeQuestionType(q);
                               const questionKey = getQuestionKey(q, originalIndex);
@@ -4486,10 +4486,10 @@ https://is.gd/oL6gEO`;
                               return (
                                 <div
                                   key={questionKey}
-                                  className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
+                                  className={`rounded-2xl border p-4 md:p-5 transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.15)] ${hasError ? 'border-rose-400/50 bg-rose-950/30' : 'border-slate-600/40 bg-slate-700/40'}`}
                                 >
-                                  <div className="mb-2">
-                                    <p className={`text-sm text-white font-semibold leading-relaxed ${isQuestionArabic ? 'font-uthman' : ''}`}>
+                                  <div className="mb-3 md:mb-4">
+                                    <p className={`text-[15px] md:text-base text-white font-bold leading-[1.6] ${isQuestionArabic ? 'font-uthman' : ''}`}>
                                       <span className="mx-1">{toArabicNums(questionIndex + 1)}.</span>
                                       {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
                                       
@@ -4512,9 +4512,9 @@ https://is.gd/oL6gEO`;
                                         
                                         if (isReviewMode) {
                                           if (isCorrect) {
-                                            optionClass = 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100';
+                                            optionClass = 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100';
                                           } else if (isSelected) {
-                                            optionClass = 'border-rose-400/60 bg-rose-500/10 text-rose-100';
+                                            optionClass = 'border-rose-300/30 bg-rose-400/10 text-rose-100';
                                           }
                                         } else if (isSelected) {
                                           optionClass = 'border-teal-400/60 bg-teal-500/10 text-teal-100';
@@ -4523,7 +4523,7 @@ https://is.gd/oL6gEO`;
                                         return (
                                         <label
                                           key={`${questionKey}_opt_${idx}`}
-                                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-all ${optionClass}`}
+                                          className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${optionClass}`}
                                         >
                                           <input
                                             type="radio"
@@ -4534,9 +4534,9 @@ https://is.gd/oL6gEO`;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
                                             }}
-                                            className="accent-teal-400 shrink-0"
+                                            className="accent-teal-400 shrink-0 mt-1 cursor-pointer"
                                           />
-                                          <span className={`text-sm ${isOptionArabic ? 'font-uthman leading-relaxed' : ''}`}>
+                                          <span className={`text-[14.5px] leading-[1.65] ${isOptionArabic ? 'font-uthman' : ''}`}>
                                             {isOptionArabic ? opt : renderMixedArabicEnglish(opt)}
                                           </span>
                                         </label>
