@@ -4493,7 +4493,7 @@ https://is.gd/oL6gEO`;
                                       <span className="mx-1">{toArabicNums(questionIndex + 1)}.</span>
                                       {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
                                       
-                                      {typeof reviewCorrectState === 'boolean' && (
+                                      {typeof reviewCorrectState === 'boolean' && questionType !== 'multiple_choice' && (
                                         <span className={`inline-flex items-center justify-center rounded-full w-5 h-5 mx-2 align-text-bottom ${reviewCorrectState ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/30' : 'bg-rose-500/20 text-rose-400 border border-rose-400/30'}`}>
                                           <i data-lucide={reviewCorrectState ? 'check' : 'x'} className="w-3 h-3"></i>
                                         </span>
@@ -4536,9 +4536,15 @@ https://is.gd/oL6gEO`;
                                             }}
                                             className="accent-teal-400 shrink-0 mt-1 cursor-pointer"
                                           />
-                                          <span className={`text-[14.5px] leading-[1.65] ${isOptionArabic ? 'font-uthman' : ''}`}>
+                                          <span className={`flex-1 text-[14.5px] leading-[1.65] ${isOptionArabic ? 'font-uthman' : ''}`}>
                                             {isOptionArabic ? opt : renderMixedArabicEnglish(opt)}
                                           </span>
+                                          
+                                          {isReviewMode && (isCorrect || isSelected) && (
+                                            <span className={`shrink-0 inline-flex items-center justify-center rounded-full w-5 h-5 ${isCorrect ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/30' : 'bg-rose-500/20 text-rose-400 border border-rose-400/30'}`}>
+                                              <i data-lucide={isCorrect ? 'check' : 'x'} className="w-3 h-3"></i>
+                                            </span>
+                                          )}
                                         </label>
                                       )})}
                                     </div>
