@@ -3635,21 +3635,15 @@ https://is.gd/oL6gEO`;
           </div>
 
           {latestTajweedReportEntry && !selectedTajweedQuiz && (
-            <div className="glass-panel rounded-2xl p-4 md:p-5 mb-4 border border-teal-400/25 animate-fade delay-[350ms]">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className={isArabic ? 'text-center md:text-right' : 'text-center md:text-left'}>
-                  <p className={`text-sm md:text-base font-bold text-teal-200 ${headerFontClass}`}>{t.latestTajweedRoadmapTitle}</p>
-                  <p className="text-xs md:text-sm text-slate-300 mt-1">{t.latestTajweedRoadmapDesc}</p>
-                </div>
+            <div className="glass-panel rounded-2xl p-3 md:p-4 mb-4 border border-teal-400/25 animate-fade delay-[350ms] flex justify-center">
                 <button
                   type="button"
                   onClick={openLatestTajweedRoadmap}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-300/40 bg-teal-500/20 px-4 py-2 text-xs md:text-sm font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-300/40 bg-teal-500/20 px-5 py-3 text-xs md:text-sm font-bold text-teal-100 hover:bg-teal-500/30 transition-all active:scale-95"
                 >
                   <i data-lucide="map" className="w-4 h-4"></i>
                   {t.openLatestTajweedRoadmap}
                 </button>
-              </div>
             </div>
           )}
 
@@ -4385,31 +4379,6 @@ https://is.gd/oL6gEO`;
                   <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
                 ) : (
                   <div ref={quizScrollRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 md:px-3 lg:px-4">
-                    {!!String(selectedTajweedQuiz.reviewAttemptId || '').trim() && (
-                      <div className="rounded-xl border border-sky-400/35 bg-sky-500/10 p-3 text-xs text-sky-100">
-                        {t.reviewQuiz}
-                      </div>
-                    )}
-                    <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 p-3">
-                      <p className="font-bold text-teal-200">{selectedTajweedQuiz.lessonTitle}</p>
-                      <p className="text-xs text-slate-300 mt-1">{t.assignedAt}: {(() => {
-                        const ts = selectedTajweedQuiz.assignedAt;
-                        if (!ts) return '-';
-                        const d = new Date(ts);
-                        return isArabic
-                          ? `${toArabicNums(d.getDate())} ${arabicMonthNames[d.getMonth()]} ${toArabicNums(d.getFullYear())}`
-                          : `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-                      })()}</p>
-                      <p className="text-xs text-slate-300">{t.questionsCount}: {toArabicNums((Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length)}</p>
-                      <p className="text-xs text-teal-100/80 mt-1">{t.quizIntro}</p>
-                    </div>
-
-                    {!selectedTajweedQuiz.assignmentId && (
-                      <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-                        {t.quizPreviewOnly}
-                      </div>
-                    )}
-
                     <button
                       type="button"
                       onClick={openLearningRoadmapPage}
