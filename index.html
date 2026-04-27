@@ -2705,6 +2705,9 @@ https://is.gd/oL6gEO`;
             answerText: answer?.answerText || '',
             selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
             audioBase64: audioSource,
+            grade: typeof answer?.grade === 'number' ? answer.grade : undefined,
+            isCorrect: typeof answer?.isCorrect === 'boolean' ? answer.isCorrect : undefined,
+            teacherNote: typeof answer?.teacherNote === 'string' ? answer.teacherNote : '',
           };
           const questionId = String(answer?.questionId || '').trim();
           const questionKey = String(answer?.questionKey || '').trim();
@@ -2727,6 +2730,9 @@ https://is.gd/oL6gEO`;
             answerText: matchedAnswer.answerText || '',
             selectedOptionIndex: typeof matchedAnswer.selectedOptionIndex === 'number' ? matchedAnswer.selectedOptionIndex : undefined,
             audioBase64: matchedAnswer.audioBase64,
+            grade: typeof matchedAnswer.grade === 'number' ? matchedAnswer.grade : undefined,
+            isCorrect: typeof matchedAnswer.isCorrect === 'boolean' ? matchedAnswer.isCorrect : undefined,
+            teacherNote: matchedAnswer.teacherNote || '',
           };
           return acc;
         }, {});
@@ -4496,12 +4502,34 @@ https://is.gd/oL6gEO`;
                               const hasError = !!quizValidationErrors[questionKey];
                               const isReviewMode = !!String(selectedTajweedQuiz.reviewAttemptId || '').trim();
                               const requestedLanguage = selectedTajweedQuiz.contentLanguage || selectedTajweedQuiz.lessonLanguage;
+                              const isEnglishUi = resolveQuestionTargetLanguage(requestedLanguage) === 'en';
                               const localizedQuestionText = getLocalizedQuizQuestionText(q, requestedLanguage);
                               const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q, requestedLanguage);
                               const isQuestionArabic = detectContentLanguage(localizedQuestionText) === 'ar';
                               const answerLanguage = detectContentLanguage(answer.answerText || '');
                               const shouldUseUthmanAnswerFont = answerLanguage === 'ar'
                                 || (resolveQuestionTargetLanguage(requestedLanguage) === 'ar' && !String(answer.answerText || '').trim());
+                              const maxPoints = Number(q?.points || 0);
+                              const reviewCorrectState = (() => {
+                                if (!isReviewMode) return null;
+
+                                if (typeof answer.isCorrect === 'boolean') return answer.isCorrect;
+
+                                if (questionType === 'multiple_choice') {
+                                  if (typeof answer.selectedOptionIndex === 'number' && typeof q.correctOptionIndex === 'number') {
+                                    return answer.selectedOptionIndex === q.correctOptionIndex;
+                                  }
+                                  return null;
+                                }
+
+                                if (questionType === 'audio' || questionType === 'text') {
+                                  if (typeof answer.grade === 'number' && maxPoints > 0) {
+                                    return answer.grade > 0;
+                                  }
+                                }
+
+                                return null;
+                              })();
 
                               return (
                                 <div
@@ -4513,6 +4541,16 @@ https://is.gd/oL6gEO`;
                                       {toArabicNums(questionIndex + 1)}. {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
                                     </p>
                                   </div>
+
+                                  {typeof reviewCorrectState === 'boolean' && (
+                                    <div className="mb-2">
+                                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${reviewCorrectState ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' : 'bg-rose-500/20 text-rose-200 border border-rose-400/30'}`}>
+                                        {reviewCorrectState
+                                          ? (isEnglishUi ? 'Correct' : 'صح')
+                                          : (isEnglishUi ? 'Wrong' : 'خطأ')}
+                                      </span>
+                                    </div>
+                                  )}
 
                                   {questionType === 'multiple_choice' && (
                                     <div className="mt-2 space-y-2">
