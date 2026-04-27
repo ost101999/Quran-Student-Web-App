@@ -2965,10 +2965,10 @@ https://is.gd/oL6gEO`;
         try {
           const preferredAudioConstraints = {
             audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-              sampleRate: 16000, // Voice optimized
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+              sampleRate: 48000,
               channelCount: 1
             }
           };
@@ -2990,7 +2990,7 @@ https://is.gd/oL6gEO`;
             mimeType: 'audio/wav',
             recorderType: StereoAudioRecorder,
             numberOfAudioChannels: 1,
-            desiredSampRate: 16000,
+            desiredSampRate: 48000,
             bufferSize: 4096,
           });
 
