@@ -2985,7 +2985,22 @@ https://is.gd/oL6gEO`;
             throw new Error('RecordRTC not loaded');
           }
 
-          const recorder = new RecordRTC(stream, {
+          const mimeCandidates = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/mp4',
+          ];
+          const selectedMimeType = typeof MediaRecorder?.isTypeSupported === 'function'
+            ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
+            : '';
+
+          const recorder = new RecordRTC(stream, selectedMimeType ? {
+            type: 'audio',
+            mimeType: selectedMimeType,
+            recorderType: MediaStreamRecorder,
+            numberOfAudioChannels: 1,
+            audioBitsPerSecond: 128000,
+          } : {
             type: 'audio',
             mimeType: 'audio/wav',
             recorderType: StereoAudioRecorder,
