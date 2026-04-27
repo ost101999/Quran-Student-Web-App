@@ -1097,6 +1097,7 @@ https://is.gd/oL6gEO`;
         watchLessonVideo: "شاهد الشرح",
         downloadLessonPdf: "الشرح مكتوب",
         startCurrentQuiz: "اختبار قصير",
+        reviewQuiz: "مراجعة الاختبار",
         openLearningRoadmap: "فتح صفحة المسار",
         openLessonQuizPreview: "فتح اختبار هذا الدرس",
         lessonWithoutTitle: "درس بدون عنوان",
@@ -1219,6 +1220,7 @@ https://is.gd/oL6gEO`;
         watchLessonVideo: "Watch Video",
         downloadLessonPdf: "Download PDF",
         startCurrentQuiz: "Start Quiz",
+        reviewQuiz: "Review Quiz",
         openLearningRoadmap: "Open Learning Path",
         openLessonQuizPreview: "Open This Lesson Quiz",
         lessonWithoutTitle: "Untitled Lesson",
@@ -2615,6 +2617,41 @@ https://is.gd/oL6gEO`;
         return `q_${index}_${questionId}`;
       };
 
+      const buildQuizDraftAnswersFromAttempt = (questions, attempt) => {
+        const answers = Array.isArray(attempt?.answers) ? attempt.answers : [];
+        if (!answers.length) return {};
+
+        const byQuestionId = new Map();
+        const byQuestionKey = new Map();
+        answers.forEach((answer) => {
+          const normalized = {
+            questionId: answer?.questionId,
+            answerText: answer?.answerText || '',
+            selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
+            audioBase64: answer?.audioBase64,
+          };
+          const questionId = String(answer?.questionId || '').trim();
+          const questionKey = String(answer?.questionKey || '').trim();
+          if (questionId) byQuestionId.set(questionId, normalized);
+          if (questionKey) byQuestionKey.set(questionKey, normalized);
+        });
+
+        return (Array.isArray(questions) ? questions : []).reduce((acc, question, index) => {
+          const questionKey = getQuestionKey(question, index);
+          const questionId = String(question?.id || '').trim();
+          const matchedAnswer = (questionId && byQuestionId.get(questionId)) || byQuestionKey.get(questionKey);
+          if (!matchedAnswer) return acc;
+
+          acc[questionKey] = {
+            questionId: question?.id || questionKey,
+            answerText: matchedAnswer.answerText || '',
+            selectedOptionIndex: typeof matchedAnswer.selectedOptionIndex === 'number' ? matchedAnswer.selectedOptionIndex : undefined,
+            audioBase64: matchedAnswer.audioBase64,
+          };
+          return acc;
+        }, {});
+      };
+
       const clearQuizValidationForQuestion = (questionKey) => {
         setQuizValidationErrors((prev) => {
           if (!prev[questionKey]) return prev;
@@ -2923,8 +2960,25 @@ https://is.gd/oL6gEO`;
         setShowTajweedRoadmapPage(true);
       };
 
-      const openCurrentQuizFromRoadmap = () => {
+      const openCurrentQuizFromRoadmap = (options = {}) => {
         if (!selectedTajweedQuiz || selectedTajweedQuiz.missing) return;
+        const reviewAttempt = options?.reviewAttempt && typeof options.reviewAttempt === 'object'
+          ? options.reviewAttempt
+          : null;
+
+        if (reviewAttempt) {
+          const hydratedDrafts = buildQuizDraftAnswersFromAttempt(selectedTajweedQuiz.questions, reviewAttempt);
+          setQuizDraftAnswers(hydratedDrafts);
+          setQuizValidationErrors({});
+          setQuizStatusMessage('');
+        } else {
+          resetQuizDraftState();
+        }
+
+        setSelectedTajweedQuiz((prev) => (prev ? {
+          ...prev,
+          reviewAttemptId: reviewAttempt ? String(reviewAttempt?.id || '') : '',
+        } : prev));
         setRoadmapAutoStartEnabled(false);
         setRoadmapAutoStartCountdown(0);
         setShowTajweedRoadmapPage(false);
@@ -3048,6 +3102,18 @@ https://is.gd/oL6gEO`;
         setSelectedReport(null);
         openTajweedQuizFromSection(latestTajweedReportEntry.section);
       };
+
+      const currentRoadmapSolvedState = selectedTajweedQuiz
+        ? getStudentSolvedLessonState(
+          { id: selectedTajweedQuiz.lessonId, title: selectedTajweedQuiz.lessonTitle },
+          String(selectedTajweedQuiz.lessonId || '').trim()
+        )
+        : null;
+      const currentRoadmapSolvedAttempts = Array.isArray(currentRoadmapSolvedState?.attempts)
+        ? currentRoadmapSolvedState.attempts
+        : [];
+      const currentRoadmapLatestAttempt = currentRoadmapSolvedAttempts[0] || null;
+      const canReviewCurrentRoadmapQuiz = !!currentRoadmapLatestAttempt;
 
       // Calendar Calculations
       const daysInMonth = new Date(effectiveYear, effectiveMonth + 1, 0).getDate();
@@ -3840,7 +3906,9 @@ https://is.gd/oL6gEO`;
                   <button
                     id={isTourMode ? 'tour-start-current-quiz' : undefined}
                     onClick={() => {
-                      openCurrentQuizFromRoadmap();
+                      openCurrentQuizFromRoadmap(canReviewCurrentRoadmapQuiz
+                        ? { reviewAttempt: currentRoadmapLatestAttempt }
+                        : undefined);
                       if (isTourMode && window.driverObjInstance) {
                         setTimeout(() => {
                           window.driverObjInstance.moveNext();
@@ -3850,7 +3918,7 @@ https://is.gd/oL6gEO`;
                     className="inline-flex items-center gap-2 rounded-xl border border-teal-300/40 bg-teal-500/20 px-4 py-2 text-sm font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
                   >
                     <i data-lucide="play-circle" className="w-4 h-4"></i>
-                    {t.startCurrentQuiz}
+                    {canReviewCurrentRoadmapQuiz ? t.reviewQuiz : t.startCurrentQuiz}
                   </button>
                 </div>
 
@@ -3983,6 +4051,7 @@ https://is.gd/oL6gEO`;
                       });
                       const hasQuizQuestions = languageReadyLessonQuestions.length > 0;
                       const canStartCurrentQuiz = isCurrent && hasQuizQuestions;
+                      const canReviewCurrentLesson = isCurrent && solvedAttempts.length > 0;
 
                       return (
                         <div
@@ -4057,14 +4126,18 @@ https://is.gd/oL6gEO`;
 
                               <button
                                 type="button"
-                                onClick={canStartCurrentQuiz ? openCurrentQuizFromRoadmap : undefined}
+                                onClick={canStartCurrentQuiz
+                                  ? () => openCurrentQuizFromRoadmap(canReviewCurrentLesson
+                                    ? { reviewAttempt: solvedAttempts[0] }
+                                    : undefined)
+                                  : undefined}
                                 disabled={!canStartCurrentQuiz}
                                 className={`inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] md:text-xs font-semibold transition-colors whitespace-nowrap ${canStartCurrentQuiz
                                   ? 'border-teal-300/35 bg-teal-500/10 text-teal-100 hover:bg-teal-500/20'
                                   : 'border-slate-500/30 bg-slate-700/30 text-slate-300/80 cursor-not-allowed'}`}
                               >
                                 <i data-lucide="target" className="hidden md:block w-3.5 h-3.5"></i>
-                                {t.startCurrentQuiz}
+                                {canReviewCurrentLesson ? t.reviewQuiz : t.startCurrentQuiz}
                               </button>
                             </div>
 
@@ -4173,6 +4246,11 @@ https://is.gd/oL6gEO`;
                   <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
                 ) : (
                   <div ref={quizScrollRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 md:px-3 lg:px-4">
+                    {!!String(selectedTajweedQuiz.reviewAttemptId || '').trim() && (
+                      <div className="rounded-xl border border-sky-400/35 bg-sky-500/10 p-3 text-xs text-sky-100">
+                        {t.reviewQuiz}
+                      </div>
+                    )}
                     <div className="rounded-xl border border-teal-400/20 bg-teal-900/20 p-3">
                       <p className="font-bold text-teal-200">{selectedTajweedQuiz.lessonTitle}</p>
                       <p className="text-xs text-slate-300 mt-1">{t.assignedAt}: {(() => {
@@ -4234,6 +4312,7 @@ https://is.gd/oL6gEO`;
                               const questionKey = getQuestionKey(q, originalIndex);
                               const answer = quizDraftAnswers[questionKey] || {};
                               const hasError = !!quizValidationErrors[questionKey];
+                              const isReviewMode = !!String(selectedTajweedQuiz.reviewAttemptId || '').trim();
                               const requestedLanguage = selectedTajweedQuiz.contentLanguage || selectedTajweedQuiz.lessonLanguage;
                               const localizedQuestionText = getLocalizedQuizQuestionText(q, requestedLanguage);
                               const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q, requestedLanguage);
@@ -4258,7 +4337,9 @@ https://is.gd/oL6gEO`;
                                             type="radio"
                                             name={`quiz_${questionKey}`}
                                             checked={answer.selectedOptionIndex === idx}
+                                            disabled={isReviewMode}
                                             onChange={() => {
+                                              if (isReviewMode) return;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
                                             }}
@@ -4276,8 +4357,9 @@ https://is.gd/oL6gEO`;
                                         {recordingQuestionKey === questionKey ? (
                                           <button
                                             type="button"
+                                            disabled={isReviewMode}
                                             onClick={stopQuizRecording}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
+                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isReviewMode ? 'border-slate-500/30 bg-slate-700/35 text-slate-300/70 cursor-not-allowed' : 'border-rose-400/50 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30'}`}
                                           >
                                             <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
                                             {t.stopRecording}
@@ -4285,8 +4367,9 @@ https://is.gd/oL6gEO`;
                                         ) : (
                                           <button
                                             type="button"
+                                            disabled={isReviewMode}
                                             onClick={() => startQuizRecording(questionKey, q.id || questionKey)}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isReviewMode ? 'border-slate-500/30 bg-slate-700/35 text-slate-300/70 cursor-not-allowed' : 'border-teal-300/50 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30'}`}
                                           >
                                             <i data-lucide="mic" className="w-3.5 h-3.5"></i>
                                             {t.startRecording}
@@ -4296,8 +4379,9 @@ https://is.gd/oL6gEO`;
                                         {!!answer.audioBase64 && (
                                           <button
                                             type="button"
+                                            disabled={isReviewMode}
                                             onClick={() => removeQuizAudioDraft(questionKey, q.id || questionKey)}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
+                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isReviewMode ? 'border-slate-500/30 bg-slate-700/35 text-slate-300/70 cursor-not-allowed' : 'border-slate-400/40 bg-slate-700/50 text-slate-100 hover:bg-slate-700/70'}`}
                                           >
                                             <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
                                             {t.deleteRecording}
@@ -4316,7 +4400,9 @@ https://is.gd/oL6gEO`;
                                   {questionType === 'text' && (
                                     <textarea
                                       value={answer.answerText || ''}
+                                      readOnly={isReviewMode}
                                       onChange={(event) => {
+                                        if (isReviewMode) return;
                                         upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
                                         setQuizStatusMessage('');
                                       }}
@@ -4342,7 +4428,10 @@ https://is.gd/oL6gEO`;
                       </div>
                     )}
 
-                    {selectedTajweedQuiz.assignmentId && !selectedTajweedQuiz.missing && (Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
+                    {selectedTajweedQuiz.assignmentId
+                      && !selectedTajweedQuiz.missing
+                      && !String(selectedTajweedQuiz.reviewAttemptId || '').trim()
+                      && (Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
                       <button
                         type="button"
                         onClick={submitTajweedQuiz}
