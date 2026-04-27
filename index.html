@@ -484,6 +484,7 @@
       const [showTajweedRoadmapPage, setShowTajweedRoadmapPage] = useState(false);
       const [roadmapAutoStartEnabled, setRoadmapAutoStartEnabled] = useState(false);
       const [roadmapAutoStartCountdown, setRoadmapAutoStartCountdown] = useState(0);
+      const [roadmapAutoOpenReviewAttempt, setRoadmapAutoOpenReviewAttempt] = useState(null);
       const [expandedRoadmapLessonId, setExpandedRoadmapLessonId] = useState('');
       const [quizDraftAnswers, setQuizDraftAnswers] = useState({});
       const [quizValidationErrors, setQuizValidationErrors] = useState({});
@@ -706,7 +707,11 @@
           setRoadmapAutoStartCountdown((prev) => {
             if (prev <= 1) {
               window.clearInterval(intervalId);
-              openCurrentQuizFromRoadmap();
+              openCurrentQuizFromRoadmap(
+                roadmapAutoOpenReviewAttempt
+                  ? { reviewAttempt: roadmapAutoOpenReviewAttempt }
+                  : undefined
+              );
               return 0;
             }
             return prev - 1;
@@ -714,7 +719,7 @@
         }, 1000);
 
         return () => window.clearInterval(intervalId);
-      }, [isTourMode, roadmapAutoStartEnabled, showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.assignmentId]);
+      }, [isTourMode, roadmapAutoStartEnabled, roadmapAutoOpenReviewAttempt, showTajweedRoadmapPage, selectedTajweedQuiz?.lessonId, selectedTajweedQuiz?.assignmentId]);
 
       // Glow animation on last reported day after data loads
       useEffect(() => {
@@ -2731,6 +2736,7 @@ https://is.gd/oL6gEO`;
         resetQuizDraftState();
         setRoadmapAutoStartCountdown(0);
         setRoadmapAutoStartEnabled(false);
+        setRoadmapAutoOpenReviewAttempt(null);
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(false);
         setSelectedTajweedQuiz(null);
@@ -2978,13 +2984,22 @@ https://is.gd/oL6gEO`;
         const reviewAttempt = payload?.reviewAttempt && typeof payload.reviewAttempt === 'object'
           ? payload.reviewAttempt
           : null;
-        const shouldOpenDirectToQuiz = !!payload?.openDirectToQuiz || !!reviewAttempt;
+        const autoOpenReviewAttempt = payload?.autoOpenReviewAttempt && typeof payload.autoOpenReviewAttempt === 'object'
+          ? payload.autoOpenReviewAttempt
+          : null;
+        const shouldAutoOpenFromPath = !!payload?.autoOpenFromPath && !payload?.missing;
+        const shouldOpenDirectToQuiz = !!payload?.openDirectToQuiz;
         const hydratedDrafts = reviewAttempt
           ? buildQuizDraftAnswersFromAttempt(safeQuestions, reviewAttempt)
           : {};
 
         setRoadmapAutoStartCountdown(0);
-        setRoadmapAutoStartEnabled(!payload?.missing && !isTourMode && !shouldOpenDirectToQuiz);
+        setRoadmapAutoStartEnabled(shouldAutoOpenFromPath && !isTourMode && !shouldOpenDirectToQuiz);
+        setRoadmapAutoOpenReviewAttempt(
+          shouldAutoOpenFromPath && autoOpenReviewAttempt
+            ? autoOpenReviewAttempt
+            : null
+        );
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(!payload?.missing && !shouldOpenDirectToQuiz);
         if (reviewAttempt) {
@@ -3029,11 +3044,14 @@ https://is.gd/oL6gEO`;
           reviewAttemptId: reviewAttempt ? String(reviewAttempt?.id || '') : '',
         } : prev));
         setRoadmapAutoStartEnabled(false);
+        setRoadmapAutoOpenReviewAttempt(null);
         setRoadmapAutoStartCountdown(0);
         setShowTajweedRoadmapPage(false);
       };
 
-      const openTajweedQuizFromSection = (section) => {
+      const openTajweedQuizFromSection = (section, actionOptions = {}) => {
+        const forcePathOnly = !!actionOptions?.forcePathOnly;
+        const isReviewAction = !!actionOptions?.isReview;
         const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted'] });
         const strictSectionLanguage = resolveStrictPortalLanguage(null);
 
@@ -3065,7 +3083,8 @@ https://is.gd/oL6gEO`;
             versionId: previewVersion?.id,
             lessonLanguage: getLessonLanguage(sectionResolved.lesson),
             assignedAt: undefined,
-            questions: previewQuestions
+            questions: previewQuestions,
+            autoOpenFromPath: !forcePathOnly,
           });
           return;
         }
@@ -3095,8 +3114,8 @@ https://is.gd/oL6gEO`;
           lessonLanguage: getLessonLanguage(lesson),
           assignedAt: assignment?.assignedAt,
           questions: assignmentQuestions,
-          openDirectToQuiz: isReviewFlow,
-          reviewAttempt: latestSolvedAttempt,
+          autoOpenFromPath: !forcePathOnly,
+          autoOpenReviewAttempt: isReviewAction && isReviewFlow ? latestSolvedAttempt : null,
         });
       };
 
@@ -3155,7 +3174,7 @@ https://is.gd/oL6gEO`;
         if (!latestTajweedReportEntry?.section) return;
 
         setSelectedReport(null);
-        openTajweedQuizFromSection(latestTajweedReportEntry.section);
+        openTajweedQuizFromSection(latestTajweedReportEntry.section, { forcePathOnly: true });
       };
 
       const resolveTajweedSectionQuizActionState = (section) => {
@@ -3374,7 +3393,7 @@ https://is.gd/oL6gEO`;
                           id={options.quizButtonId && idx === 0 ? options.quizButtonId : undefined}
                           onClick={() => {
                             if (options.onOpenQuiz) {
-                              options.onOpenQuiz(section, quizActionState);
+                              options.onOpenQuiz(section, { isReview: isReviewQuizAction });
                             }
                             if (options.onAfterOpenQuiz) {
                               options.onAfterOpenQuiz(section, idx);
