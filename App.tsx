@@ -983,6 +983,22 @@ function App() {
                         const localizedQuestionText = getLocalizedQuestionText(question, lesson, assignmentLanguage);
                         const localizedQuestionOptions = getLocalizedQuestionOptions(question, lesson, assignmentLanguage);
                         const selectedChoice = localizedQuestionOptions?.[answer?.selectedOptionIndex ?? -1];
+                        const isGraded = assignment.status === 'graded';
+                        const maxPoints = Number(question.points || 0);
+
+                        const multipleChoiceIsCorrect = question.type === 'multiple_choice'
+                          && typeof answer?.selectedOptionIndex === 'number'
+                          && typeof question.correctOptionIndex === 'number'
+                          ? answer.selectedOptionIndex === question.correctOptionIndex
+                          : null;
+
+                        const binaryIsCorrect = (question.type === 'audio' || question.type === 'text')
+                          ? (typeof answer?.isCorrect === 'boolean'
+                            ? answer.isCorrect
+                            : (typeof answer?.grade === 'number' && maxPoints > 0
+                              ? answer.grade > 0
+                              : null))
+                          : null;
 
                         return (
                           <div key={question.id} className="rounded-xl border border-slate-200 p-3 bg-white/80">
@@ -993,7 +1009,14 @@ function App() {
                             )}
 
                             {question.type === 'multiple_choice' && (
-                              <p className="text-slate-700">الإجابة المختارة: {selectedChoice || 'غير محددة'}</p>
+                              <p className="text-slate-700 flex flex-wrap items-center gap-2">
+                                <span>الإجابة المختارة: {selectedChoice || 'غير محددة'}</span>
+                                {isGraded && typeof multipleChoiceIsCorrect === 'boolean' && (
+                                  <strong className={multipleChoiceIsCorrect ? 'text-emerald-700' : 'text-rose-700'}>
+                                    {multipleChoiceIsCorrect ? 'صح' : 'خطأ'}
+                                  </strong>
+                                )}
+                              </p>
                             )}
 
                             {question.type === 'audio' && (
@@ -1006,13 +1029,13 @@ function App() {
                               </div>
                             )}
 
-                            {assignment.status === 'graded' && (
+                            {isGraded && (
                               <div className="mt-2 text-sm text-slate-700 space-y-1">
-                                {question.type === 'audio' && typeof answer?.isCorrect === 'boolean' && (
+                                {(question.type === 'audio' || question.type === 'text') && typeof binaryIsCorrect === 'boolean' && (
                                   <p>
-                                    تقييم السؤال الصوتي:{' '}
-                                    <strong className={answer.isCorrect ? 'text-emerald-700' : 'text-rose-700'}>
-                                      {answer.isCorrect ? 'صح' : 'خطأ'}
+                                    {question.type === 'audio' ? 'تقييم السؤال الصوتي:' : 'تقييم السؤال:'}{' '}
+                                    <strong className={binaryIsCorrect ? 'text-emerald-700' : 'text-rose-700'}>
+                                      {binaryIsCorrect ? 'صح' : 'خطأ'}
                                     </strong>
                                   </p>
                                 )}
