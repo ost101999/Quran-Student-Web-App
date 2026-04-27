@@ -734,7 +734,12 @@ function App() {
               </span>
             )}
           </button>
-          <button onClick={() => setActiveTab('history')} className={activeTab === 'history' ? 'tab-btn tab-btn-active' : 'tab-btn'}>سجل التجويد</button>
+          <button onClick={() => {
+            setActiveTab('history');
+            fetchData(true);
+          }} className={activeTab === 'history' ? 'tab-btn tab-btn-active' : 'tab-btn'}>
+            نتائج الاختبارات والتصحيح
+          </button>
         </div>
 
         <AnimatePresence mode="wait">
@@ -808,6 +813,47 @@ function App() {
                   </div>
                 ) : (
                   <p className="text-slate-500">لا يوجد اختبار تجويد جديد حالياً.</p>
+                )}
+              </div>
+              <div className="glass-card">
+                <h2 className="text-xl font-bold mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-emerald-600" /> آخر نتائج التجويد والتصحيح</h2>
+                {historyAssignments.length > 0 ? (
+                  <div className="space-y-4">
+                    {historyAssignments.slice(0, 2).map((assignment) => {
+                      const lesson = bank[assignment.lessonId];
+                      const isGraded = assignment.status === 'graded';
+                      const submission = submissions[assignment.submissionId || ''];
+                      return (
+                        <div key={assignment.id} className="border-b border-slate-100 last:border-0 pb-3 last:pb-0">
+                          <div className="flex justify-between items-start mb-1">
+                            <p className="font-bold">{lesson?.title || 'درس تجويد'}</p>
+                            <span className={isGraded ? 'text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full' : 'text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full'}>
+                              {isGraded ? 'تم التصحيح' : 'قيد التصحيح'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs text-slate-500">
+                            <p>{toDate(assignment.assignedAt)}</p>
+                            {isGraded && submission && (
+                              <p className="font-bold text-emerald-600">الدرجة: {toHindiDigits(submission.totalGrade || 0)}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setActiveTab('history')}
+                            className="mt-2 text-sky-600 text-xs font-bold hover:underline"
+                          >
+                            عرض التصحيح الكامل ←
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {historyAssignments.length > 2 && (
+                      <button onClick={() => setActiveTab('history')} className="w-full py-2 bg-slate-50 text-slate-600 text-xs rounded-lg hover:bg-slate-100 font-bold">
+                        عرض الكل ({toHindiDigits(historyAssignments.length)})
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm">لا توجد اختبارات مصححة بعد.</p>
                 )}
               </div>
             </motion.section>
