@@ -2994,16 +2994,19 @@ https://is.gd/oL6gEO`;
             ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
             : '';
 
-          const recorder = new RecordRTC(stream, selectedMimeType ? {
+          const mediaStreamRecorderType = RecordRTC?.MediaStreamRecorder || (typeof MediaStreamRecorder !== 'undefined' ? MediaStreamRecorder : null);
+          const stereoRecorderType = RecordRTC?.StereoAudioRecorder || (typeof StereoAudioRecorder !== 'undefined' ? StereoAudioRecorder : null);
+
+          const recorder = new RecordRTC(stream, selectedMimeType && mediaStreamRecorderType ? {
             type: 'audio',
             mimeType: selectedMimeType,
-            recorderType: MediaStreamRecorder,
+            recorderType: mediaStreamRecorderType,
             numberOfAudioChannels: 1,
             audioBitsPerSecond: 128000,
           } : {
             type: 'audio',
             mimeType: 'audio/wav',
-            recorderType: StereoAudioRecorder,
+            recorderType: stereoRecorderType || undefined,
             numberOfAudioChannels: 1,
             desiredSampRate: 48000,
             bufferSize: 4096,
