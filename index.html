@@ -4155,10 +4155,14 @@ https://is.gd/oL6gEO`;
 
                     let currentLessonIndex = flatLessons.findIndex((lesson) => String(lesson?.id || '') === currentLessonId);
                     if (currentLessonIndex < 0 && currentLessonTitleHint) {
-                      currentLessonIndex = flatLessons.findIndex((lesson) => {
+                      let lastMatch = -1;
+                      flatLessons.forEach((lesson, idx) => {
                         const title = normalizeForMatch(lesson?.title || '');
-                        return title && (title === currentLessonTitleHint || title.includes(currentLessonTitleHint) || currentLessonTitleHint.includes(title));
+                        if (title && (title === currentLessonTitleHint || title.includes(currentLessonTitleHint) || currentLessonTitleHint.includes(title))) {
+                          lastMatch = idx;
+                        }
                       });
+                      if (lastMatch >= 0) currentLessonIndex = lastMatch;
                     }
 
                     let lessonCounter = -1;
