@@ -1086,17 +1086,11 @@ https://is.gd/oL6gEO`;
         roadmapLegendCurrent: "الدرس الحالي",
         roadmapLegendSolved: "محلول من الطالب",
         roadmapLegendPending: "لم يُحل بعد",
-        previousSolutionsTitle: "حلولك القديمة",
-        previousSolutionsEmpty: "لا توجد حلول محفوظة لهذا الدرس.",
-        previousSolutionsToggle: "عرض حلولك القديمة",
-        previousSolutionsHide: "إخفاء الحلول القديمة",
-        previousSolutionAttempt: "محاولة",
-        previousSolutionSubmittedAt: "تاريخ الحل",
-        previousSolutionPreviewText: "ملخص الإجابة",
         autoStartQuizIn: "سيبدأ اختبار قصير خلال",
         watchLessonVideo: "شاهد الشرح",
         downloadLessonPdf: "الشرح مكتوب",
-        startCurrentQuiz: "اختبار قصير",
+        startCurrentQuiz: "مراجعة الاختبار",
+        reviewAnswersLoaded: "تم تحميل آخر إجاباتك ويمكنك تعديلها قبل الإرسال.",
         openLearningRoadmap: "فتح صفحة المسار",
         openLessonQuizPreview: "فتح اختبار هذا الدرس",
         lessonWithoutTitle: "درس بدون عنوان",
@@ -1208,17 +1202,11 @@ https://is.gd/oL6gEO`;
         roadmapLegendCurrent: "Current Lesson",
         roadmapLegendSolved: "Solved By Student",
         roadmapLegendPending: "Not Solved Yet",
-        previousSolutionsTitle: "Your Previous Solutions",
-        previousSolutionsEmpty: "No saved solutions for this lesson yet.",
-        previousSolutionsToggle: "Show Previous Solutions",
-        previousSolutionsHide: "Hide Previous Solutions",
-        previousSolutionAttempt: "Attempt",
-        previousSolutionSubmittedAt: "Submitted At",
-        previousSolutionPreviewText: "Answer Preview",
         autoStartQuizIn: "Auto-starting short quiz in",
         watchLessonVideo: "Watch Video",
         downloadLessonPdf: "Download PDF",
-        startCurrentQuiz: "Start Quiz",
+        startCurrentQuiz: "Review Quiz",
+        reviewAnswersLoaded: "Your latest saved answers were loaded. You can edit them before submitting.",
         openLearningRoadmap: "Open Learning Path",
         openLessonQuizPreview: "Open This Lesson Quiz",
         lessonWithoutTitle: "Untitled Lesson",
@@ -2013,46 +2001,6 @@ https://is.gd/oL6gEO`;
         ]);
       };
 
-      const formatSubmissionDateTime = (timestamp) => {
-        const value = Number(timestamp || 0);
-        if (!value) return '-';
-
-        try {
-          return new Date(value).toLocaleString(isArabic ? 'ar-EG' : 'en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-        } catch {
-          const d = new Date(value);
-          return d.toString();
-        }
-      };
-
-      const getSubmissionAnswerPreview = (attempt) => {
-        const answers = Array.isArray(attempt?.answers) ? attempt.answers : [];
-
-        const firstText = answers.find((answer) => String(answer?.answerText || '').trim());
-        if (firstText) {
-          const value = String(firstText.answerText || '').trim();
-          return value.length > 80 ? `${value.slice(0, 80)}...` : value;
-        }
-
-        const hasChoice = answers.some((answer) => typeof answer?.selectedOptionIndex === 'number');
-        if (hasChoice) {
-          return isArabic ? 'تمت إجابة أسئلة الاختيار من متعدد.' : 'Multiple-choice answers were submitted.';
-        }
-
-        const hasAudio = answers.some((answer) => String(answer?.audioBase64 || '').trim());
-        if (hasAudio) {
-          return isArabic ? 'تم رفع إجابة صوتية.' : 'Audio response uploaded.';
-        }
-
-        return isArabic ? 'تم تسليم الواجب.' : 'Assignment submitted.';
-      };
-
       const matchesPreferredLessonLanguage = (lesson, targetLanguage = preferredQuestionLanguage) => {
         const lessonLanguage = getLessonLanguage(lesson);
         if (lessonLanguage === 'both' || lessonLanguage === targetLanguage) return true;
@@ -2644,6 +2592,82 @@ https://is.gd/oL6gEO`;
         clearQuizValidationForQuestion(questionKey);
       };
 
+      const normalizeAnswerOptionIndex = (value) => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+        const normalized = String(value ?? '').trim();
+        if (!normalized) return undefined;
+
+        const parsed = Number(normalized);
+        if (!Number.isFinite(parsed)) return undefined;
+        return parsed;
+      };
+
+      const buildDraftAnswersFromSubmission = (questions, submissionAnswers) => {
+        if (!Array.isArray(questions) || questions.length === 0) return {};
+        if (!Array.isArray(submissionAnswers) || submissionAnswers.length === 0) return {};
+
+        const answersByQuestionKey = new Map();
+        const answersByQuestionId = new Map();
+        const answersByQuestionOrder = new Map();
+
+        submissionAnswers.forEach((answer, index) => {
+          if (!answer || typeof answer !== 'object') return;
+
+          const answerQuestionKey = String(answer?.questionKey || '').trim();
+          const answerQuestionId = String(answer?.questionId || '').trim();
+          const parsedQuestionOrder = Number(answer?.questionOrder);
+          const answerQuestionOrder = Number.isFinite(parsedQuestionOrder)
+            ? parsedQuestionOrder
+            : null;
+
+          if (answerQuestionKey && !answersByQuestionKey.has(answerQuestionKey)) {
+            answersByQuestionKey.set(answerQuestionKey, answer);
+          }
+
+          if (answerQuestionId && !answersByQuestionId.has(answerQuestionId)) {
+            answersByQuestionId.set(answerQuestionId, answer);
+          }
+
+          if (answerQuestionOrder !== null && !answersByQuestionOrder.has(answerQuestionOrder)) {
+            answersByQuestionOrder.set(answerQuestionOrder, answer);
+          }
+
+          if (!answerQuestionKey && !answerQuestionId && answerQuestionOrder === null && !answersByQuestionOrder.has(index)) {
+            answersByQuestionOrder.set(index, answer);
+          }
+        });
+
+        const draftAnswers = {};
+
+        questions.forEach((question, index) => {
+          const questionKey = getQuestionKey(question, index);
+          const questionId = String(question?.id || '').trim();
+
+          const matchedAnswer = answersByQuestionKey.get(questionKey)
+            || (questionId ? answersByQuestionId.get(questionId) : null)
+            || answersByQuestionOrder.get(index)
+            || null;
+
+          if (!matchedAnswer) return;
+
+          const answerText = String(matchedAnswer?.answerText || '').trim();
+          const selectedOptionIndex = normalizeAnswerOptionIndex(matchedAnswer?.selectedOptionIndex);
+          const audioBase64 = String(matchedAnswer?.audioBase64 || '').trim();
+
+          if (!answerText && selectedOptionIndex === undefined && !audioBase64) return;
+
+          draftAnswers[questionKey] = {
+            questionId: questionId || questionKey,
+            answerText: answerText || undefined,
+            selectedOptionIndex,
+            audioBase64: audioBase64 || undefined,
+          };
+        });
+
+        return draftAnswers;
+      };
+
       const closeTajweedQuiz = () => {
         if (mediaRecorderRef.current?.state === 'recording') {
           recordingMetaRef.current = null;
@@ -2903,6 +2927,13 @@ https://is.gd/oL6gEO`;
           return true;
         });
 
+        const reviewAnswers = Array.isArray(payload?.reviewAnswers) ? payload.reviewAnswers : [];
+        const prefilledDraftAnswers = buildDraftAnswersFromSubmission(safeQuestions, reviewAnswers);
+
+        if (Object.keys(prefilledDraftAnswers).length > 0) {
+          setQuizDraftAnswers(prefilledDraftAnswers);
+        }
+
         setRoadmapAutoStartCountdown(0);
         setRoadmapAutoStartEnabled(!payload?.missing && !isTourMode);
         setExpandedRoadmapLessonId('');
@@ -2911,6 +2942,7 @@ https://is.gd/oL6gEO`;
           ...payload,
           contentLanguage: strictContentLanguage,
           lessonLanguage: normalizeAssignmentContentLanguage(payload?.lessonLanguage) || strictContentLanguage,
+          hasReviewAnswers: Object.keys(prefilledDraftAnswers).length > 0,
           questions: safeQuestions,
         });
       };
@@ -2934,6 +2966,12 @@ https://is.gd/oL6gEO`;
         const assignment = findMatchingPendingTajweedAssignment(section);
         const strictSectionLanguage = resolveStrictPortalLanguage(null);
 
+        const getLatestSolvedAttempt = (lesson, lessonIdHint = '') => {
+          const solvedState = getStudentSolvedLessonState(lesson, lessonIdHint);
+          const attempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
+          return attempts[0] || null;
+        };
+
         if (!assignment) {
           const sectionResolved = resolveBankLessonFromSection(section);
           if (!sectionResolved) {
@@ -2953,6 +2991,7 @@ https://is.gd/oL6gEO`;
             ? previewVersion.questions
             : (canUseLessonFallbackQuestions && Array.isArray(sectionResolved.lesson?.questions) ? sectionResolved.lesson.questions : []);
           const previewLessonTitle = getRoadmapLessonTitle(sectionResolved.lesson, previewVersion);
+          const latestSolvedAttempt = getLatestSolvedAttempt(sectionResolved.lesson, sectionResolved.lessonId);
 
           openTajweedQuiz({
             assignmentId: null,
@@ -2962,6 +3001,7 @@ https://is.gd/oL6gEO`;
             versionId: previewVersion?.id,
             lessonLanguage: getLessonLanguage(sectionResolved.lesson),
             assignedAt: undefined,
+            reviewAnswers: Array.isArray(latestSolvedAttempt?.answers) ? latestSolvedAttempt.answers : [],
             questions: previewQuestions
           });
           return;
@@ -2978,6 +3018,7 @@ https://is.gd/oL6gEO`;
           contentLanguage: quizContentLanguage,
         });
         const resolvedLessonTitle = getRoadmapLessonTitle(lesson, resolvedVersion);
+        const latestSolvedAttempt = getLatestSolvedAttempt(lesson, assignment?.resolvedLessonId || assignment?.lessonId || lesson?.id || '');
 
         openTajweedQuiz({
           assignmentId: assignment?.id,
@@ -2987,6 +3028,7 @@ https://is.gd/oL6gEO`;
           versionId: assignment?.resolvedVersionId || assignment?.versionId,
           lessonLanguage: getLessonLanguage(lesson),
           assignedAt: assignment?.assignedAt,
+          reviewAnswers: Array.isArray(latestSolvedAttempt?.answers) ? latestSolvedAttempt.answers : [],
           questions: assignmentQuestions
         });
       };
@@ -3939,7 +3981,6 @@ https://is.gd/oL6gEO`;
                       const solvedState = getStudentSolvedLessonState(lesson, lessonId);
                       const solvedAttempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
                       const isSolvedByStudent = !!solvedState?.isSolved || solvedAttempts.length > 0;
-                      const isExpanded = expandedRoadmapLessonId === lessonId;
 
                       const cardClass = isCurrent
                         ? 'border-slate-400/55 bg-slate-900/75 text-slate-100 animate-roadmap-breathe'
@@ -4067,47 +4108,7 @@ https://is.gd/oL6gEO`;
                                 {t.startCurrentQuiz}
                               </button>
                             </div>
-
-                            {isSolvedByStudent && (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedRoadmapLessonId((prev) => prev === lessonId ? '' : lessonId)}
-                                className="inline-flex items-center gap-1 rounded-md border border-slate-400/35 bg-slate-700/45 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/65 transition-colors"
-                              >
-                                <i data-lucide={isExpanded ? 'chevron-up' : 'history'} className="w-3.5 h-3.5"></i>
-                                {isExpanded ? t.previousSolutionsHide : t.previousSolutionsToggle}
-                              </button>
-                            )}
                           </div>
-
-                          {isSolvedByStudent && isExpanded && (
-                            <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
-                              <p className="text-[11px] md:text-xs font-bold text-slate-100">{t.previousSolutionsTitle}</p>
-
-                              {solvedAttempts.length === 0 ? (
-                                <p className="text-[10px] md:text-xs text-slate-300/90">{t.previousSolutionsEmpty}</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {solvedAttempts.map((attempt, attemptIndex) => (
-                                    <div
-                                      key={`attempt_${lessonId}_${attempt?.id || attemptIndex}`}
-                                      className="rounded-lg border border-slate-600/30 bg-slate-900/45 px-2.5 py-2"
-                                    >
-                                      <p className="text-[10px] md:text-xs font-bold text-slate-100">
-                                        {t.previousSolutionAttempt} {toArabicNums(attemptIndex + 1)}
-                                      </p>
-                                      <p className="text-[10px] md:text-xs text-slate-300 mt-0.5">
-                                        {t.previousSolutionSubmittedAt}: {formatSubmissionDateTime(attempt?.submittedAt)}
-                                      </p>
-                                      <p className="text-[10px] md:text-xs text-slate-200 mt-1">
-                                        {t.previousSolutionPreviewText}: {getSubmissionAnswerPreview(attempt)}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
 
                         </div>
                       );
@@ -4185,6 +4186,9 @@ https://is.gd/oL6gEO`;
                       })()}</p>
                       <p className="text-xs text-slate-300">{t.questionsCount}: {toArabicNums((Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length)}</p>
                       <p className="text-xs text-teal-100/80 mt-1">{t.quizIntro}</p>
+                      {selectedTajweedQuiz.hasReviewAnswers && (
+                        <p className="text-xs text-emerald-200 mt-1">{t.reviewAnswersLoaded}</p>
+                      )}
                     </div>
 
                     {!selectedTajweedQuiz.assignmentId && (
