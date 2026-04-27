@@ -2634,6 +2634,7 @@ https://is.gd/oL6gEO`;
 
         const byQuestionId = new Map();
         const byQuestionKey = new Map();
+        const byQuestionOrder = new Map();
         answers.forEach((answer) => {
           const normalized = {
             questionId: answer?.questionId,
@@ -2643,14 +2644,18 @@ https://is.gd/oL6gEO`;
           };
           const questionId = String(answer?.questionId || '').trim();
           const questionKey = String(answer?.questionKey || '').trim();
+          const questionOrder = Number(answer?.questionOrder);
           if (questionId) byQuestionId.set(questionId, normalized);
           if (questionKey) byQuestionKey.set(questionKey, normalized);
+          if (Number.isFinite(questionOrder) && questionOrder >= 0) byQuestionOrder.set(questionOrder, normalized);
         });
 
         return (Array.isArray(questions) ? questions : []).reduce((acc, question, index) => {
           const questionKey = getQuestionKey(question, index);
           const questionId = String(question?.id || '').trim();
-          const matchedAnswer = (questionId && byQuestionId.get(questionId)) || byQuestionKey.get(questionKey);
+          const matchedAnswer = (questionId && byQuestionId.get(questionId))
+            || byQuestionKey.get(questionKey)
+            || byQuestionOrder.get(index);
           if (!matchedAnswer) return acc;
 
           acc[questionKey] = {
@@ -4125,8 +4130,8 @@ https://is.gd/oL6gEO`;
                         return true;
                       });
                       const hasQuizQuestions = languageReadyLessonQuestions.length > 0;
-                      const canStartCurrentQuiz = isCurrent && hasQuizQuestions;
-                      const canReviewCurrentLesson = isCurrent && solvedAttempts.length > 0;
+                      const canReviewCurrentLesson = solvedAttempts.length > 0;
+                      const canOpenLessonQuiz = hasQuizQuestions && (isCurrent || isSolvedByStudent);
 
                       return (
                         <div
@@ -4201,13 +4206,22 @@ https://is.gd/oL6gEO`;
 
                               <button
                                 type="button"
-                                onClick={canStartCurrentQuiz
-                                  ? () => openCurrentQuizFromRoadmap(canReviewCurrentLesson
-                                    ? { reviewAttempt: solvedAttempts[0] }
-                                    : undefined)
+                                onClick={canOpenLessonQuiz
+                                  ? () => openTajweedQuiz({
+                                    assignmentId: isCurrent ? selectedTajweedQuiz?.assignmentId : null,
+                                    lessonId,
+                                    lessonTitle: lessonDisplayTitle || lesson?.title || t.lessonWithoutTitle,
+                                    contentLanguage: currentRequestedLanguage,
+                                    versionId: defaultVersion?.id || (isCurrent ? selectedTajweedQuiz?.versionId : undefined),
+                                    lessonLanguage: getLessonLanguage(lesson),
+                                    assignedAt: isCurrent ? selectedTajweedQuiz?.assignedAt : undefined,
+                                    questions: languageReadyLessonQuestions,
+                                    openDirectToQuiz: true,
+                                    reviewAttempt: canReviewCurrentLesson ? solvedAttempts[0] : null,
+                                  })
                                   : undefined}
-                                disabled={!canStartCurrentQuiz}
-                                className={`inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] md:text-xs font-semibold transition-colors whitespace-nowrap ${canStartCurrentQuiz
+                                disabled={!canOpenLessonQuiz}
+                                className={`inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[10px] md:text-xs font-semibold transition-colors whitespace-nowrap ${canOpenLessonQuiz
                                   ? 'border-teal-300/35 bg-teal-500/10 text-teal-100 hover:bg-teal-500/20'
                                   : 'border-slate-500/30 bg-slate-700/30 text-slate-300/80 cursor-not-allowed'}`}
                               >
