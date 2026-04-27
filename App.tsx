@@ -76,6 +76,7 @@ interface QuestionAnswer {
   audioLocalPath?: string;
   grade?: number;
   teacherNote?: string;
+  isCorrect?: boolean;
 }
 
 interface TajweedSubmission {
@@ -984,31 +985,70 @@ function App() {
                         const selectedChoice = localizedQuestionOptions?.[answer?.selectedOptionIndex ?? -1];
 
                         return (
-                          <div key={question.id} className="rounded-xl border border-slate-200 p-3 bg-white/80">
-                            <p className="font-bold mb-2">{index + 1}. {localizedQuestionText}</p>
-
-                            {question.type === 'text' && (
-                              <p className="text-slate-700">{answer?.answerText || 'لا توجد إجابة نصية.'}</p>
+                          <div key={question.id} className="rounded-xl border border-slate-200 p-4 bg-white/80 relative overflow-hidden">
+                            {assignment.status === 'graded' && answer?.isCorrect !== undefined && (
+                              <div className={`absolute top-0 left-0 h-full w-1 ${answer.isCorrect ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                             )}
+                            
+                            <div className="flex justify-between items-start mb-3 gap-3">
+                              <p className="font-bold text-lg leading-snug flex-1">
+                                {toHindiDigits(index + 1)}. {localizedQuestionText}
+                              </p>
+                              {assignment.status === 'graded' && answer?.isCorrect !== undefined && (
+                                <div className={`shrink-0 ${answer.isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  {answer.isCorrect ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+                                </div>
+                              )}
+                            </div>
 
-                            {question.type === 'multiple_choice' && (
-                              <p className="text-slate-700">الإجابة المختارة: {selectedChoice || 'غير محددة'}</p>
-                            )}
+                            <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
+                              {question.type === 'text' && (
+                                <p className="text-slate-700 whitespace-pre-wrap">{answer?.answerText || 'لا توجد إجابة نصية.'}</p>
+                              )}
 
-                            {question.type === 'audio' && (
-                              <div className="space-y-2">
-                                {answer?.audioBase64 ? (
-                                  <audio controls src={answer.audioBase64} className="w-full" />
-                                ) : (
-                                  <p className="text-slate-500 flex items-center gap-2"><FileAudio size={16} /> التسجيل الصوتي محفوظ لدى الإدارة.</p>
+                              {question.type === 'multiple_choice' && (
+                                <div className="space-y-1">
+                                  {localizedQuestionOptions?.map((opt, optIdx) => {
+                                    const isSelected = answer?.selectedOptionIndex === optIdx;
+                                    const isCorrect = question.correctOptionIndex === optIdx;
+                                    
+                                    return (
+                                      <div key={optIdx} className={`p-2 rounded-md text-sm border ${
+                                        isSelected 
+                                          ? (isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold' : 'bg-rose-50 border-rose-200 text-rose-800')
+                                          : (isCorrect && assignment.status === 'graded' ? 'bg-emerald-50/30 border-emerald-100 text-emerald-600' : 'bg-transparent border-transparent text-slate-500')
+                                      }`}>
+                                        {opt}
+                                        {isSelected && !isCorrect && (
+                                          <span className="text-[10px] mr-2 opacity-70">(إجابتك)</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {question.type === 'audio' && (
+                                <div className="space-y-2">
+                                  {answer?.audioBase64 ? (
+                                    <audio controls src={answer.audioBase64} className="w-full h-8" />
+                                  ) : (
+                                    <p className="text-slate-500 flex items-center gap-2 text-xs">
+                                      <FileAudio size={14} /> التسجيل الصوتي محفوظ لدى الإدارة.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {assignment.status === 'graded' && (answer?.teacherNote || (answer?.grade !== undefined)) && (
+                              <div className="mt-3 text-sm text-slate-700 bg-amber-50/50 p-3 rounded-lg border border-amber-100/50">
+                                {answer?.grade !== undefined && (
+                                  <p className="font-bold text-amber-900 mb-1">الدرجة: {toHindiDigits(answer.grade)}{question.points ? ` / ${toHindiDigits(question.points)}` : ''}</p>
                                 )}
-                              </div>
-                            )}
-
-                            {assignment.status === 'graded' && (
-                              <div className="mt-2 text-sm text-slate-700 space-y-1">
-                                <p>درجة السؤال: <strong>{toHindiDigits(answer?.grade ?? 0)}{question.points ? ` / ${toHindiDigits(question.points)}` : ''}</strong></p>
-                                {answer?.teacherNote && <p>ملاحظة المعلم: {answer.teacherNote}</p>}
+                                {answer?.teacherNote && (
+                                  <p className="flex gap-2"><span className="text-amber-800 font-bold shrink-0">ملاحظة:</span> {answer.teacherNote}</p>
+                                )}
                               </div>
                             )}
                           </div>
