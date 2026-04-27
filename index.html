@@ -91,6 +91,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css" />
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
+  <script src="https://unpkg.com/audio-recorder-polyfill"></script>
   <style>
     @font-face {
       font-family: 'KFGQPC Uthman Taha';
@@ -2916,6 +2917,9 @@ https://is.gd/oL6gEO`;
       };
 
       const startQuizRecording = async (questionKey, questionId) => {
+        if (window.AudioRecorderPolyfill) {
+          window.MediaRecorder = window.AudioRecorderPolyfill;
+        }
         setQuizStatusMessage('');
 
         if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
@@ -2948,23 +2952,8 @@ https://is.gd/oL6gEO`;
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           }
 
-          const mimeCandidates = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/mp4',
-          ];
-
-          const selectedMimeType = (typeof MediaRecorder.isTypeSupported === 'function')
-            ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
-            : '';
-
-          const recorderOptions = {
-            audioBitsPerSecond: 128000,
-            ...(selectedMimeType ? { mimeType: selectedMimeType } : {}),
-          };
-
-          const recorder = new MediaRecorder(stream, recorderOptions);
-          const finalMimeType = recorder.mimeType || selectedMimeType || 'audio/webm';
+          const recorder = new MediaRecorder(stream);
+          const finalMimeType = recorder.mimeType || 'audio/wav';
 
           chunksRef.current = [];
           streamRef.current = stream;
