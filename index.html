@@ -3116,7 +3116,7 @@ https://is.gd/oL6gEO`;
       const openTajweedQuizFromSection = (section, actionOptions = {}) => {
         const forcePathOnly = !!actionOptions?.forcePathOnly;
         const isReviewAction = !!actionOptions?.isReview;
-        const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted'] });
+        const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted', 'graded'] });
         const strictSectionLanguage = resolveStrictPortalLanguage(null);
 
         if (!assignment) {
@@ -3167,7 +3167,8 @@ https://is.gd/oL6gEO`;
         const solvedState = getStudentSolvedLessonState(lesson, String(assignment?.resolvedLessonId || assignment?.lessonId || '').trim());
         const solvedAttempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
         const latestSolvedAttempt = solvedAttempts[0] || null;
-        const isReviewFlow = String(assignment?.status || '').toLowerCase() === 'submitted' || !!latestSolvedAttempt;
+        const assignmentStatus = String(assignment?.status || '').toLowerCase();
+        const isReviewFlow = assignmentStatus === 'submitted' || assignmentStatus === 'graded' || !!latestSolvedAttempt;
 
         openTajweedQuiz({
           assignmentId: assignment?.id,
@@ -3242,15 +3243,16 @@ https://is.gd/oL6gEO`;
       };
 
       const resolveTajweedSectionQuizActionState = (section) => {
-        const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted'] });
+        const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted', 'graded'] });
         if (assignment) {
           const solvedState = getStudentSolvedLessonState(
             assignment?.resolvedLesson,
             String(assignment?.resolvedLessonId || assignment?.lessonId || '').trim()
           );
           const attempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
-          const isSubmitted = String(assignment?.status || '').toLowerCase() === 'submitted';
-          return { isReview: isSubmitted || attempts.length > 0 };
+          const assignmentStatus = String(assignment?.status || '').toLowerCase();
+          const isReview = assignmentStatus === 'submitted' || assignmentStatus === 'graded' || attempts.length > 0;
+          return { isReview };
         }
 
         const sectionResolved = resolveBankLessonFromSection(section);
