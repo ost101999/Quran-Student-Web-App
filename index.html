@@ -567,12 +567,14 @@
             src={src} 
             onTimeUpdate={handleTimeUpdate} 
             onLoadedMetadata={handleLoadedMetadata}
+            preload="metadata"
             className="hidden" 
           />
           <button 
             type="button"
             onClick={togglePlay} 
-            className="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            disabled={!duration}
+            className={`w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors ${!duration ? 'opacity-50' : ''}`}
           >
             <i data-lucide={isPlaying ? 'pause' : 'play'} className={`w-3 h-3 ${isPlaying ? '' : 'ml-0.5'}`}></i>
           </button>
@@ -585,7 +587,7 @@
           </div>
           
           <span className="text-[11px] text-slate-400 font-acme font-normal shrink-0 mr-2 min-w-[3.5rem] text-left">
-            {formatTime(audioRef.current?.currentTime || 0)} / {formatTime(duration)}
+            {!duration ? '--:--' : `${formatTime(audioRef.current?.currentTime || 0)} / ${formatTime(duration)}`}
           </span>
         </div>
       );
@@ -2878,14 +2880,25 @@ https://is.gd/oL6gEO`;
       };
 
       const upsertQuizDraftAnswer = (questionKey, questionId, updates) => {
-        setQuizDraftAnswers((prev) => ({
-          ...prev,
-          [questionKey]: {
-            ...(prev[questionKey] || {}),
-            questionId,
-            ...updates,
+        setQuizDraftAnswers((prev) => {
+          const next = {
+            ...prev,
+            [questionKey]: {
+              ...(prev[questionKey] || {}),
+              questionId,
+              ...updates,
+            }
+          };
+          // Persist draft to localStorage to avoid loss on refresh
+          if (selectedTajweedQuiz?.assignmentId) {
+            try {
+              localStorage.setItem(`quiz_draft_${selectedTajweedQuiz.assignmentId}`, JSON.stringify(next));
+            } catch (e) {
+              console.warn('Failed to persist quiz draft:', e);
+            }
           }
-        }));
+          return next;
+        });
         clearQuizValidationForQuestion(questionKey);
       };
 
@@ -2952,12 +2965,11 @@ https://is.gd/oL6gEO`;
         try {
           const preferredAudioConstraints = {
             audio: {
-              channelCount: 1,
-              sampleRate: 48000,
-              sampleSize: 16,
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              sampleRate: 16000, // Voice optimized
+              channelCount: 1
             }
           };
 
@@ -2979,6 +2991,7 @@ https://is.gd/oL6gEO`;
             recorderType: StereoAudioRecorder,
             numberOfAudioChannels: 1,
             desiredSampRate: 16000,
+            bufferSize: 4096,
           });
 
           recorder.startRecording();
@@ -3142,6 +3155,19 @@ https://is.gd/oL6gEO`;
           ? buildQuizDraftAnswersFromAttempt(safeQuestions, reviewAttempt)
           : {};
 
+        // Load persisted draft if available
+        if (!reviewAttempt && payload?.assignmentId) {
+          try {
+            const saved = localStorage.getItem(`quiz_draft_${payload.assignmentId}`);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              Object.assign(hydratedDrafts, parsed);
+            }
+          } catch (e) {
+            console.warn('Error loading persisted draft:', e);
+          }
+        }
+        
         setRoadmapAutoStartCountdown(0);
         setRoadmapAutoStartEnabled(shouldAutoOpenFromPath && !isTourMode && !shouldOpenDirectToQuiz);
         setRoadmapAutoOpenReviewAttempt(
