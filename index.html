@@ -2449,7 +2449,7 @@ https://is.gd/oL6gEO`;
       const findMatchingTajweedAssignment = (section, options = {}) => {
         const includeStatuses = Array.isArray(options?.includeStatuses) && options.includeStatuses.length > 0
           ? options.includeStatuses.map((status) => String(status || '').toLowerCase())
-          : ['pending', 'submitted'];
+          : ['pending', 'submitted', 'graded'];
         const sourceAssignments = resolvedTajweedAssignments.filter((assignment) => (
           includeStatuses.includes(String(assignment?.status || '').toLowerCase())
         ));
@@ -3178,7 +3178,7 @@ https://is.gd/oL6gEO`;
           assignedAt: assignment?.assignedAt,
           questions: assignmentQuestions,
           autoOpenFromPath: !forcePathOnly,
-          autoOpenReviewAttempt: isReviewAction && isReviewFlow ? latestSolvedAttempt : null,
+          reviewAttempt: isReviewAction && isReviewFlow ? latestSolvedAttempt : null,
         });
       };
 
