@@ -4314,46 +4314,7 @@ https://is.gd/oL6gEO`;
                               </button>
                             </div>
 
-                            {isSolvedByStudent && (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedRoadmapLessonId((prev) => prev === lessonId ? '' : lessonId)}
-                                className="inline-flex items-center gap-1 rounded-md border border-slate-400/35 bg-slate-700/45 px-2.5 py-1.5 text-[10px] md:text-xs font-bold text-slate-100 hover:bg-slate-700/65 transition-colors"
-                              >
-                                <i data-lucide={isExpanded ? 'chevron-up' : 'history'} className="w-3.5 h-3.5"></i>
-                                {isExpanded ? t.previousSolutionsHide : t.previousSolutionsToggle}
-                              </button>
-                            )}
                           </div>
-
-                          {isSolvedByStudent && isExpanded && (
-                            <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
-                              <p className="text-[11px] md:text-xs font-bold text-slate-100">{t.previousSolutionsTitle}</p>
-
-                              {solvedAttempts.length === 0 ? (
-                                <p className="text-[10px] md:text-xs text-slate-300/90">{t.previousSolutionsEmpty}</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {solvedAttempts.map((attempt, attemptIndex) => (
-                                    <div
-                                      key={`attempt_${lessonId}_${attempt?.id || attemptIndex}`}
-                                      className="rounded-lg border border-slate-600/30 bg-slate-900/45 px-2.5 py-2"
-                                    >
-                                      <p className="text-[10px] md:text-xs font-bold text-slate-100">
-                                        {t.previousSolutionAttempt} {toArabicNums(attemptIndex + 1)}
-                                      </p>
-                                      <p className="text-[10px] md:text-xs text-slate-300 mt-0.5">
-                                        {t.previousSolutionSubmittedAt}: {formatSubmissionDateTime(attempt?.submittedAt)}
-                                      </p>
-                                      <p className="text-[10px] md:text-xs text-slate-200 mt-1">
-                                        {t.previousSolutionPreviewText}: {getSubmissionAnswerPreview(attempt)}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
 
                         </div>
                       );
