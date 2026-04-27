@@ -2055,12 +2055,43 @@ https://is.gd/oL6gEO`;
           return isArabic ? 'تمت إجابة أسئلة الاختيار من متعدد.' : 'Multiple-choice answers were submitted.';
         }
 
-        const hasAudio = answers.some((answer) => String(answer?.audioBase64 || '').trim());
+        const hasAudio = answers.some((answer) => String(resolveAnswerAudioSource(answer) || '').trim());
         if (hasAudio) {
           return isArabic ? 'تم رفع إجابة صوتية.' : 'Audio response uploaded.';
         }
 
         return isArabic ? 'تم تسليم الواجب.' : 'Assignment submitted.';
+      };
+
+      const resolveAnswerAudioSource = (answer) => {
+        const directCandidates = [
+          answer?.audioBase64,
+          answer?.audioUrl,
+          answer?.audioURL,
+          answer?.audioLocalPath,
+          answer?.voiceBase64,
+          answer?.voiceUrl,
+          answer?.recordingBase64,
+          answer?.recordingUrl,
+        ];
+
+        const direct = directCandidates
+          .map((value) => String(value || '').trim())
+          .find(Boolean);
+        if (direct) {
+          if (direct.startsWith('data:') || direct.startsWith('blob:') || direct.startsWith('http://') || direct.startsWith('https://')) {
+            return direct;
+          }
+          // Backward compatibility: some old submissions stored raw base64 only.
+          return `data:audio/webm;base64,${direct}`;
+        }
+
+        if (answer?.audio && typeof answer.audio === 'object') {
+          const nested = String(answer.audio?.base64 || answer.audio?.dataUrl || answer.audio?.url || '').trim();
+          if (nested) return nested;
+        }
+
+        return '';
       };
 
       const matchesPreferredLessonLanguage = (lesson, targetLanguage = preferredQuestionLanguage) => {
@@ -2641,11 +2672,12 @@ https://is.gd/oL6gEO`;
         const byQuestionKey = new Map();
         const byQuestionOrder = new Map();
         answers.forEach((answer) => {
+          const audioSource = resolveAnswerAudioSource(answer);
           const normalized = {
             questionId: answer?.questionId,
             answerText: answer?.answerText || '',
             selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
-            audioBase64: answer?.audioBase64,
+            audioBase64: audioSource,
           };
           const questionId = String(answer?.questionId || '').trim();
           const questionKey = String(answer?.questionKey || '').trim();
