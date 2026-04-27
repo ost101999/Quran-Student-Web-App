@@ -2423,7 +2423,8 @@ https://is.gd/oL6gEO`;
         const neutral = values.find((value) => detectContentLanguage(value) === null);
         if (neutral) return neutral;
 
-        return '-';
+        // Preserve older mixed-language questions instead of dropping them entirely.
+        return values[0];
       };
 
       const pickLocalizedOptions = (orderedOptionSets, targetLanguage) => {
