@@ -837,9 +837,23 @@ function App() {
                               const localizedQuestionText = getLocalizedQuestionText(question, selectedLesson, selectedAssignmentLanguage);
                               const localizedQuestionOptions = getLocalizedQuestionOptions(question, selectedLesson, selectedAssignmentLanguage);
 
+                              const renderMixedArabicEnglish = (text, defaultClass = '') => {
+                                if (!text || typeof text !== 'string') return text;
+                                const regex = /([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]+(?:[\s]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]+)*)/g;
+                                const parts = text.split(regex);
+                                if (parts.length === 1) return text;
+                                
+                                return parts.map((part, index) => {
+                                  if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]/.test(part)) {
+                                    return <span key={index} className={`font-uthman leading-relaxed text-[1.15em] mx-1 inline-block ${defaultClass}`} dir="rtl">{part}</span>;
+                                  }
+                                  return <span key={index}>{part}</span>;
+                                });
+                              };
+
                               return (
                                 <div key={question.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                                  <p className="font-bold mb-3">{toHindiDigits(idx + 1)}. {localizedQuestionText}</p>
+                                  <p className="font-bold mb-3">{toHindiDigits(idx + 1)}. {renderMixedArabicEnglish(localizedQuestionText)}</p>
 
                                   {question.type === 'text' && (
                                     <textarea
@@ -861,8 +875,9 @@ function App() {
                                               questionId: question.id,
                                               selectedOptionIndex: optionIdx,
                                             })}
+                                            className="shrink-0"
                                           />
-                                          <span>{option}</span>
+                                          <span>{renderMixedArabicEnglish(option)}</span>
                                         </label>
                                       ))}
                                     </div>

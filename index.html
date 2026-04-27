@@ -4455,6 +4455,21 @@ https://is.gd/oL6gEO`;
 
                     {(() => {
                       const allQuizQuestions = Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : [];
+                      
+                      const renderMixedArabicEnglish = (text, defaultClass = '') => {
+                        if (!text || typeof text !== 'string') return text;
+                        const regex = /([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]+(?:[\s]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]+)*)/g;
+                        const parts = text.split(regex);
+                        if (parts.length === 1) return text;
+                        
+                        return parts.map((part, index) => {
+                          if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]/.test(part)) {
+                            return <span key={index} className={`font-uthman leading-relaxed text-[1.15em] mx-1 inline-block ${defaultClass}`} dir="rtl">{part}</span>;
+                          }
+                          return <span key={index}>{part}</span>;
+                        });
+                      };
+
                       const indexedQuizQuestions = allQuizQuestions.map((question, index) => ({
                         question,
                         index,
@@ -4494,7 +4509,9 @@ https://is.gd/oL6gEO`;
                                   className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
                                 >
                                   <div className="mb-2">
-                                    <p className={`text-sm text-white font-semibold ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>{toArabicNums(questionIndex + 1)}. {localizedQuestionText}</p>
+                                    <p className={`text-sm text-white font-semibold ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>
+                                      {toArabicNums(questionIndex + 1)}. {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
+                                    </p>
                                   </div>
 
                                   {questionType === 'multiple_choice' && (
@@ -4515,9 +4532,11 @@ https://is.gd/oL6gEO`;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
                                             }}
-                                            className="accent-teal-400"
+                                            className="accent-teal-400 shrink-0"
                                           />
-                                          <span className={`text-sm ${isOptionArabic ? 'font-uthman leading-relaxed' : ''}`}>{opt}</span>
+                                          <span className={`text-sm ${isOptionArabic ? 'font-uthman leading-relaxed' : ''}`}>
+                                            {isOptionArabic ? opt : renderMixedArabicEnglish(opt)}
+                                          </span>
                                         </label>
                                       )})}
                                     </div>
