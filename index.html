@@ -309,7 +309,7 @@
 <body class="text-slate-100 font-sans min-h-screen relative">
   <!-- Custom user-provided background layer -->
   <div class="fixed inset-0 z-[-1] opacity-10"
-    style="background-image: url('/assets/bg-D6KJ-d0Q.png'); background-size: 20%; background-repeat: repeat; background-position: center;">
+    style="background-image: url('./bg.png'); background-size: 20%; background-repeat: repeat; background-position: center;">
   </div>
 
   <div id="root"></div>
@@ -2280,6 +2280,7 @@ https://is.gd/oL6gEO`;
         const firstLine = String(section?.content || '').split('\n').find(Boolean) || '';
         const hint = normalizeForMatch(`${section?.title || ''} ${firstLine}`);
         if (!hint) return null;
+
         const entries = getSmartOrderedBankEntries();
 
         const matches = entries.filter(([_, lesson]) => {
@@ -2380,7 +2381,6 @@ https://is.gd/oL6gEO`;
 
           const attempts = Array.from(attemptsMap.values())
             .map((submission, index) => ({
-              ...submission,
               id: String(submission?.id || `${assignmentId}_${submission?.submittedAt || 0}_${index}`),
               assignmentId,
               submittedAt: Number(submission?.submittedAt || 0),
@@ -2449,7 +2449,7 @@ https://is.gd/oL6gEO`;
       const findMatchingTajweedAssignment = (section, options = {}) => {
         const includeStatuses = Array.isArray(options?.includeStatuses) && options.includeStatuses.length > 0
           ? options.includeStatuses.map((status) => String(status || '').toLowerCase())
-          : ['pending', 'submitted', 'graded'];
+          : ['pending', 'submitted'];
         const sourceAssignments = resolvedTajweedAssignments.filter((assignment) => (
           includeStatuses.includes(String(assignment?.status || '').toLowerCase())
         ));
@@ -2705,8 +2705,6 @@ https://is.gd/oL6gEO`;
             answerText: answer?.answerText || '',
             selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
             audioBase64: audioSource,
-            isCorrect: answer?.isCorrect,
-            teacherNote: answer?.teacherNote,
           };
           const questionId = String(answer?.questionId || '').trim();
           const questionKey = String(answer?.questionKey || '').trim();
@@ -2729,8 +2727,6 @@ https://is.gd/oL6gEO`;
             answerText: matchedAnswer.answerText || '',
             selectedOptionIndex: typeof matchedAnswer.selectedOptionIndex === 'number' ? matchedAnswer.selectedOptionIndex : undefined,
             audioBase64: matchedAnswer.audioBase64,
-            isCorrect: matchedAnswer.isCorrect,
-            teacherNote: matchedAnswer.teacherNote,
           };
           return acc;
         }, {});
@@ -3178,7 +3174,7 @@ https://is.gd/oL6gEO`;
           assignedAt: assignment?.assignedAt,
           questions: assignmentQuestions,
           autoOpenFromPath: !forcePathOnly,
-          reviewAttempt: isReviewAction && isReviewFlow ? latestSolvedAttempt : null,
+          autoOpenReviewAttempt: isReviewAction && isReviewFlow ? latestSolvedAttempt : null,
         });
       };
 
@@ -3650,45 +3646,7 @@ https://is.gd/oL6gEO`;
             </div>
           )}
 
-          {/* Dedicated Results Section */}
-          {Object.keys(tajweedSubmissions || {}).length > 0 && !selectedTajweedQuiz && (
-            <div className="glass-panel rounded-2xl p-4 md:p-5 mb-4 border border-emerald-400/25 animate-fade delay-[400ms]">
-               <div className="flex items-center gap-2 mb-3">
-                 <i data-lucide="check-circle" className="text-emerald-400 w-5 h-5"></i>
-                 <p className={`text-base font-bold text-emerald-200 ${headerFontClass}`}>{isArabic ? 'نتائج الاختبارات والتصحيح' : 'Quiz Results & Feedback'}</p>
-               </div>
-               <div className="space-y-3">
-                 {resolvedTajweedAssignments
-                   .filter(a => a.status === 'submitted' || a.status === 'graded')
-                   .slice(0, 3)
-                   .map(assignment => {
-                     const isGraded = assignment.status === 'graded';
-                     return (
-                       <div key={assignment.id} className="flex items-center justify-between bg-slate-900/30 rounded-xl p-3 border border-white/5">
-                         <div>
-                           <p className="text-sm font-bold text-white">{assignment.resolvedLesson?.title || 'Tajweed Quiz'}</p>
-                           <p className="text-[10px] text-slate-400">{formatSubmissionDateTime(assignment.assignedAt)}</p>
-                         </div>
-                         <div className="flex flex-col items-end gap-1">
-                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isGraded ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-amber-500/10 text-amber-200 border border-amber-400/20'}`}>
-                             {isGraded ? (isArabic ? '✅ تم التصحيح' : 'Graded') : (isArabic ? '⏳ قيد التصحيح' : 'Self-Evaluated')}
-                           </span>
-                           <button onClick={() => openTajweedQuizFromSection({ content: assignment.resolvedLesson?.title }, { isReview: true })} 
-                                   className="text-[10px] text-sky-400 font-bold hover:underline">
-                             {isArabic ? 'عرض التفاصيل ←' : 'View Details →'}
-                           </button>
-                         </div>
-                       </div>
-                     );
-                   })}
-                 {resolvedTajweedAssignments.filter(a => a.status === 'submitted' || a.status === 'graded').length > 3 && (
-                   <button onClick={openLatestTajweedRoadmap} className="w-full py-2 text-xs text-slate-400 hover:text-white font-bold bg-white/5 rounded-lg">
-                      {isArabic ? 'عرض كافة الحلول السابقة' : 'View All Previous Solutions'}
-                   </button>
-                 )}
-               </div>
-            </div>
-          )}
+          {/* Schedule Message moved to Sticky Top Bar */}
 
           {/* Calendar Section */}
           <div id="tour-calendar" className="glass-panel rounded-3xl p-6 md:p-8 animate-fade delay-[500ms] mb-8">
@@ -3745,6 +3703,8 @@ https://is.gd/oL6gEO`;
               <h3 className={`text-5xl font-light text-red-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(absentCount)}</h3>
             </div>
           </div>
+
+          {/* Action Links (Moved to Top Sticky Bar) */}
 
           {/* Schedule Modal */}
           {showSchedule && student.scheduleMessage && (
@@ -4379,25 +4339,9 @@ https://is.gd/oL6gEO`;
                                       <p className="text-[10px] md:text-xs text-slate-300 mt-0.5">
                                         {t.previousSolutionSubmittedAt}: {formatSubmissionDateTime(attempt?.submittedAt)}
                                       </p>
-                                      <div className="flex justify-between items-center mt-1">
-                                        <p className="text-[10px] md:text-xs text-slate-200">
-                                          {t.previousSolutionPreviewText}: {getSubmissionAnswerPreview(attempt)}
-                                        </p>
-                                        <div className="flex gap-2">
-                                          {attempt.status === 'graded' && (
-                                            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-400/30">
-                                              {isArabic ? 'مُصحح ✅' : 'Graded'}
-                                            </span>
-                                          )}
-                                          <button
-                                            onClick={() => openCurrentQuizFromRoadmap({ reviewAttempt: attempt })}
-                                            className="text-[10px] text-sky-400 font-bold hover:underline"
-                                            title={isArabic ? 'فتح المراجعة' : 'Open Review'}
-                                          >
-                                            {isArabic ? 'مراجعة ←' : 'Review →'}
-                                          </button>
-                                        </div>
-                                      </div>
+                                      <p className="text-[10px] md:text-xs text-slate-200 mt-1">
+                                        {t.previousSolutionPreviewText}: {getSubmissionAnswerPreview(attempt)}
+                                      </p>
                                     </div>
                                   ))}
                                 </div>
