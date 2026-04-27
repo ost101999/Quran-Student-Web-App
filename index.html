@@ -2227,8 +2227,8 @@ https://is.gd/oL6gEO`;
         return null;
       };
 
-      const pendingTajweedAssignments = Object.values(tajweedAssignments)
-        .filter((assignment) => assignment && assignment.studentId === student.id && assignment.status === 'pending')
+      const resolvedTajweedAssignments = Object.values(tajweedAssignments)
+        .filter((assignment) => assignment && assignment.studentId === student.id)
         .sort((a, b) => Number(b?.assignedAt || 0) - Number(a?.assignedAt || 0))
         .map((assignment) => {
           const resolved = resolveBankLessonForAssignment(assignment);
@@ -2258,6 +2258,8 @@ https://is.gd/oL6gEO`;
           };
         })
         .filter(Boolean);
+      const pendingTajweedAssignments = resolvedTajweedAssignments
+        .filter((assignment) => String(assignment?.status || '').toLowerCase() === 'pending');
 
       const studentSolvedLessonsState = (() => {
         const byLessonId = new Map();
@@ -2378,19 +2380,25 @@ https://is.gd/oL6gEO`;
         return null;
       };
 
-      const findMatchingPendingTajweedAssignment = (section) => {
-        if (!pendingTajweedAssignments.length) return null;
+      const findMatchingTajweedAssignment = (section, options = {}) => {
+        const includeStatuses = Array.isArray(options?.includeStatuses) && options.includeStatuses.length > 0
+          ? options.includeStatuses.map((status) => String(status || '').toLowerCase())
+          : ['pending', 'submitted'];
+        const sourceAssignments = resolvedTajweedAssignments.filter((assignment) => (
+          includeStatuses.includes(String(assignment?.status || '').toLowerCase())
+        ));
+        if (!sourceAssignments.length) return null;
 
         const firstLine = String(section?.content || '').split('\n').find(Boolean) || '';
         const hint = normalizeForMatch(`${section?.title || ''} ${firstLine}`);
 
-        if (!hint) return pendingTajweedAssignments[0];
+        if (!hint) return sourceAssignments[0];
 
-        const matched = pendingTajweedAssignments.find((assignment) => {
+        const matched = sourceAssignments.find((assignment) => {
           return doesHintMatchLesson(hint, assignment?.resolvedLesson, assignment?.resolvedVersion || null);
         });
 
-        return matched || pendingTajweedAssignments[0];
+        return matched || sourceAssignments[0];
       };
 
       const normalizeQuestionType = (question) => {
@@ -2985,7 +2993,7 @@ https://is.gd/oL6gEO`;
       };
 
       const openTajweedQuizFromSection = (section) => {
-        const assignment = findMatchingPendingTajweedAssignment(section);
+        const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted'] });
         const strictSectionLanguage = resolveStrictPortalLanguage(null);
 
         if (!assignment) {
