@@ -4633,9 +4633,9 @@ https://is.gd/oL6gEO`;
                                               if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
                                               stopQuizRecording();
                                             }}
-                                            className="inline-flex items-center gap-2 rounded-xl border border-rose-500/50 bg-rose-500/20 px-4 py-2 text-sm font-bold text-rose-200 hover:bg-rose-500/30 transition-colors animate-pulse"
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-4 py-1.5 text-[13px] font-semibold text-rose-200 hover:bg-rose-500/30 transition-colors animate-pulse"
                                           >
-                                            <i data-lucide="square" className="fill-rose-400 text-rose-400 w-4 h-4"></i>
+                                            <i data-lucide="square" className="fill-rose-400 text-rose-400 w-3.5 h-3.5"></i>
                                             {t.stopRecording}
                                           </button>
                                         ) : (
@@ -4645,9 +4645,9 @@ https://is.gd/oL6gEO`;
                                               if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
                                               startQuizRecording(questionKey, q.id || questionKey);
                                             }}
-                                            className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2 text-sm font-bold text-teal-950 hover:bg-teal-400 transition-all shadow-[0_4px_15px_rgba(20,184,166,0.25)]"
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-100 hover:bg-teal-500/20 transition-colors"
                                           >
-                                            <i data-lucide="mic" className="w-4 h-4"></i>
+                                            <i data-lucide="mic" className="w-3.5 h-3.5 opacity-80"></i>
                                             {t.startRecording}
                                           </button>
                                         )}
