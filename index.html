@@ -2970,12 +2970,26 @@ https://is.gd/oL6gEO`;
           return true;
         });
 
+        const reviewAttempt = payload?.reviewAttempt && typeof payload.reviewAttempt === 'object'
+          ? payload.reviewAttempt
+          : null;
+        const shouldOpenDirectToQuiz = !!payload?.openDirectToQuiz || !!reviewAttempt;
+        const hydratedDrafts = reviewAttempt
+          ? buildQuizDraftAnswersFromAttempt(safeQuestions, reviewAttempt)
+          : {};
+
         setRoadmapAutoStartCountdown(0);
-        setRoadmapAutoStartEnabled(!payload?.missing && !isTourMode);
+        setRoadmapAutoStartEnabled(!payload?.missing && !isTourMode && !shouldOpenDirectToQuiz);
         setExpandedRoadmapLessonId('');
-        setShowTajweedRoadmapPage(!payload?.missing);
+        setShowTajweedRoadmapPage(!payload?.missing && !shouldOpenDirectToQuiz);
+        if (reviewAttempt) {
+          setQuizDraftAnswers(hydratedDrafts);
+          setQuizValidationErrors({});
+          setQuizStatusMessage('');
+        }
         setSelectedTajweedQuiz({
           ...payload,
+          reviewAttemptId: reviewAttempt ? String(reviewAttempt?.id || '') : '',
           contentLanguage: strictContentLanguage,
           lessonLanguage: normalizeAssignmentContentLanguage(payload?.lessonLanguage) || strictContentLanguage,
           questions: safeQuestions,
@@ -3062,6 +3076,10 @@ https://is.gd/oL6gEO`;
           contentLanguage: quizContentLanguage,
         });
         const resolvedLessonTitle = getRoadmapLessonTitle(lesson, resolvedVersion);
+        const solvedState = getStudentSolvedLessonState(lesson, String(assignment?.resolvedLessonId || assignment?.lessonId || '').trim());
+        const solvedAttempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
+        const latestSolvedAttempt = solvedAttempts[0] || null;
+        const isReviewFlow = String(assignment?.status || '').toLowerCase() === 'submitted' || !!latestSolvedAttempt;
 
         openTajweedQuiz({
           assignmentId: assignment?.id,
@@ -3071,7 +3089,9 @@ https://is.gd/oL6gEO`;
           versionId: assignment?.resolvedVersionId || assignment?.versionId,
           lessonLanguage: getLessonLanguage(lesson),
           assignedAt: assignment?.assignedAt,
-          questions: assignmentQuestions
+          questions: assignmentQuestions,
+          openDirectToQuiz: isReviewFlow,
+          reviewAttempt: latestSolvedAttempt,
         });
       };
 
