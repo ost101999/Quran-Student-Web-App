@@ -2892,7 +2892,16 @@ https://is.gd/oL6gEO`;
           // Persist draft to localStorage to avoid loss on refresh
           if (selectedTajweedQuiz?.assignmentId) {
             try {
-              localStorage.setItem(`quiz_draft_${selectedTajweedQuiz.assignmentId}`, JSON.stringify(next));
+              const nextForStorage = Object.entries(next).reduce((acc, [key, value]) => {
+                if (!value || typeof value !== 'object') {
+                  acc[key] = value;
+                  return acc;
+                }
+                const { audioPreviewUrl, ...rest } = value;
+                acc[key] = rest;
+                return acc;
+              }, {});
+              localStorage.setItem(`quiz_draft_${selectedTajweedQuiz.assignmentId}`, JSON.stringify(nextForStorage));
             } catch (e) {
               console.warn('Failed to persist quiz draft:', e);
             }
@@ -2925,26 +2934,23 @@ https://is.gd/oL6gEO`;
 
       const stopQuizRecording = () => {
         const recorder = mediaRecorderRef.current;
-        if (recorder) {
+        if (!recorder) return;
+
+        if (recorder instanceof MediaRecorder) {
+          if (recorder.state === 'recording') {
+            recorder.stop();
+          }
+          return;
+        }
+
+        if (typeof recorder.stopRecording === 'function') {
           recorder.stopRecording(() => {
-            const blob = recorder.getBlob();
-            const meta = recordingMetaRef.current;
-            if (!blob || !meta) return;
-
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-              if (!dataUrl) return;
-              upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
-            };
-            reader.readAsDataURL(blob);
-
-            // Cleanup stream
-            if (streamRef.current) {
-              streamRef.current.getTracks().forEach((track) => track.stop());
-              streamRef.current = null;
+            const blob = typeof recorder.getBlob === 'function' ? recorder.getBlob() : null;
+            if (blob) {
+              finalizeQuizRecording(blob);
             }
-            setRecordingQuestionKey(null);
+
+            cleanupQuizRecording();
           });
         }
       };
@@ -2952,7 +2958,12 @@ https://is.gd/oL6gEO`;
       const startQuizRecording = async (questionKey, questionId) => {
         setQuizStatusMessage('');
 
-        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setQuizStatusMessage(t.recordingNotSupported);
+          return;
+        }
+
+        if (typeof MediaRecorder === 'undefined' && typeof RecordRTC === 'undefined') {
           setQuizStatusMessage(t.recordingNotSupported);
           return;
         }
@@ -2981,10 +2992,6 @@ https://is.gd/oL6gEO`;
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           }
 
-          if (typeof RecordRTC === 'undefined') {
-            throw new Error('RecordRTC not loaded');
-          }
-
           const mimeCandidates = [
             'audio/webm;codecs=opus',
             'audio/webm',
@@ -2993,6 +3000,37 @@ https://is.gd/oL6gEO`;
           const selectedMimeType = typeof MediaRecorder?.isTypeSupported === 'function'
             ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
             : '';
+
+          if (typeof MediaRecorder !== 'undefined' && selectedMimeType) {
+            const recorder = new MediaRecorder(stream, {
+              mimeType: selectedMimeType,
+              audioBitsPerSecond: 128000,
+            });
+
+            chunksRef.current = [];
+            recorder.ondataavailable = (event) => {
+              if (event.data && event.data.size > 0) {
+                chunksRef.current.push(event.data);
+              }
+            };
+            recorder.onstop = () => {
+              const blob = new Blob(chunksRef.current, { type: recorder.mimeType || selectedMimeType });
+              finalizeQuizRecording(blob);
+              cleanupQuizRecording();
+            };
+
+            recorder.start();
+
+            streamRef.current = stream;
+            mediaRecorderRef.current = recorder;
+            recordingMetaRef.current = { questionKey, questionId };
+            setRecordingQuestionKey(questionKey);
+            return;
+          }
+
+          if (typeof RecordRTC === 'undefined') {
+            throw new Error('RecordRTC not loaded');
+          }
 
           const mediaStreamRecorderType = RecordRTC?.MediaStreamRecorder || (typeof MediaStreamRecorder !== 'undefined' ? MediaStreamRecorder : null);
           const stereoRecorderType = RecordRTC?.StereoAudioRecorder || (typeof StereoAudioRecorder !== 'undefined' ? StereoAudioRecorder : null);
@@ -3024,8 +3062,39 @@ https://is.gd/oL6gEO`;
         }
       };
 
+      const finalizeQuizRecording = (blob) => {
+        const meta = recordingMetaRef.current;
+        if (!blob || !meta) return;
+
+        const previewUrl = URL.createObjectURL(blob);
+        upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioPreviewUrl: previewUrl });
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+          if (!dataUrl) return;
+          upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
+        };
+        reader.readAsDataURL(blob);
+      };
+
+      const cleanupQuizRecording = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        chunksRef.current = [];
+        mediaRecorderRef.current = null;
+        recordingMetaRef.current = null;
+        setRecordingQuestionKey(null);
+      };
+
       const removeQuizAudioDraft = (questionKey, questionId) => {
-        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined });
+        const current = quizDraftAnswers[questionKey];
+        if (current?.audioPreviewUrl) {
+          URL.revokeObjectURL(current.audioPreviewUrl);
+        }
+        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined, audioPreviewUrl: undefined });
       };
 
       const submitTajweedQuiz = async () => {
@@ -4560,6 +4629,7 @@ https://is.gd/oL6gEO`;
                               const questionType = normalizeQuestionType(q);
                               const questionKey = getQuestionKey(q, originalIndex);
                               const answer = quizDraftAnswers[questionKey] || {};
+                              const audioSource = answer.audioPreviewUrl || answer.audioBase64;
                               const hasError = !!quizValidationErrors[questionKey];
                               const isReviewMode = !!String(selectedTajweedQuiz.reviewAttemptId || '').trim();
                               const requestedLanguage = selectedTajweedQuiz.contentLanguage || selectedTajweedQuiz.lessonLanguage;
@@ -4689,8 +4759,8 @@ https://is.gd/oL6gEO`;
                                         )}
                                       </div>
 
-                                      {!!answer.audioBase64 ? (
-                                        <CustomAudioPlayer src={answer.audioBase64} />
+                                      {!!audioSource ? (
+                                        <CustomAudioPlayer src={audioSource} />
                                       ) : (
                                         <p className="text-[13px] text-slate-400 font-medium pl-1">{t.recordingHint}</p>
                                       )}
