@@ -2436,17 +2436,6 @@ https://is.gd/oL6gEO`;
 
         if (!optionSets.length) return [];
 
-        const languageCompatibleOptionSets = optionSets.filter((set) => {
-          const setLanguages = set
-            .map((option) => detectContentLanguage(option))
-            .filter(Boolean);
-
-          if (setLanguages.length === 0) return true;
-          return setLanguages.includes(targetLanguage);
-        });
-
-        if (!languageCompatibleOptionSets.length) return [];
-
         const scoreSet = (set) => {
           let withLanguage = 0;
           let targetHits = 0;
@@ -2462,18 +2451,36 @@ https://is.gd/oL6gEO`;
           return targetHits / withLanguage;
         };
 
-        let best = languageCompatibleOptionSets[0];
-        let bestScore = scoreSet(best);
+        const pickBestSet = (candidateSets) => {
+          let best = candidateSets[0];
+          let bestScore = scoreSet(best);
 
-        languageCompatibleOptionSets.forEach((set) => {
-          const score = scoreSet(set);
-          if (score > bestScore) {
-            best = set;
-            bestScore = score;
-          }
+          candidateSets.forEach((set) => {
+            const score = scoreSet(set);
+            if (score > bestScore) {
+              best = set;
+              bestScore = score;
+            }
+          });
+
+          return best;
+        };
+
+        const languageCompatibleOptionSets = optionSets.filter((set) => {
+          const setLanguages = set
+            .map((option) => detectContentLanguage(option))
+            .filter(Boolean);
+
+          if (setLanguages.length === 0) return true;
+          return setLanguages.includes(targetLanguage);
         });
 
-        return best;
+        if (languageCompatibleOptionSets.length > 0) {
+          return pickBestSet(languageCompatibleOptionSets);
+        }
+
+        // Keep mixed-language MCQ options visible instead of dropping the whole question.
+        return optionSets[0];
       };
 
       const getLocalizedQuizQuestionText = (question, requestedLanguage) => {
@@ -2492,8 +2499,18 @@ https://is.gd/oL6gEO`;
       const getLocalizedQuizQuestionOptions = (question, requestedLanguage) => {
         const targetLanguage = resolveQuestionTargetLanguage(requestedLanguage);
         const cleanArray = (value) => {
-          if (!Array.isArray(value)) return [];
-          return value.map((item) => String(item ?? '').trim()).filter(Boolean);
+          if (Array.isArray(value)) {
+            return value.map((item) => String(item ?? '').trim()).filter(Boolean);
+          }
+
+          if (value && typeof value === 'object') {
+            return Object.keys(value)
+              .sort((a, b) => Number(a) - Number(b))
+              .map((key) => String(value[key] ?? '').trim())
+              .filter(Boolean);
+          }
+
+          return [];
         };
 
         const optionsAr = cleanArray(question?.optionsAr);
