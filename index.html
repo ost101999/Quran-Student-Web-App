@@ -198,15 +198,23 @@
         opacity: 0;
         transform: translateY(10px);
       }
-
       to {
         opacity: 1;
         transform: translateY(0);
       }
     }
 
+    @keyframes scaleUp {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
     .animate-fade {
       animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    .animate-scale-up {
+      animation: scaleUp 0.2s ease-out forwards;
     }
 
     .delay-1 {
@@ -519,6 +527,7 @@
       const [showSchedule, setShowSchedule] = useState(false);
       const [glowReportDay, setGlowReportDay] = useState(null);
       const [passcodeToast, setPasscodeToast] = useState(false);
+      const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm, onCancel }
       const [tick, setTick] = useState(0); // updates every minute for countdown
 
       const mediaRecorderRef = useRef(null);
@@ -2757,20 +2766,31 @@ https://is.gd/oL6gEO`;
 
       const requestReviewEditPermission = (questionKey, forcePrompt = false) => {
         const normalizedKey = String(questionKey || '').trim();
-        if (!normalizedKey) return true;
+        if (!normalizedKey) return Promise.resolve(true);
 
         if (!forcePrompt && reviewEditConfirmedKeys[normalizedKey]) {
-          return true;
+          return Promise.resolve(true);
         }
 
-        const approved = window.confirm(t.reviewEditConfirm);
-        if (!approved) return false;
-
-        setReviewEditConfirmedKeys((prev) => ({
-          ...prev,
-          [normalizedKey]: true,
-        }));
-        return true;
+        return new Promise((resolve) => {
+          setConfirmModal({
+            message: isArabic
+              ? 'أنت في وضع المراجعة. هل تريد تعديل إجابتك لهذا السؤال؟'
+              : 'You are in review mode. Do you want to edit your answer for this question?',
+            onConfirm: () => {
+              setReviewEditConfirmedKeys((prev) => ({
+                ...prev,
+                [normalizedKey]: true,
+              }));
+              setConfirmModal(null);
+              resolve(true);
+            },
+            onCancel: () => {
+              setConfirmModal(null);
+              resolve(false);
+            },
+          });
+        });
       };
 
       const upsertQuizDraftAnswer = (questionKey, questionId, updates) => {
@@ -4042,7 +4062,6 @@ https://is.gd/oL6gEO`;
                     <i data-lucide="map" className="w-5 h-5"></i>
                   </div>
                   <h3 className={`text-xl md:text-2xl font-bold text-islamic-gold ${headerFontClass}`}>{t.learningRoadmapTitle}</h3>
-                  <p className="text-xs md:text-sm text-slate-200/90 mt-2">{t.learningRoadmapPageIntro}</p>
                 </div>
 
                 {roadmapAutoStartEnabled && roadmapAutoStartCountdown > 0 && (Array.isArray(selectedTajweedQuiz?.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
@@ -4470,36 +4489,48 @@ https://is.gd/oL6gEO`;
                                   className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
                                 >
                                   <div className="mb-2">
-                                    <p className={`text-sm text-white font-semibold ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>
-                                      {toArabicNums(questionIndex + 1)}. {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
+                                    <p className={`text-sm text-white font-semibold flex items-center flex-wrap gap-2 ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>
+                                      <span>{toArabicNums(questionIndex + 1)}.</span>
+                                      <span>{isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}</span>
+                                      
+                                      {typeof reviewCorrectState === 'boolean' && (
+                                        <span className={`inline-flex items-center justify-center rounded-full w-6 h-6 shrink-0 ${reviewCorrectState ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-rose-500/20 text-rose-300 border border-rose-400/30'}`}>
+                                          <i data-lucide={reviewCorrectState ? 'check' : 'x'} className="w-4 h-4"></i>
+                                        </span>
+                                      )}
                                     </p>
                                   </div>
-
-                                  {typeof reviewCorrectState === 'boolean' && (
-                                    <div className="mb-2">
-                                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${reviewCorrectState ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' : 'bg-rose-500/20 text-rose-200 border border-rose-400/30'}`}>
-                                        {reviewCorrectState
-                                          ? (isEnglishUi ? 'Correct' : 'صح')
-                                          : (isEnglishUi ? 'Wrong' : 'خطأ')}
-                                      </span>
-                                    </div>
-                                  )}
 
                                   {questionType === 'multiple_choice' && (
                                     <div className="mt-2 space-y-2">
                                       {localizedQuestionOptions.map((opt, idx) => {
                                         const isOptionArabic = detectContentLanguage(opt) === 'ar';
+                                        const isSelected = answer.selectedOptionIndex === idx;
+                                        const isCorrect = typeof q.correctOptionIndex === 'number' && q.correctOptionIndex === idx;
+                                        
+                                        let optionClass = 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40';
+                                        
+                                        if (isReviewMode) {
+                                          if (isCorrect) {
+                                            optionClass = 'border-emerald-500/60 bg-emerald-500/20 text-emerald-100 ring-2 ring-emerald-500/30';
+                                          } else if (isSelected) {
+                                            optionClass = 'border-rose-500/60 bg-rose-500/20 text-rose-100 ring-2 ring-rose-500/30';
+                                          }
+                                        } else if (isSelected) {
+                                          optionClass = 'border-teal-400/60 bg-teal-500/10 text-teal-100';
+                                        }
+
                                         return (
                                         <label
                                           key={`${questionKey}_opt_${idx}`}
-                                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${answer.selectedOptionIndex === idx ? 'border-teal-400/60 bg-teal-500/10 text-teal-100' : 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40'}`}
+                                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-all ${optionClass}`}
                                         >
                                           <input
                                             type="radio"
                                             name={`quiz_${questionKey}`}
                                             checked={answer.selectedOptionIndex === idx}
-                                            onChange={() => {
-                                              if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
+                                            onChange={async () => {
+                                              if (isReviewMode && !await requestReviewEditPermission(questionKey)) return;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
                                             }}
@@ -4519,8 +4550,8 @@ https://is.gd/oL6gEO`;
                                         {recordingQuestionKey === questionKey ? (
                                           <button
                                             type="button"
-                                            onClick={() => {
-                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                            onClick={async () => {
+                                              if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
                                               stopQuizRecording();
                                             }}
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
@@ -4531,8 +4562,8 @@ https://is.gd/oL6gEO`;
                                         ) : (
                                           <button
                                             type="button"
-                                            onClick={() => {
-                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                            onClick={async () => {
+                                              if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
                                               startQuizRecording(questionKey, q.id || questionKey);
                                             }}
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
@@ -4545,8 +4576,8 @@ https://is.gd/oL6gEO`;
                                         {!!answer.audioBase64 && (
                                           <button
                                             type="button"
-                                            onClick={() => {
-                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                            onClick={async () => {
+                                              if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
                                               removeQuizAudioDraft(questionKey, q.id || questionKey);
                                             }}
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
@@ -4568,9 +4599,10 @@ https://is.gd/oL6gEO`;
                                   {questionType === 'text' && (
                                     <textarea
                                       value={answer.answerText || ''}
-                                      onChange={(event) => {
-                                        if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
-                                        upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
+                                      onChange={async (event) => {
+                                        const newValue = event.target.value;
+                                        if (isReviewMode && !await requestReviewEditPermission(questionKey)) return;
+                                        upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: newValue });
                                         setQuizStatusMessage('');
                                       }}
                                       placeholder={t.writeAnswer}
@@ -4611,6 +4643,35 @@ https://is.gd/oL6gEO`;
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {confirmModal && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade">
+              <div className="glass-panel w-full max-w-xs rounded-[2rem] p-6 border border-islamic-gold/30 shadow-2xl animate-scale-up">
+                <div className="flex flex-col items-center text-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-islamic-gold/10 flex items-center justify-center border border-islamic-gold/20 text-islamic-gold">
+                    <i data-lucide="help-circle" className="w-7 h-7"></i>
+                  </div>
+                  <p className={`text-base font-bold text-slate-100 leading-relaxed ${headerFontClass}`}>
+                    {confirmModal.message}
+                  </p>
+                  <div className="flex w-full gap-3 mt-2">
+                    <button
+                      onClick={confirmModal.onCancel}
+                      className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-800 text-slate-300 text-sm font-bold hover:bg-slate-700 transition-colors"
+                    >
+                      {isArabic ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      onClick={confirmModal.onConfirm}
+                      className="flex-1 px-4 py-2.5 rounded-2xl bg-islamic-gold text-slate-950 text-sm font-bold hover:bg-islamic-gold/90 transition-colors shadow-lg shadow-islamic-gold/20"
+                    >
+                      {isArabic ? 'تعديل' : 'Edit'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
