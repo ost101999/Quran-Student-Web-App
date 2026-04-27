@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock, Clock3, FileAudio, FileText, Mic, PauseCircle, PlayCircle, RefreshCw, Send, Video, XCircle } from 'lucide-react';
+import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock3, FileAudio, FileText, Mic, PauseCircle, PlayCircle, Send, Video } from 'lucide-react';
 import './App.css';
 
 type QuestionType = 'multiple_choice' | 'text' | 'audio';
@@ -76,6 +76,7 @@ interface QuestionAnswer {
   audioLocalPath?: string;
   grade?: number;
   teacherNote?: string;
+  isCorrect?: boolean;
 }
 
 interface TajweedSubmission {
@@ -251,8 +252,6 @@ function App() {
   const [recordingQuestionId, setRecordingQuestionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [lastRefreshed, setLastRefreshed] = useState<number>(Date.now());
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -260,7 +259,7 @@ function App() {
   const recordingMetaRef = useRef<{ assignmentId: string; questionId: string } | null>(null);
   const assignmentScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchData = async (silent = false) => {
+  const fetchData = async () => {
     if (!studentId) {
       setError('رابط الطالب غير صالح. يرجى التأكد من الرابط.');
       setLoading(false);
@@ -268,33 +267,20 @@ function App() {
     }
 
     try {
-      if (silent) setIsRefreshing(true);
       const response = await axios.get(`${API_BASE}/appState.json`);
       setData(response.data);
-      if (!silent) {
-        setSelectedMonth(new Date().getMonth());
-        setSelectedYear(new Date().getFullYear());
-      }
+      setSelectedMonth(new Date().getMonth());
+      setSelectedYear(new Date().getFullYear());
       setError('');
-      setLastRefreshed(Date.now());
     } catch {
-      if (!silent) setError('حدث خطأ أثناء جلب البيانات. الرجاء المحاولة لاحقاً.');
+      setError('حدث خطأ أثناء جلب البيانات. الرجاء المحاولة لاحقاً.');
     } finally {
       setLoading(false);
-      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-  }, [studentId]);
-
-  // Auto-refresh every 45 seconds to pick up teacher corrections
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchData(true);
-    }, 45000);
-    return () => clearInterval(interval);
   }, [studentId]);
 
   useEffect(() => {
@@ -734,12 +720,7 @@ function App() {
               </span>
             )}
           </button>
-          <button onClick={() => {
-            setActiveTab('history');
-            fetchData(true);
-          }} className={activeTab === 'history' ? 'tab-btn tab-btn-active' : 'tab-btn'}>
-            نتائج الاختبارات والتصحيح
-          </button>
+          <button onClick={() => setActiveTab('history')} className={activeTab === 'history' ? 'tab-btn tab-btn-active' : 'tab-btn'}>سجل التجويد</button>
         </div>
 
         <AnimatePresence mode="wait">
@@ -813,47 +794,6 @@ function App() {
                   </div>
                 ) : (
                   <p className="text-slate-500">لا يوجد اختبار تجويد جديد حالياً.</p>
-                )}
-              </div>
-              <div className="glass-card">
-                <h2 className="text-xl font-bold mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-emerald-600" /> آخر نتائج التجويد والتصحيح</h2>
-                {historyAssignments.length > 0 ? (
-                  <div className="space-y-4">
-                    {historyAssignments.slice(0, 2).map((assignment) => {
-                      const lesson = bank[assignment.lessonId];
-                      const isGraded = assignment.status === 'graded';
-                      const submission = submissions[assignment.submissionId || ''];
-                      return (
-                        <div key={assignment.id} className="border-b border-slate-100 last:border-0 pb-3 last:pb-0">
-                          <div className="flex justify-between items-start mb-1">
-                            <p className="font-bold">{lesson?.title || 'درس تجويد'}</p>
-                            <span className={isGraded ? 'text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full' : 'text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full'}>
-                              {isGraded ? 'تم التصحيح' : 'قيد التصحيح'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs text-slate-500">
-                            <p>{toDate(assignment.assignedAt)}</p>
-                            {isGraded && submission && (
-                              <p className="font-bold text-emerald-600">الدرجة: {toHindiDigits(submission.totalGrade || 0)}</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => setActiveTab('history')}
-                            className="mt-2 text-sky-600 text-xs font-bold hover:underline"
-                          >
-                            عرض التصحيح الكامل ←
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {historyAssignments.length > 2 && (
-                      <button onClick={() => setActiveTab('history')} className="w-full py-2 bg-slate-50 text-slate-600 text-xs rounded-lg hover:bg-slate-100 font-bold">
-                        عرض الكل ({toHindiDigits(historyAssignments.length)})
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-sm">لا توجد اختبارات مصححة بعد.</p>
                 )}
               </div>
             </motion.section>
@@ -993,21 +933,6 @@ function App() {
 
           {activeTab === 'history' && (
             <motion.section key="history" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
-              {/* Refresh bar */}
-              <div className="flex items-center justify-between px-1">
-                <p className="text-xs text-slate-400 flex items-center gap-1">
-                  <Clock size={12} /> آخر تحديث: {new Date(lastRefreshed).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                </p>
-                <button
-                  onClick={() => fetchData(true)}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-1.5 text-xs text-sky-600 hover:text-sky-800 disabled:opacity-50 transition-colors"
-                >
-                  <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
-                  تحديث
-                </button>
-              </div>
-
               {historyAssignments.length === 0 && (
                 <div className="glass-card">
                   <p className="text-slate-500">لا يوجد سجل تجويد حتى الآن.</p>
@@ -1024,177 +949,75 @@ function App() {
                   ? lessonVersion.questions
                   : (lesson?.questions || []);
                 const submission = assignment.submissionId ? submissions[assignment.submissionId] : undefined;
-                const isGraded = assignment.status === 'graded';
                 const maxTotal = historyQuestions.reduce((total, question) => total + (question.points || 0), 0);
 
-                // Auto-compute mc score to display even before teacher fully grades
-                const mcScore = historyQuestions.reduce((acc, q) => {
-                  if (q.type !== 'multiple_choice' || q.correctOptionIndex === undefined) return acc;
-                  const ans = submission?.answers.find(a => a.questionId === q.id);
-                  if (ans?.selectedOptionIndex === q.correctOptionIndex) acc.correct++;
-                  acc.total++;
-                  return acc;
-                }, { correct: 0, total: 0 });
-
-                const renderMixedArabicEnglish = (text: string, defaultClass = '') => {
-                  if (!text || typeof text !== 'string') return text;
-                  const regex = /([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]+(?:[\s]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]+)*)/g;
-                  const parts = text.split(regex);
-                  if (parts.length === 1) return text;
-                  return parts.map((part, index) => {
-                    if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF٠-٩]/.test(part)) {
-                      return <span key={index} className={`font-uthman leading-relaxed text-[1.15em] mx-1 inline-block ${defaultClass}`} dir="rtl">{part}</span>;
-                    }
-                    return <span key={index}>{part}</span>;
-                  });
-                };
-
                 return (
-                  <div key={assignment.id} className="glass-card space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-wrap gap-3 justify-between items-center border-b border-slate-100 pb-4">
+                  <div key={assignment.id} className="glass-card">
+                    <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
                       <div>
                         <h3 className="text-xl font-extrabold">{lesson?.title || 'درس محذوف'}</h3>
                         <p className="text-sm text-slate-500">تاريخ الإسناد: {toDate(assignment.assignedAt)}</p>
                         {submission && <p className="text-sm text-slate-500">تاريخ الإرسال: {toDate(submission.submittedAt)}</p>}
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={isGraded
-                          ? 'rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-sm font-bold'
-                          : 'rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-sm font-bold'}>
-                          {isGraded ? '✅ تم التصحيح' : '⏳ قيد التصحيح'}
-                        </span>
-                        {mcScore.total > 0 && (
-                          <span className="text-xs text-slate-500">
-                            الاختيار المتعدد: {toHindiDigits(mcScore.correct)} / {toHindiDigits(mcScore.total)} صحيحة
-                          </span>
-                        )}
-                      </div>
+                      <span className={assignment.status === 'graded' ? 'rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-sm font-bold' : 'rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-sm font-bold'}>
+                        {assignment.status === 'graded' ? 'تم التصحيح' : 'قيد التصحيح'}
+                      </span>
                     </div>
 
-                    {/* Overall grading info */}
-                    {isGraded && (
-                      <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 space-y-1">
-                        <p className="font-bold text-emerald-800 text-lg">
-                          الدرجة النهائية: {toHindiDigits(submission?.totalGrade ?? 0)}{maxTotal ? ` / ${toHindiDigits(maxTotal)}` : ''}
-                        </p>
-                        {submission?.overallNote && (
-                          <p className="text-emerald-700 text-sm">💬 {submission.overallNote}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {submission?.overallNote && !isGraded && (
-                      <div className="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3 text-sky-900">
+                    {submission?.overallNote && (
+                      <div className="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3 text-sky-900 mb-3">
                         <p className="font-semibold">ملاحظة عامة من المعلم:</p>
                         <p>{submission.overallNote}</p>
                       </div>
                     )}
 
-                    {/* Questions */}
+                    {assignment.status === 'graded' && (
+                      <p className="font-bold mb-3 text-lg">
+                        الدرجة النهائية: {toHindiDigits(submission?.totalGrade ?? 0)}{maxTotal ? ` / ${toHindiDigits(maxTotal)}` : ''}
+                      </p>
+                    )}
+
                     <div className="space-y-3">
                       {historyQuestions.map((question, index) => {
-                        const answer = submission?.answers.find(item => item.questionId === question.id);
+                        const answer = submission?.answers.find((item) => item.questionId === question.id);
                         const localizedQuestionText = getLocalizedQuestionText(question, lesson, assignmentLanguage);
                         const localizedQuestionOptions = getLocalizedQuestionOptions(question, lesson, assignmentLanguage);
-
-                        // Multiple choice auto-correction
-                        const isMC = question.type === 'multiple_choice';
-                        const hasCorrectIndex = question.correctOptionIndex !== undefined;
-                        const studentChose = answer?.selectedOptionIndex;
-                        const isStudentCorrect = isMC && hasCorrectIndex && studentChose === question.correctOptionIndex;
-                        const isStudentWrong = isMC && hasCorrectIndex && studentChose !== undefined && studentChose !== question.correctOptionIndex;
-
-                        // Per-question grading from teacher
-                        const teacherGrade = answer?.grade;
-                        const teacherNote = answer?.teacherNote;
-                        const teacherIsCorrect = answer?.isCorrect;
-                        const hasTeacherFeedback = teacherIsCorrect !== undefined || teacherGrade !== undefined || !!teacherNote;
+                        const selectedChoice = localizedQuestionOptions?.[answer?.selectedOptionIndex ?? -1];
 
                         return (
-                          <div key={question.id} className="rounded-xl border border-slate-200 p-4 bg-white/80 space-y-3">
-                            {/* Question text */}
-                            <p className="font-bold">
-                              {toHindiDigits(index + 1)}. {renderMixedArabicEnglish(localizedQuestionText)}
-                            </p>
+                          <div key={question.id} className="rounded-xl border border-slate-200 p-3 bg-white/80">
+                            <p className="font-bold mb-2">{index + 1}. {localizedQuestionText}</p>
 
-                            {/* Multiple Choice answer */}
-                            {isMC && (
-                              <div className="space-y-2">
-                                {localizedQuestionOptions.map((option, optIdx) => {
-                                  const isChosen = studentChose === optIdx;
-                                  const isCorrectOption = optIdx === question.correctOptionIndex;
-                                  let cls = 'rounded-lg border px-3 py-2 text-sm flex items-center gap-2 ';
-                                  if (isChosen && isCorrectOption) cls += 'bg-emerald-50 border-emerald-400 text-emerald-800 font-semibold';
-                                  else if (isChosen && !isCorrectOption) cls += 'bg-red-50 border-red-400 text-red-800 font-semibold';
-                                  else if (!isChosen && isCorrectOption && hasCorrectIndex) cls += 'bg-emerald-50/50 border-emerald-200 text-emerald-700 border-dashed';
-                                  else cls += 'border-slate-200 text-slate-600';
-                                  return (
-                                    <div key={optIdx} className={cls}>
-                                      {isChosen && isCorrectOption && <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />}
-                                      {isChosen && !isCorrectOption && <XCircle size={15} className="text-red-500 shrink-0" />}
-                                      {!isChosen && isCorrectOption && hasCorrectIndex && <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />}
-                                      <span>{renderMixedArabicEnglish(option)}</span>
-                                    </div>
-                                  );
-                                })}
-                                {isMC && hasCorrectIndex && (
-                                  <p className={`text-sm font-semibold mt-1 flex items-center gap-1.5 ${isStudentCorrect ? 'text-emerald-600' : isStudentWrong ? 'text-red-600' : 'text-slate-500'}`}>
-                                    {isStudentCorrect && <><CheckCircle2 size={14} /> إجابة صحيحة</>}
-                                    {isStudentWrong && <><XCircle size={14} /> إجابة خاطئة</>}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Text answer */}
                             {question.type === 'text' && (
-                              <div className="space-y-2">
-                                <p className="text-slate-700 whitespace-pre-wrap bg-slate-50 rounded-lg p-3 text-sm border border-slate-100">
-                                  {answer?.answerText || <span className="text-slate-400 italic">لا توجد إجابة.</span>}
-                                </p>
-                                {!hasTeacherFeedback && (
-                                  <div className="flex items-center gap-1.5 text-amber-600 text-xs">
-                                    <Clock size={12} /> في انتظار تصحيح المعلم
-                                  </div>
-                                )}
-                              </div>
+                              <p className="text-slate-700">{answer?.answerText || 'لا توجد إجابة نصية.'}</p>
                             )}
 
-                            {/* Audio answer */}
+                            {question.type === 'multiple_choice' && (
+                              <p className="text-slate-700">الإجابة المختارة: {selectedChoice || 'غير محددة'}</p>
+                            )}
+
                             {question.type === 'audio' && (
                               <div className="space-y-2">
                                 {answer?.audioBase64 ? (
                                   <audio controls src={answer.audioBase64} className="w-full" />
                                 ) : (
-                                  <p className="text-slate-500 flex items-center gap-2 text-sm">
-                                    <FileAudio size={16} /> التسجيل الصوتي محفوظ لدى الإدارة.
-                                  </p>
-                                )}
-                                {!hasTeacherFeedback && (
-                                  <div className="flex items-center gap-1.5 text-amber-600 text-xs">
-                                    <Clock size={12} /> في انتظار تصحيح المعلم
-                                  </div>
+                                  <p className="text-slate-500 flex items-center gap-2"><FileAudio size={16} /> التسجيل الصوتي محفوظ لدى الإدارة.</p>
                                 )}
                               </div>
                             )}
 
-                            {/* Teacher per-question feedback (text/audio) */}
-                            {hasTeacherFeedback && !isMC && (
-                              <div className={`rounded-xl px-4 py-3 flex items-center gap-3 border ${
-                                teacherIsCorrect === true
-                                  ? 'bg-emerald-50 border-emerald-200'
-                                  : teacherIsCorrect === false
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-sky-50 border-sky-100'
-                              }`}>
-                                {teacherIsCorrect === true && <CheckCircle2 size={22} className="text-emerald-600 shrink-0" />}
-                                {teacherIsCorrect === false && <XCircle size={22} className="text-red-500 shrink-0" />}
-                                <div>
-                                  {teacherIsCorrect === true && <p className="font-bold text-emerald-700">إجابة صحيحة ✅</p>}
-                                  {teacherIsCorrect === false && <p className="font-bold text-red-700">إجابة خاطئة ❌</p>}
-                                  {teacherNote && <p className="text-sm text-slate-600 mt-0.5">💬 {teacherNote}</p>}
-                                </div>
+                            {assignment.status === 'graded' && (
+                              <div className="mt-2 text-sm text-slate-700 space-y-1">
+                                {question.type === 'audio' && typeof answer?.isCorrect === 'boolean' && (
+                                  <p>
+                                    تقييم السؤال الصوتي:{' '}
+                                    <strong className={answer.isCorrect ? 'text-emerald-700' : 'text-rose-700'}>
+                                      {answer.isCorrect ? 'صح' : 'خطأ'}
+                                    </strong>
+                                  </p>
+                                )}
+                                <p>درجة السؤال: <strong>{toHindiDigits(answer?.grade ?? 0)}{question.points ? ` / ${toHindiDigits(question.points)}` : ''}</strong></p>
+                                {answer?.teacherNote && <p>ملاحظة المعلم: {answer.teacherNote}</p>}
                               </div>
                             )}
                           </div>
@@ -1213,4 +1036,3 @@ function App() {
 }
 
 export default App;
-
