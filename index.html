@@ -91,6 +91,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css" />
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.min.js"></script>
   <style>
     @font-face {
       font-family: 'KFGQPC Uthman Taha';
@@ -2910,8 +2911,28 @@ https://is.gd/oL6gEO`;
       };
 
       const stopQuizRecording = () => {
-        if (mediaRecorderRef.current?.state === 'recording') {
-          mediaRecorderRef.current.stop();
+        const recorder = mediaRecorderRef.current;
+        if (recorder) {
+          recorder.stopRecording(() => {
+            const blob = recorder.getBlob();
+            const meta = recordingMetaRef.current;
+            if (!blob || !meta) return;
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+              if (!dataUrl) return;
+              upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
+            };
+            reader.readAsDataURL(blob);
+
+            // Cleanup stream
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach((track) => track.stop());
+              streamRef.current = null;
+            }
+            setRecordingQuestionKey(null);
+          });
         }
       };
 
@@ -2948,65 +2969,26 @@ https://is.gd/oL6gEO`;
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           }
 
-          const mimeCandidates = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/mp4',
-          ];
+          if (typeof RecordRTC === 'undefined') {
+            throw new Error('RecordRTC not loaded');
+          }
 
-          const selectedMimeType = (typeof MediaRecorder.isTypeSupported === 'function')
-            ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
-            : '';
+          const recorder = new RecordRTC(stream, {
+            type: 'audio',
+            mimeType: 'audio/wav',
+            recorderType: StereoAudioRecorder,
+            numberOfAudioChannels: 1,
+            desiredSampRate: 16000,
+          });
 
-          const recorderOptions = {
-            audioBitsPerSecond: 128000,
-            ...(selectedMimeType ? { mimeType: selectedMimeType } : {}),
-          };
+          recorder.startRecording();
 
-          const recorder = new MediaRecorder(stream, recorderOptions);
-          const finalMimeType = recorder.mimeType || selectedMimeType || 'audio/webm';
-
-          chunksRef.current = [];
           streamRef.current = stream;
           mediaRecorderRef.current = recorder;
           recordingMetaRef.current = { questionKey, questionId };
           setRecordingQuestionKey(questionKey);
-
-          recorder.ondataavailable = (event) => {
-            if (event.data?.size > 0) {
-              chunksRef.current.push(event.data);
-            }
-          };
-
-          recorder.onstop = () => {
-            const meta = recordingMetaRef.current;
-            const chunks = [...chunksRef.current];
-
-            if (streamRef.current) {
-              streamRef.current.getTracks().forEach((track) => track.stop());
-            }
-
-            mediaRecorderRef.current = null;
-            streamRef.current = null;
-            chunksRef.current = [];
-            recordingMetaRef.current = null;
-            setRecordingQuestionKey(null);
-
-            if (!meta || !chunks.length) return;
-
-            const blob = new Blob(chunks, { type: finalMimeType });
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-              if (!dataUrl) return;
-              upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
-            };
-            reader.readAsDataURL(blob);
-          };
-
-          recorder.start();
         } catch (err) {
-          console.error(err);
+          console.error('Recording initialization failed:', err);
           setQuizStatusMessage(t.recordingPermissionDenied);
         }
       };
