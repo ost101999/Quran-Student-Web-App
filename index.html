@@ -490,6 +490,7 @@
       const [quizStatusMessage, setQuizStatusMessage] = useState('');
       const [isQuizSubmitting, setIsQuizSubmitting] = useState(false);
       const [recordingQuestionKey, setRecordingQuestionKey] = useState(null);
+      const [reviewEditConfirmedKeys, setReviewEditConfirmedKeys] = useState({});
       const [showSchedule, setShowSchedule] = useState(false);
       const [glowReportDay, setGlowReportDay] = useState(null);
       const [passcodeToast, setPasscodeToast] = useState(false);
@@ -1122,6 +1123,7 @@ https://is.gd/oL6gEO`;
         submittingQuiz: "جارٍ الإرسال...",
         submitSuccess: "تم إرسال الإجابات بنجاح. بارك الله فيك.",
         submitFailed: "تعذر إرسال الإجابات حالياً. حاول مرة أخرى.",
+        reviewEditConfirm: "أنت في وضع المراجعة. هل تريد تعديل إجابتك على هذا السؤال؟",
         assignedAt: "تاريخ الإسناد",
         questionsCount: "عدد الأسئلة",
         homeworkNextClass: "الواجب والمطلوب",
@@ -1245,6 +1247,7 @@ https://is.gd/oL6gEO`;
         submittingQuiz: "Submitting...",
         submitSuccess: "Answers submitted successfully.",
         submitFailed: "Unable to submit answers right now. Please try again.",
+        reviewEditConfirm: "You are in review mode. Do you want to edit your answer for this question?",
         assignedAt: "Assigned At",
         questionsCount: "Questions",
         homeworkNextClass: "Homework & Next Class",
@@ -2675,6 +2678,25 @@ https://is.gd/oL6gEO`;
         setQuizStatusMessage('');
         setIsQuizSubmitting(false);
         setRecordingQuestionKey(null);
+        setReviewEditConfirmedKeys({});
+      };
+
+      const requestReviewEditPermission = (questionKey, forcePrompt = false) => {
+        const normalizedKey = String(questionKey || '').trim();
+        if (!normalizedKey) return true;
+
+        if (!forcePrompt && reviewEditConfirmedKeys[normalizedKey]) {
+          return true;
+        }
+
+        const approved = window.confirm(t.reviewEditConfirm);
+        if (!approved) return false;
+
+        setReviewEditConfirmedKeys((prev) => ({
+          ...prev,
+          [normalizedKey]: true,
+        }));
+        return true;
       };
 
       const upsertQuizDraftAnswer = (questionKey, questionId, updates) => {
@@ -3111,6 +3133,26 @@ https://is.gd/oL6gEO`;
         openTajweedQuizFromSection(latestTajweedReportEntry.section);
       };
 
+      const resolveTajweedSectionQuizActionState = (section) => {
+        const assignment = findMatchingTajweedAssignment(section, { includeStatuses: ['pending', 'submitted'] });
+        if (assignment) {
+          const solvedState = getStudentSolvedLessonState(
+            assignment?.resolvedLesson,
+            String(assignment?.resolvedLessonId || assignment?.lessonId || '').trim()
+          );
+          const attempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
+          const isSubmitted = String(assignment?.status || '').toLowerCase() === 'submitted';
+          return { isReview: isSubmitted || attempts.length > 0 };
+        }
+
+        const sectionResolved = resolveBankLessonFromSection(section);
+        if (!sectionResolved?.lesson) return { isReview: false };
+
+        const solvedState = getStudentSolvedLessonState(sectionResolved.lesson, sectionResolved.lessonId);
+        const attempts = Array.isArray(solvedState?.attempts) ? solvedState.attempts : [];
+        return { isReview: !!solvedState?.isSolved || attempts.length > 0 };
+      };
+
       const currentRoadmapSolvedState = selectedTajweedQuiz
         ? getStudentSolvedLessonState(
           { id: selectedTajweedQuiz.lessonId, title: selectedTajweedQuiz.lessonTitle },
@@ -3248,6 +3290,10 @@ https://is.gd/oL6gEO`;
             </h5>
             <div className={`${isArabic ? 'pr-4 border-r-[3px]' : 'pl-4 border-l-[3px]'} space-y-3 ${sideBorderClass}`}>
               {sections.map((section, idx) => {
+                const quizActionState = options.showQuizAction && typeof options.resolveQuizActionState === 'function'
+                  ? options.resolveQuizActionState(section)
+                  : null;
+                const isReviewQuizAction = !!quizActionState?.isReview;
                 let bgClass = "bg-islamic-900/40 hover:bg-islamic-900/60";
                 let borderClass = "border-islamic-gold/10 hover:border-islamic-gold/30";
                 let iconBgClass = "bg-islamic-800/80 border-islamic-gold/20 text-islamic-gold";
@@ -3303,7 +3349,7 @@ https://is.gd/oL6gEO`;
                           id={options.quizButtonId && idx === 0 ? options.quizButtonId : undefined}
                           onClick={() => {
                             if (options.onOpenQuiz) {
-                              options.onOpenQuiz(section);
+                              options.onOpenQuiz(section, quizActionState);
                             }
                             if (options.onAfterOpenQuiz) {
                               options.onAfterOpenQuiz(section, idx);
@@ -3312,7 +3358,7 @@ https://is.gd/oL6gEO`;
                           className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-teal-400/40 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-200 hover:bg-teal-500/30 transition-colors"
                         >
                           <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
-                          {t.openQuiz}
+                          {isReviewQuizAction ? t.reviewQuiz : t.openQuiz}
                         </button>
                       )}
                     </div>
@@ -3816,6 +3862,7 @@ https://is.gd/oL6gEO`;
                           {
                             showQuizAction: true,
                             onOpenQuiz: openTajweedQuizFromSection,
+                            resolveQuizActionState: resolveTajweedSectionQuizActionState,
                             quizButtonId: isTourMode ? 'tour-open-tajweed-quiz' : undefined,
                             onAfterOpenQuiz: () => {
                               if (isTourMode && window.driverObjInstance) {
@@ -4345,9 +4392,8 @@ https://is.gd/oL6gEO`;
                                             type="radio"
                                             name={`quiz_${questionKey}`}
                                             checked={answer.selectedOptionIndex === idx}
-                                            disabled={isReviewMode}
                                             onChange={() => {
-                                              if (isReviewMode) return;
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
                                             }}
@@ -4365,9 +4411,11 @@ https://is.gd/oL6gEO`;
                                         {recordingQuestionKey === questionKey ? (
                                           <button
                                             type="button"
-                                            disabled={isReviewMode}
-                                            onClick={stopQuizRecording}
-                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isReviewMode ? 'border-slate-500/30 bg-slate-700/35 text-slate-300/70 cursor-not-allowed' : 'border-rose-400/50 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30'}`}
+                                            onClick={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                              stopQuizRecording();
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
                                           >
                                             <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
                                             {t.stopRecording}
@@ -4375,9 +4423,11 @@ https://is.gd/oL6gEO`;
                                         ) : (
                                           <button
                                             type="button"
-                                            disabled={isReviewMode}
-                                            onClick={() => startQuizRecording(questionKey, q.id || questionKey)}
-                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isReviewMode ? 'border-slate-500/30 bg-slate-700/35 text-slate-300/70 cursor-not-allowed' : 'border-teal-300/50 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30'}`}
+                                            onClick={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                              startQuizRecording(questionKey, q.id || questionKey);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
                                           >
                                             <i data-lucide="mic" className="w-3.5 h-3.5"></i>
                                             {t.startRecording}
@@ -4387,9 +4437,11 @@ https://is.gd/oL6gEO`;
                                         {!!answer.audioBase64 && (
                                           <button
                                             type="button"
-                                            disabled={isReviewMode}
-                                            onClick={() => removeQuizAudioDraft(questionKey, q.id || questionKey)}
-                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isReviewMode ? 'border-slate-500/30 bg-slate-700/35 text-slate-300/70 cursor-not-allowed' : 'border-slate-400/40 bg-slate-700/50 text-slate-100 hover:bg-slate-700/70'}`}
+                                            onClick={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                              removeQuizAudioDraft(questionKey, q.id || questionKey);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
                                           >
                                             <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
                                             {t.deleteRecording}
@@ -4408,9 +4460,8 @@ https://is.gd/oL6gEO`;
                                   {questionType === 'text' && (
                                     <textarea
                                       value={answer.answerText || ''}
-                                      readOnly={isReviewMode}
                                       onChange={(event) => {
-                                        if (isReviewMode) return;
+                                        if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
                                         upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
                                         setQuizStatusMessage('');
                                       }}
