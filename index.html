@@ -2705,9 +2705,6 @@ https://is.gd/oL6gEO`;
             answerText: answer?.answerText || '',
             selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
             audioBase64: audioSource,
-            isCorrect: answer?.isCorrect,
-            grade: answer?.grade,
-            teacherNote: answer?.teacherNote,
           };
           const questionId = String(answer?.questionId || '').trim();
           const questionKey = String(answer?.questionKey || '').trim();
@@ -4506,161 +4503,115 @@ https://is.gd/oL6gEO`;
                               const shouldUseUthmanAnswerFont = answerLanguage === 'ar'
                                 || (resolveQuestionTargetLanguage(requestedLanguage) === 'ar' && !String(answer.answerText || '').trim());
 
-                              const isGradedReview = isReviewMode && answer.isCorrect !== undefined;
-                               
-                               return (
-                                 <div
-                                   key={questionKey}
-                                   className={`rounded-2xl border p-3.5 transition-colors relative overflow-hidden ${
-                                     hasError ? 'border-rose-400/70 bg-rose-950/20' : 
-                                     isGradedReview ? (answer.isCorrect ? 'border-emerald-500/50 bg-emerald-900/10' : 'border-rose-500/50 bg-rose-950/10') :
-                                     'border-slate-600/30 bg-slate-800/50'
-                                   }`}
-                                 >
-                                   {isGradedReview && (
-                                     <div className={`absolute top-0 left-0 h-full w-1 ${answer.isCorrect ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                   )}
-                                   
-                                   <div className="mb-2 flex justify-between items-start gap-2">
-                                     <p className={`text-sm text-white font-semibold flex-1 ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>
-                                       {toArabicNums(questionIndex + 1)}. {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
-                                     </p>
-                                     {isGradedReview && (
-                                       <div className={`shrink-0 ${answer.isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                         <i data-lucide={answer.isCorrect ? 'check-circle-2' : 'alert-circle'} className="w-5 h-5"></i>
-                                       </div>
-                                     )}
-                                   </div>
+                              return (
+                                <div
+                                  key={questionKey}
+                                  className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
+                                >
+                                  <div className="mb-2">
+                                    <p className={`text-sm text-white font-semibold ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>
+                                      {toArabicNums(questionIndex + 1)}. {isQuestionArabic ? localizedQuestionText : renderMixedArabicEnglish(localizedQuestionText)}
+                                    </p>
+                                  </div>
 
-                                   {questionType === 'multiple_choice' && (
-                                     <div className="mt-2 space-y-2">
-                                       {localizedQuestionOptions.map((opt, idx) => {
-                                         const isOptionArabic = detectContentLanguage(opt) === 'ar';
-                                         const isSelected = answer.selectedOptionIndex === idx;
-                                         const isTeacherMarkedCorrect = q.correctOptionIndex === idx;
-                                         const isReview = isReviewMode;
-                                         
-                                         let borderColorClass = 'border-slate-600/30 bg-slate-900/40 text-slate-200';
-                                         if (isSelected) {
-                                            if (isReview && isTeacherMarkedCorrect) borderColorClass = 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100 font-bold';
-                                            else if (isReview && !isTeacherMarkedCorrect) borderColorClass = 'border-rose-400/60 bg-rose-500/15 text-rose-100';
-                                            else borderColorClass = 'border-teal-400/60 bg-teal-500/10 text-teal-100';
-                                         } else if (isReview && isTeacherMarkedCorrect) {
-                                            borderColorClass = 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400/80 border-dashed';
-                                         }
+                                  {questionType === 'multiple_choice' && (
+                                    <div className="mt-2 space-y-2">
+                                      {localizedQuestionOptions.map((opt, idx) => {
+                                        const isOptionArabic = detectContentLanguage(opt) === 'ar';
+                                        return (
+                                        <label
+                                          key={`${questionKey}_opt_${idx}`}
+                                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${answer.selectedOptionIndex === idx ? 'border-teal-400/60 bg-teal-500/10 text-teal-100' : 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40'}`}
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`quiz_${questionKey}`}
+                                            checked={answer.selectedOptionIndex === idx}
+                                            onChange={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
+                                              upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
+                                              setQuizStatusMessage('');
+                                            }}
+                                            className="accent-teal-400 shrink-0"
+                                          />
+                                          <span className={`text-sm ${isOptionArabic ? 'font-uthman leading-relaxed' : ''}`}>
+                                            {isOptionArabic ? opt : renderMixedArabicEnglish(opt)}
+                                          </span>
+                                        </label>
+                                      )})}
+                                    </div>
+                                  )}
 
-                                         return (
-                                         <label
-                                           key={`${questionKey}_opt_${idx}`}
-                                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${borderColorClass} hover:border-teal-500/40`}
-                                         >
-                                           <input
-                                             type="radio"
-                                             name={`quiz_${questionKey}`}
-                                             checked={isSelected}
-                                             disabled={isReview && !requestReviewEditPermission(questionKey)}
-                                             onChange={() => {
-                                               if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
-                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
-                                               setQuizStatusMessage('');
-                                             }}
-                                             className="accent-teal-400 shrink-0"
-                                           />
-                                           <span className={`text-sm ${isOptionArabic ? 'font-uthman leading-relaxed' : ''}`}>
-                                             {isOptionArabic ? opt : renderMixedArabicEnglish(opt)}
-                                             {isReview && isSelected && !isTeacherMarkedCorrect && (
-                                               <span className="text-[10px] mr-2 opacity-60">(إجابتك)</span>
-                                             )}
-                                           </span>
-                                         </label>
-                                       )})}
-                                     </div>
-                                   )}
+                                  {questionType === 'audio' && (
+                                    <div className="mt-2 space-y-2">
+                                      <div className="flex flex-wrap gap-2">
+                                        {recordingQuestionKey === questionKey ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                              stopQuizRecording();
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
+                                          >
+                                            <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
+                                            {t.stopRecording}
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                              startQuizRecording(questionKey, q.id || questionKey);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
+                                          >
+                                            <i data-lucide="mic" className="w-3.5 h-3.5"></i>
+                                            {t.startRecording}
+                                          </button>
+                                        )}
 
-                                   {/* ... rest of the question types (audio/text) handle isGradedReview correctly via the card border/icon above ... */}
-                                   
-                                   {questionType === 'audio' && (
-                                     <div className="mt-2 space-y-2">
-                                       <div className="flex flex-wrap gap-2">
-                                         {recordingQuestionKey === questionKey ? (
-                                           <button
-                                             type="button"
-                                             onClick={() => {
-                                               if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
-                                               stopQuizRecording();
-                                             }}
-                                             className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-3 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/30 transition-colors"
-                                           >
-                                             <i data-lucide="pause-circle" className="w-3.5 h-3.5"></i>
-                                             {t.stopRecording}
-                                           </button>
-                                         ) : (
-                                           <button
-                                             type="button"
-                                             onClick={() => {
-                                               if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
-                                               startQuizRecording(questionKey, q.id || questionKey);
-                                             }}
-                                             className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300/50 bg-teal-500/20 px-3 py-1.5 text-xs font-bold text-teal-100 hover:bg-teal-500/30 transition-colors"
-                                           >
-                                             <i data-lucide="mic" className="w-3.5 h-3.5"></i>
-                                             {t.startRecording}
-                                           </button>
-                                         )}
-
-                                         {!!answer.audioBase64 && (
-                                           <button
-                                             type="button"
-                                             onClick={() => {
-                                               if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
-                                               removeQuizAudioDraft(questionKey, q.id || questionKey);
-                                             }}
-                                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
-                                           >
-                                             <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
-                                             {t.deleteRecording}
-                                           </button>
-                                         )}
-                                       </div>
-
-                                       {!!answer.audioBase64 ? (
-                                         <audio controls src={answer.audioBase64} className="w-full h-8" />
-                                       ) : (
-                                         <p className="text-xs text-slate-400">{t.recordingHint}</p>
-                                       )}
-                                     </div>
-                                   )}
-
-                                   {questionType === 'text' && (
-                                     <textarea
-                                       value={answer.answerText || ''}
-                                       disabled={isReviewMode && !requestReviewEditPermission(questionKey)}
-                                       onChange={(event) => {
-                                         if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
-                                         upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
-                                         setQuizStatusMessage('');
-                                       }}
-                                       placeholder={t.writeAnswer}
-                                       className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${shouldUseUthmanAnswerFont ? 'font-uthman leading-relaxed' : ''} ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
-                                     />
-                                   )}
-
-                                   {(isGradedReview && (answer.teacherNote || answer.grade !== undefined)) && (
-                                      <div className="mt-3 text-xs text-amber-100/90 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
-                                         {answer.grade !== undefined && (
-                                           <p className="font-bold mb-1">{isArabic ? 'الدرجة:' : 'Grade:'} {toArabicNums(answer.grade)}{q.points ? ` / ${toArabicNums(q.points)}` : ''}</p>
-                                         )}
-                                         {answer.teacherNote && (
-                                           <p className="leading-relaxed opacity-90"><span className="font-bold opacity-100">{isArabic ? 'ملاحظة:' : 'Note:'}</span> {answer.teacherNote}</p>
-                                         )}
+                                        {!!answer.audioBase64 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (isReviewMode && !requestReviewEditPermission(questionKey, true)) return;
+                                              removeQuizAudioDraft(questionKey, q.id || questionKey);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-400/40 bg-slate-700/50 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700/70 transition-colors"
+                                          >
+                                            <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                                            {t.deleteRecording}
+                                          </button>
+                                        )}
                                       </div>
-                                   )}
 
-                                   {hasError && (
-                                     <p className="text-xs text-rose-300 mt-2">{t.fieldRequired}</p>
-                                   )}
-                                 </div>
-                               );
+                                      {!!answer.audioBase64 ? (
+                                        <audio controls src={answer.audioBase64} className="w-full" />
+                                      ) : (
+                                        <p className="text-xs text-slate-400">{t.recordingHint}</p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {questionType === 'text' && (
+                                    <textarea
+                                      value={answer.answerText || ''}
+                                      onChange={(event) => {
+                                        if (isReviewMode && !requestReviewEditPermission(questionKey)) return;
+                                        upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: event.target.value });
+                                        setQuizStatusMessage('');
+                                      }}
+                                      placeholder={t.writeAnswer}
+                                      className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${shouldUseUthmanAnswerFont ? 'font-uthman leading-relaxed' : ''} ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
+                                    />
+                                  )}
+
+                                  {hasError && (
+                                    <p className="text-xs text-rose-300 mt-2">{t.fieldRequired}</p>
+                                  )}
+                                </div>
+                              );
                             })}
                           </div>
                         </div>
