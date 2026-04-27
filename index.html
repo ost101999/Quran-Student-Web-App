@@ -64,6 +64,7 @@
             sans: ['Outfit', 'sans-serif'],
             cinzel: ['Cinzel', 'serif'],
             amiri: ['Amiri', 'serif'],
+            uthman: ['"KFGQPC Uthman Taha"', 'Amiri', 'serif'],
           },
           colors: {
             islamic: {
@@ -4456,6 +4457,10 @@ https://is.gd/oL6gEO`;
                               const requestedLanguage = selectedTajweedQuiz.contentLanguage || selectedTajweedQuiz.lessonLanguage;
                               const localizedQuestionText = getLocalizedQuizQuestionText(q, requestedLanguage);
                               const localizedQuestionOptions = getLocalizedQuizQuestionOptions(q, requestedLanguage);
+                              const isQuestionArabic = detectContentLanguage(localizedQuestionText) === 'ar';
+                              const answerLanguage = detectContentLanguage(answer.answerText || '');
+                              const shouldUseUthmanAnswerFont = answerLanguage === 'ar'
+                                || (resolveQuestionTargetLanguage(requestedLanguage) === 'ar' && !String(answer.answerText || '').trim());
 
                               return (
                                 <div
@@ -4463,12 +4468,14 @@ https://is.gd/oL6gEO`;
                                   className={`rounded-2xl border p-3.5 transition-colors ${hasError ? 'border-rose-400/70 bg-rose-950/20' : 'border-slate-600/30 bg-slate-800/50'}`}
                                 >
                                   <div className="mb-2">
-                                    <p className="text-sm text-white font-semibold">{toArabicNums(questionIndex + 1)}. {localizedQuestionText}</p>
+                                    <p className={`text-sm text-white font-semibold ${isQuestionArabic ? 'font-uthman leading-relaxed' : ''}`}>{toArabicNums(questionIndex + 1)}. {localizedQuestionText}</p>
                                   </div>
 
                                   {questionType === 'multiple_choice' && (
                                     <div className="mt-2 space-y-2">
-                                      {localizedQuestionOptions.map((opt, idx) => (
+                                      {localizedQuestionOptions.map((opt, idx) => {
+                                        const isOptionArabic = detectContentLanguage(opt) === 'ar';
+                                        return (
                                         <label
                                           key={`${questionKey}_opt_${idx}`}
                                           className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${answer.selectedOptionIndex === idx ? 'border-teal-400/60 bg-teal-500/10 text-teal-100' : 'border-slate-600/30 bg-slate-900/40 text-slate-200 hover:border-teal-500/40'}`}
@@ -4484,9 +4491,9 @@ https://is.gd/oL6gEO`;
                                             }}
                                             className="accent-teal-400"
                                           />
-                                          <span className="text-sm">{opt}</span>
+                                          <span className={`text-sm ${isOptionArabic ? 'font-uthman leading-relaxed' : ''}`}>{opt}</span>
                                         </label>
-                                      ))}
+                                      )})}
                                     </div>
                                   )}
 
@@ -4551,7 +4558,7 @@ https://is.gd/oL6gEO`;
                                         setQuizStatusMessage('');
                                       }}
                                       placeholder={t.writeAnswer}
-                                      className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
+                                      className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${shouldUseUthmanAnswerFont ? 'font-uthman leading-relaxed' : ''} ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
                                     />
                                   )}
 
