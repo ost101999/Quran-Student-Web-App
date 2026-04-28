@@ -4723,7 +4723,7 @@ https://is.gd/oL6gEO`;
                     <div className={`bg-slate-900/95 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 ${isQuizSuccessExiting ? 'animate-scale-down' : 'animate-scale-up'}`}>
                       <i data-lucide="check-circle" className="w-5 h-5"></i>
                       <span className={`font-bold ${isArabic ? 'text-base' : 'text-sm uppercase tracking-wider'}`}>
-                        {isArabic ? 'تم الإرسال بنجاح' : 'Submitted Successfully'}
+                        {isArabic ? 'راجع أجوبتك' : 'Review your answers'}
                       </span>
                     </div>
                   </div>
@@ -4874,7 +4874,7 @@ https://is.gd/oL6gEO`;
                                             name={`quiz_${questionKey}`}
                                             checked={answer.selectedOptionIndex === idx}
                                             onChange={async () => {
-                                              if (isReviewMode && !await requestReviewEditPermission(questionKey)) return;
+                                              if (isReviewMode) return;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
                                             }}
@@ -4901,7 +4901,7 @@ https://is.gd/oL6gEO`;
                                           <button
                                             type="button"
                                             onClick={async () => {
-                                              if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
+                                              if (isReviewMode) return;
                                               stopQuizRecording();
                                             }}
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/20 px-4 py-1.5 text-[13px] font-semibold text-rose-200 hover:bg-rose-500/30 transition-colors animate-pulse"
@@ -4913,7 +4913,7 @@ https://is.gd/oL6gEO`;
                                           <button
                                             type="button"
                                             onClick={async () => {
-                                              if (isReviewMode && !await requestReviewEditPermission(questionKey, true)) return;
+                                              if (isReviewMode) return;
                                               startQuizRecording(questionKey, q.id || questionKey);
                                             }}
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-100 hover:bg-teal-500/20 transition-colors"
@@ -4937,12 +4937,13 @@ https://is.gd/oL6gEO`;
                                       value={answer.answerText || ''}
                                       onChange={async (event) => {
                                         const newValue = event.target.value;
-                                        if (isReviewMode && !await requestReviewEditPermission(questionKey)) return;
+                                        if (isReviewMode) return;
                                         upsertQuizDraftAnswer(questionKey, q.id || questionKey, { answerText: newValue });
                                         setQuizStatusMessage('');
                                       }}
                                       placeholder={t.writeAnswer}
-                                      className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${shouldUseUthmanAnswerFont ? 'font-uthman leading-relaxed' : ''} ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'}`}
+                                      className={`mt-2 w-full min-h-[96px] rounded-xl border bg-slate-900/40 p-3 text-sm text-slate-100 outline-none transition-colors ${shouldUseUthmanAnswerFont ? 'font-uthman leading-relaxed' : ''} ${hasError ? 'border-rose-400/70 focus:border-rose-300' : 'border-slate-600/40 focus:border-teal-400/60'} ${isReviewMode ? 'cursor-default' : ''}`}
+                                      readOnly={isReviewMode}
                                     />
                                   )}
 
