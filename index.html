@@ -667,6 +667,7 @@
       const [glowReportDay, setGlowReportDay] = useState(null);
       const [passcodeToast, setPasscodeToast] = useState(false);
       const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm, onCancel }
+      const [quizSuccessOverlay, setQuizSuccessOverlay] = useState(false);
       const [tick, setTick] = useState(0); // updates every minute for countdown
 
       const mediaRecorderRef = useRef(null);
@@ -3317,10 +3318,20 @@ https://is.gd/oL6gEO`;
           });
 
           setQuizStatusMessage(t.submitSuccess);
+          setQuizSuccessOverlay(true);
+          
+          setSelectedTajweedQuiz(prev => prev ? {
+            ...prev,
+            reviewAttemptId: submissionId
+          } : prev);
+
+          if (quizScrollRef.current) {
+            quizScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+          }
 
           setTimeout(() => {
-            closeTajweedQuiz();
-          }, 700);
+            setQuizSuccessOverlay(false);
+          }, 1500);
         } catch (err) {
           console.error(err);
           setQuizStatusMessage(t.submitFailed);
@@ -4685,6 +4696,19 @@ https://is.gd/oL6gEO`;
                 >
                   <i data-lucide="x" className="w-5 h-5"></i>
                 </button>
+
+                {quizSuccessOverlay && (
+                  <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade">
+                    <div className="bg-emerald-500 text-white px-8 py-6 rounded-[2.5rem] shadow-2xl animate-scale-up flex flex-col items-center gap-4 border-4 border-white/20">
+                      <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                        <i data-lucide="check" className="w-10 h-10 stroke-[3px]"></i>
+                      </div>
+                      <span className="font-bold text-xl md:text-2xl text-center px-4 leading-relaxed">
+                        {t.submitSuccess}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-teal-500/20 text-teal-300 mb-1 border border-teal-400/30">
