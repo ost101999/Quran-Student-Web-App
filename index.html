@@ -219,6 +219,20 @@
     .animate-fade {
       animation: fadeIn 0.5s ease-out forwards;
     }
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    .animate-fade-out {
+      animation: fadeOut 0.4s ease-in forwards;
+    }
+    @keyframes scaleDown {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0.9); }
+    }
+    .animate-scale-down {
+      animation: scaleDown 0.3s ease-in forwards;
+    }
 
     .animate-scale-up {
       animation: scaleUp 0.2s ease-out forwards;
@@ -668,6 +682,7 @@
       const [passcodeToast, setPasscodeToast] = useState(false);
       const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm, onCancel }
       const [quizSuccessOverlay, setQuizSuccessOverlay] = useState(false);
+      const [isQuizSuccessExiting, setIsQuizSuccessExiting] = useState(false);
       const [tick, setTick] = useState(0); // updates every minute for countdown
 
       const mediaRecorderRef = useRef(null);
@@ -3319,6 +3334,7 @@ https://is.gd/oL6gEO`;
 
           setQuizStatusMessage(t.submitSuccess);
           setQuizSuccessOverlay(true);
+          setIsQuizSuccessExiting(false);
           
           setSelectedTajweedQuiz(prev => prev ? {
             ...prev,
@@ -3330,8 +3346,13 @@ https://is.gd/oL6gEO`;
           }
 
           setTimeout(() => {
+            setIsQuizSuccessExiting(true);
+          }, 1200);
+
+          setTimeout(() => {
             setQuizSuccessOverlay(false);
-          }, 1500);
+            setIsQuizSuccessExiting(false);
+          }, 1600);
         } catch (err) {
           console.error(err);
           setQuizStatusMessage(t.submitFailed);
@@ -4698,8 +4719,8 @@ https://is.gd/oL6gEO`;
                 </button>
 
                 {quizSuccessOverlay && (
-                  <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] animate-fade">
-                    <div className="bg-slate-900/95 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-2xl shadow-2xl animate-scale-up flex items-center gap-3">
+                  <div className={`absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] ${isQuizSuccessExiting ? 'animate-fade-out' : 'animate-fade'}`}>
+                    <div className={`bg-slate-900/95 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 ${isQuizSuccessExiting ? 'animate-scale-down' : 'animate-scale-up'}`}>
                       <i data-lucide="check-circle" className="w-5 h-5"></i>
                       <span className={`font-bold ${isArabic ? 'text-base' : 'text-sm uppercase tracking-wider'}`}>
                         {isArabic ? 'تم الإرسال بنجاح' : 'Submitted Successfully'}
