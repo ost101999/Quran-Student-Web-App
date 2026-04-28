@@ -2993,7 +2993,12 @@ https://is.gd/oL6gEO`;
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           }
 
-          // Prefer AAC in MP4 (Safari + iOS); Chrome often lists WebM first — WebM is not playable in iOS Safari <audio>.
+          const ua = navigator.userAgent || '';
+          const isIOS = /iPhone|iPad|iPod/i.test(ua);
+          const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR/i.test(ua);
+          const preferSafariCompatible = isIOS || isSafari;
+
+          // Safari/iOS playback: MP4(AAC) (best) or WAV (fallback). Android/desktop: WebM/Opus is smallest + most compatible.
           const mp4MimeCandidates = [
             'audio/mp4;codecs=mp4a.40.2',
             'audio/mp4;codecs=mp4a',
@@ -3008,33 +3013,48 @@ https://is.gd/oL6gEO`;
             : () => false;
 
           const selectedMp4Type = mp4MimeCandidates.find(isTypeSupported) || '';
+          const selectedWebmType = webmMimeCandidates.find(isTypeSupported) || '';
 
-          if (typeof MediaRecorder !== 'undefined' && selectedMp4Type) {
-            const recorder = new MediaRecorder(stream, {
-              mimeType: selectedMp4Type,
-              audioBitsPerSecond: 128000,
-            });
+          const tryStartMediaRecorder = (mimeType) => {
+            if (typeof MediaRecorder === 'undefined' || !mimeType) return false;
+            try {
+              const recorder = new MediaRecorder(stream, {
+                mimeType,
+                audioBitsPerSecond: 128000,
+              });
 
-            chunksRef.current = [];
-            recorder.ondataavailable = (event) => {
-              if (event.data && event.data.size > 0) {
-                chunksRef.current.push(event.data);
-              }
-            };
-            recorder.onstop = () => {
-              const blob = new Blob(chunksRef.current, { type: recorder.mimeType || selectedMp4Type });
-              finalizeQuizRecording(blob);
-              cleanupQuizRecording();
-            };
+              chunksRef.current = [];
+              recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                  chunksRef.current.push(event.data);
+                }
+              };
+              recorder.onstop = () => {
+                const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType });
+                finalizeQuizRecording(blob);
+                cleanupQuizRecording();
+              };
 
-            recorder.start();
+              recorder.start();
 
-            streamRef.current = stream;
-            mediaRecorderRef.current = recorder;
-            recordingMetaRef.current = { questionKey, questionId };
-            setRecordingQuestionKey(questionKey);
-            return;
+              streamRef.current = stream;
+              mediaRecorderRef.current = recorder;
+              recordingMetaRef.current = { questionKey, questionId };
+              setRecordingQuestionKey(questionKey);
+              return true;
+            } catch {
+              return false;
+            }
+          };
+
+          if (preferSafariCompatible) {
+            if (tryStartMediaRecorder(selectedMp4Type)) return;
+          } else {
+            if (tryStartMediaRecorder(selectedWebmType)) return;
           }
+
+          // Secondary attempt: if the preferred type isn't available, try the other one.
+          if (tryStartMediaRecorder(preferSafariCompatible ? selectedWebmType : selectedMp4Type)) return;
 
           if (typeof RecordRTC === 'undefined') {
             throw new Error('RecordRTC not loaded');
@@ -3043,8 +3063,9 @@ https://is.gd/oL6gEO`;
           const mediaStreamRecorderType = RecordRTC?.MediaStreamRecorder || (typeof MediaStreamRecorder !== 'undefined' ? MediaStreamRecorder : null);
           const stereoRecorderType = RecordRTC?.StereoAudioRecorder || (typeof StereoAudioRecorder !== 'undefined' ? StereoAudioRecorder : null);
 
-          // No MP4 encoder: use WAV (universal playback on iPhone) instead of WebM.
-          if (stereoRecorderType) {
+          // Fallbacks: prefer WAV for Safari/iOS; otherwise prefer WebM (smaller) when possible.
+          const recordWithWav = () => {
+            if (!stereoRecorderType) return false;
             const recorder = new RecordRTC(stream, {
               type: 'audio',
               mimeType: 'audio/wav',
@@ -3055,15 +3076,15 @@ https://is.gd/oL6gEO`;
             });
 
             recorder.startRecording();
-
             streamRef.current = stream;
             mediaRecorderRef.current = recorder;
             recordingMetaRef.current = { questionKey, questionId };
             setRecordingQuestionKey(questionKey);
-            return;
-          }
+            return true;
+          };
 
-          const selectedWebmType = webmMimeCandidates.find(isTypeSupported) || '';
+          if (preferSafariCompatible && recordWithWav()) return;
+
           const recorder = new RecordRTC(stream, selectedWebmType && mediaStreamRecorderType ? {
             type: 'audio',
             mimeType: selectedWebmType,
