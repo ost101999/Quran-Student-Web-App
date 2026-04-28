@@ -4698,13 +4698,11 @@ https://is.gd/oL6gEO`;
                 </button>
 
                 {quizSuccessOverlay && (
-                  <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade">
-                    <div className="bg-emerald-500 text-white px-8 py-6 rounded-[2.5rem] shadow-2xl animate-scale-up flex flex-col items-center gap-4 border-4 border-white/20">
-                      <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                        <i data-lucide="check" className="w-10 h-10 stroke-[3px]"></i>
-                      </div>
-                      <span className="font-bold text-xl md:text-2xl text-center px-4 leading-relaxed">
-                        {t.submitSuccess}
+                  <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] animate-fade">
+                    <div className="bg-slate-900/95 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-2xl shadow-2xl animate-scale-up flex items-center gap-3">
+                      <i data-lucide="check-circle" className="w-5 h-5"></i>
+                      <span className={`font-bold ${isArabic ? 'text-base' : 'text-sm uppercase tracking-wider'}`}>
+                        {isArabic ? 'تم الإرسال بنجاح' : 'Submitted Successfully'}
                       </span>
                     </div>
                   </div>
