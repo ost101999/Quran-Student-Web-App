@@ -496,10 +496,13 @@ function App() {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
 
+      // AAC in MP4 plays on Safari/iOS; WebM Opus typically does not in <audio>.
       const mimeCandidates = [
+        'audio/mp4;codecs=mp4a.40.2',
+        'audio/mp4;codecs=mp4a',
+        'audio/mp4',
         'audio/webm;codecs=opus',
         'audio/webm',
-        'audio/mp4',
       ];
 
       const selectedMimeType = typeof MediaRecorder.isTypeSupported === 'function'

@@ -2184,19 +2184,6 @@ https://is.gd/oL6gEO`;
         return isArabic ? 'تم تسليم الواجب.' : 'Assignment submitted.';
       };
 
-      const guessAudioMimeFromBase64 = (value) => {
-        const trimmed = String(value || '').trim();
-        if (!trimmed) return '';
-
-        if (trimmed.startsWith('UklGR')) return 'audio/wav';
-        if (trimmed.startsWith('SUQz') || trimmed.startsWith('/+MYx')) return 'audio/mpeg';
-        if (trimmed.startsWith('GkXf')) return 'audio/webm';
-        if (trimmed.startsWith('T2dn')) return 'audio/ogg';
-        if (trimmed.startsWith('AAAA') && trimmed.includes('Z0eXB')) return 'audio/mp4';
-
-        return '';
-      };
-
       const resolveAnswerAudioSource = (answer) => {
         const directCandidates = [
           answer?.audioBase64,
@@ -2216,16 +2203,8 @@ https://is.gd/oL6gEO`;
           if (direct.startsWith('data:') || direct.startsWith('blob:') || direct.startsWith('http://') || direct.startsWith('https://')) {
             return direct;
           }
-          if (direct.startsWith('local-file://')) {
-            return '';
-          }
-          if (/^[a-zA-Z]:[\\/]/.test(direct) || direct.startsWith('\\') || direct.startsWith('/')) {
-            return '';
-          }
           // Backward compatibility: some old submissions stored raw base64 only.
-          const mimeHint = String(answer?.audioMimeType || answer?.mimeType || answer?.audioType || '').trim();
-          const resolvedMime = mimeHint || guessAudioMimeFromBase64(direct) || 'audio/webm';
-          return `data:${resolvedMime};base64,${direct}`;
+          return `data:audio/webm;base64,${direct}`;
         }
 
         if (answer?.audio && typeof answer.audio === 'object') {
@@ -2820,7 +2799,6 @@ https://is.gd/oL6gEO`;
             answerText: answer?.answerText || '',
             selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
             audioBase64: audioSource,
-            audioMimeType: answer?.audioMimeType || answer?.mimeType || undefined,
             grade: typeof answer?.grade === 'number' ? answer.grade : undefined,
             isCorrect: typeof answer?.isCorrect === 'boolean' ? answer.isCorrect : undefined,
             teacherNote: typeof answer?.teacherNote === 'string' ? answer.teacherNote : '',
@@ -2846,7 +2824,6 @@ https://is.gd/oL6gEO`;
             answerText: matchedAnswer.answerText || '',
             selectedOptionIndex: typeof matchedAnswer.selectedOptionIndex === 'number' ? matchedAnswer.selectedOptionIndex : undefined,
             audioBase64: matchedAnswer.audioBase64,
-            audioMimeType: matchedAnswer.audioMimeType,
             grade: typeof matchedAnswer.grade === 'number' ? matchedAnswer.grade : undefined,
             isCorrect: typeof matchedAnswer.isCorrect === 'boolean' ? matchedAnswer.isCorrect : undefined,
             teacherNote: matchedAnswer.teacherNote || '',
@@ -3016,18 +2993,25 @@ https://is.gd/oL6gEO`;
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           }
 
-          const mimeCandidates = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
+          // Prefer AAC in MP4 (Safari + iOS); Chrome often lists WebM first — WebM is not playable in iOS Safari <audio>.
+          const mp4MimeCandidates = [
+            'audio/mp4;codecs=mp4a.40.2',
+            'audio/mp4;codecs=mp4a',
             'audio/mp4',
           ];
-          const selectedMimeType = typeof MediaRecorder?.isTypeSupported === 'function'
-            ? (mimeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '')
-            : '';
+          const webmMimeCandidates = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+          ];
+          const isTypeSupported = typeof MediaRecorder?.isTypeSupported === 'function'
+            ? (candidate) => MediaRecorder.isTypeSupported(candidate)
+            : () => false;
 
-          if (typeof MediaRecorder !== 'undefined' && selectedMimeType) {
+          const selectedMp4Type = mp4MimeCandidates.find(isTypeSupported) || '';
+
+          if (typeof MediaRecorder !== 'undefined' && selectedMp4Type) {
             const recorder = new MediaRecorder(stream, {
-              mimeType: selectedMimeType,
+              mimeType: selectedMp4Type,
               audioBitsPerSecond: 128000,
             });
 
@@ -3038,7 +3022,7 @@ https://is.gd/oL6gEO`;
               }
             };
             recorder.onstop = () => {
-              const blob = new Blob(chunksRef.current, { type: recorder.mimeType || selectedMimeType });
+              const blob = new Blob(chunksRef.current, { type: recorder.mimeType || selectedMp4Type });
               finalizeQuizRecording(blob);
               cleanupQuizRecording();
             };
@@ -3059,9 +3043,30 @@ https://is.gd/oL6gEO`;
           const mediaStreamRecorderType = RecordRTC?.MediaStreamRecorder || (typeof MediaStreamRecorder !== 'undefined' ? MediaStreamRecorder : null);
           const stereoRecorderType = RecordRTC?.StereoAudioRecorder || (typeof StereoAudioRecorder !== 'undefined' ? StereoAudioRecorder : null);
 
-          const recorder = new RecordRTC(stream, selectedMimeType && mediaStreamRecorderType ? {
+          // No MP4 encoder: use WAV (universal playback on iPhone) instead of WebM.
+          if (stereoRecorderType) {
+            const recorder = new RecordRTC(stream, {
+              type: 'audio',
+              mimeType: 'audio/wav',
+              recorderType: stereoRecorderType,
+              numberOfAudioChannels: 1,
+              desiredSampRate: 48000,
+              bufferSize: 4096,
+            });
+
+            recorder.startRecording();
+
+            streamRef.current = stream;
+            mediaRecorderRef.current = recorder;
+            recordingMetaRef.current = { questionKey, questionId };
+            setRecordingQuestionKey(questionKey);
+            return;
+          }
+
+          const selectedWebmType = webmMimeCandidates.find(isTypeSupported) || '';
+          const recorder = new RecordRTC(stream, selectedWebmType && mediaStreamRecorderType ? {
             type: 'audio',
-            mimeType: selectedMimeType,
+            mimeType: selectedWebmType,
             recorderType: mediaStreamRecorderType,
             numberOfAudioChannels: 1,
             audioBitsPerSecond: 128000,
@@ -3091,8 +3096,7 @@ https://is.gd/oL6gEO`;
         if (!blob || !meta) return;
 
         const previewUrl = URL.createObjectURL(blob);
-        const mimeType = String(blob.type || '').trim();
-        upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioPreviewUrl: previewUrl, audioMimeType: mimeType || undefined });
+        upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioPreviewUrl: previewUrl });
 
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -3119,7 +3123,7 @@ https://is.gd/oL6gEO`;
         if (current?.audioPreviewUrl) {
           URL.revokeObjectURL(current.audioPreviewUrl);
         }
-        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined, audioPreviewUrl: undefined, audioMimeType: undefined });
+        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined, audioPreviewUrl: undefined });
       };
 
       const submitTajweedQuiz = async () => {
