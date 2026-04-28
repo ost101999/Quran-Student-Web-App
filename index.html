@@ -4686,22 +4686,22 @@ https://is.gd/oL6gEO`;
                   <i data-lucide="x" className="w-5 h-5"></i>
                 </button>
 
-                <div className="text-center mb-5">
-                  <p className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-teal-400/80 font-black mb-1 opacity-80">{t.tajweedQuizTitle}</p>
-                  <h3 className={`text-2xl md:text-3xl font-extrabold text-white leading-tight ${headerFontClass} drop-shadow-[0_2px_10px_rgba(20,184,166,0.3)]`}>
-                    {selectedTajweedQuiz.lessonTitle}
-                  </h3>
-                  <div className="h-1 w-12 bg-islamic-gold/40 mx-auto mt-3 rounded-full"></div>
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-teal-500/20 text-teal-300 mb-1 border border-teal-400/30">
+                    <i data-lucide="graduation-cap" className="w-5 h-5"></i>
+                  </div>
+                  <h3 className={`text-lg font-bold text-teal-200 ${headerFontClass}`}>{t.tajweedQuizTitle}</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5 opacity-70 font-medium">{selectedTajweedQuiz.lessonTitle}</p>
                 </div>
 
                 {selectedTajweedQuiz.missing ? (
                   <p className="text-slate-300 text-center">{t.noTajweedQuiz}</p>
                 ) : (
-                  <div ref={quizScrollRef} className="space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 md:px-3 lg:px-4 pt-1">
+                  <div ref={quizScrollRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 md:px-3 lg:px-4">
                     <button
                       type="button"
                       onClick={openLearningRoadmapPage}
-                      className="w-fit mx-auto flex items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-500/10 px-6 py-2 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] mb-2"
+                      className="w-[75%] mx-auto flex items-center justify-center gap-2 rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-bold text-sky-100 hover:bg-sky-500/25 transition-colors mb-2"
                     >
                       <i data-lucide="map" className="w-3.5 h-3.5"></i>
                       {t.openLearningRoadmap}
