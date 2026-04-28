@@ -3269,7 +3269,11 @@ https://is.gd/oL6gEO`;
         setQuizStatusMessage('');
         setIsQuizSubmitting(true);
 
-        const submissionId = `${selectedTajweedQuiz.assignmentId}_sub_${Date.now()}`;
+        const existingReviewAttemptId = String(selectedTajweedQuiz.reviewAttemptId || '').trim();
+        const isReviewResubmission = !!existingReviewAttemptId;
+        const submissionId = isReviewResubmission
+          ? existingReviewAttemptId
+          : `${selectedTajweedQuiz.assignmentId}_sub_${Date.now()}`;
         const answers = questions.map((question, index) => {
           const questionKey = getQuestionKey(question, index);
           const draft = quizDraftAnswers[questionKey] || {};
@@ -3289,6 +3293,7 @@ https://is.gd/oL6gEO`;
           studentId: student.id,
           submittedAt: Date.now(),
           answers,
+          updatedAt: Date.now(),
         };
 
         try {
