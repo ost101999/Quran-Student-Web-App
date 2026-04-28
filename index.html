@@ -2184,6 +2184,29 @@ https://is.gd/oL6gEO`;
         return isArabic ? 'تم تسليم الواجب.' : 'Assignment submitted.';
       };
 
+      const normalizeAudioDataUrl = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw.startsWith('data:audio/')) return raw;
+
+        const match = raw.match(/^data:(audio\/[^;,]+)(?:;[^,]*)?,(.*)$/i);
+        if (!match) return raw;
+
+        const mime = String(match[1] || '').toLowerCase();
+        const payload = match[2] || '';
+
+        if (mime.includes('mp4') || mime.includes('m4a') || mime.includes('aac')) {
+          return `data:audio/mp4;base64,${payload}`;
+        }
+        if (mime.includes('webm')) {
+          return `data:audio/webm;base64,${payload}`;
+        }
+        if (mime.includes('wav') || mime.includes('wave')) {
+          return `data:audio/wav;base64,${payload}`;
+        }
+
+        return raw;
+      };
+
       const resolveAnswerAudioSource = (answer) => {
         const directCandidates = [
           answer?.audioBase64,
@@ -2201,7 +2224,7 @@ https://is.gd/oL6gEO`;
           .find(Boolean);
         if (direct) {
           if (direct.startsWith('data:') || direct.startsWith('blob:') || direct.startsWith('http://') || direct.startsWith('https://')) {
-            return direct;
+            return normalizeAudioDataUrl(direct);
           }
           // Backward compatibility: some old submissions stored raw base64 only.
           return `data:audio/webm;base64,${direct}`;
@@ -2209,7 +2232,7 @@ https://is.gd/oL6gEO`;
 
         if (answer?.audio && typeof answer.audio === 'object') {
           const nested = String(answer.audio?.base64 || answer.audio?.dataUrl || answer.audio?.url || '').trim();
-          if (nested) return nested;
+          if (nested) return normalizeAudioDataUrl(nested);
         }
 
         return '';
@@ -3121,7 +3144,7 @@ https://is.gd/oL6gEO`;
 
         const reader = new FileReader();
         reader.onloadend = () => {
-          const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+          const dataUrl = normalizeAudioDataUrl(typeof reader.result === 'string' ? reader.result : '');
           if (!dataUrl) return;
           upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
         };
