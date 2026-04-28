@@ -4944,7 +4944,6 @@ https://is.gd/oL6gEO`;
 
                     {selectedTajweedQuiz.assignmentId
                       && !selectedTajweedQuiz.missing
-                      && !String(selectedTajweedQuiz.reviewAttemptId || '').trim()
                       && (Array.isArray(selectedTajweedQuiz.questions) ? selectedTajweedQuiz.questions : []).length > 0 && (
                       <button
                         type="button"
@@ -4952,8 +4951,12 @@ https://is.gd/oL6gEO`;
                         disabled={isQuizSubmitting}
                         className="w-full mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-600/80 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                       >
-                        <i data-lucide="send" className="w-4 h-4"></i>
-                        {isQuizSubmitting ? t.submittingQuiz : t.submitQuiz}
+                        <i data-lucide={isQuizSubmitting ? 'loader-2' : 'send'} className={`w-4 h-4 ${isQuizSubmitting ? 'animate-spin' : ''}`}></i>
+                        {isQuizSubmitting 
+                          ? t.submittingQuiz 
+                          : (!!String(selectedTajweedQuiz.reviewAttemptId || '').trim() 
+                              ? (isArabic ? 'حفظ التعديلات' : 'Save Changes') 
+                              : t.submitQuiz)}
                       </button>
                     )}
                   </div>
