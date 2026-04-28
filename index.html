@@ -176,8 +176,10 @@
     }
 
     .glass-panel {
-      background: rgba(2, 44, 34, 0.95);
-      border: 1px solid rgba(251, 191, 36, 0.15);
+      background: rgba(6, 78, 59, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(251, 191, 36, 0.1);
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -3917,6 +3919,8 @@ https://is.gd/oL6gEO`;
 
           {/* Header Section */}
           <div id="tour-header" className="glass-panel rounded-3xl p-8 mb-8 text-center relative overflow-hidden animate-fade">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-islamic-gold/10 rounded-full blur-3xl -mx-20 -my-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <i data-lucide="book-open" className="w-12 h-12 text-islamic-gold mx-auto mb-4 opacity-80"></i>
             <h1 className={`text-4xl md:text-5xl font-bold text-white ${headerFontClass}`}>
@@ -4007,12 +4011,14 @@ https://is.gd/oL6gEO`;
           <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Attendance Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-2 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
               <p className={`text-slate-400 tracking-widest mb-1 z-10 ${isArabic ? 'text-base font-bold' : 'text-sm uppercase'}`}>{t.classesAttended}</p>
               <h3 className={`text-5xl font-light text-emerald-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(presentCount)}</h3>
             </div>
 
             {/* Absences Stat */}
             <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center animate-fade delay-[400ms] relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
               <p className={`text-slate-400 tracking-widest mb-1 z-10 ${isArabic ? 'text-base font-bold' : 'text-sm uppercase'}`}>{t.missedClasses}</p>
               <h3 className={`text-5xl font-light text-red-400 z-10 ${isArabic ? 'font-sans' : ''}`}>{toArabicNums(absentCount)}</h3>
             </div>
@@ -4231,6 +4237,7 @@ https://is.gd/oL6gEO`;
           {selectedReport && (
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div id="tour-report-modal-content" className="glass-panel w-full max-w-lg rounded-3xl p-4 md:p-6 relative animate-fade border border-islamic-gold/30 shadow-[0_0_30px_rgba(217,119,6,0.1)]">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-islamic-gold/10 rounded-bl-full z-0 pointer-events-none blur-xl"></div>
                 <button
                   onClick={() => setSelectedReport(null)}
                   className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} text-slate-400 hover:text-white transition-colors z-[100] bg-slate-900/50 hover:bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg`}
