@@ -2184,6 +2184,19 @@ https://is.gd/oL6gEO`;
         return isArabic ? 'تم تسليم الواجب.' : 'Assignment submitted.';
       };
 
+      const guessAudioMimeFromBase64 = (value) => {
+        const trimmed = String(value || '').trim();
+        if (!trimmed) return '';
+
+        if (trimmed.startsWith('UklGR')) return 'audio/wav';
+        if (trimmed.startsWith('SUQz') || trimmed.startsWith('/+MYx')) return 'audio/mpeg';
+        if (trimmed.startsWith('GkXf')) return 'audio/webm';
+        if (trimmed.startsWith('T2dn')) return 'audio/ogg';
+        if (trimmed.startsWith('AAAA') && trimmed.includes('Z0eXB')) return 'audio/mp4';
+
+        return '';
+      };
+
       const resolveAnswerAudioSource = (answer) => {
         const directCandidates = [
           answer?.audioBase64,
@@ -2203,8 +2216,16 @@ https://is.gd/oL6gEO`;
           if (direct.startsWith('data:') || direct.startsWith('blob:') || direct.startsWith('http://') || direct.startsWith('https://')) {
             return direct;
           }
+          if (direct.startsWith('local-file://')) {
+            return '';
+          }
+          if (/^[a-zA-Z]:[\\/]/.test(direct) || direct.startsWith('\\') || direct.startsWith('/')) {
+            return '';
+          }
           // Backward compatibility: some old submissions stored raw base64 only.
-          return `data:audio/webm;base64,${direct}`;
+          const mimeHint = String(answer?.audioMimeType || answer?.mimeType || answer?.audioType || '').trim();
+          const resolvedMime = mimeHint || guessAudioMimeFromBase64(direct) || 'audio/webm';
+          return `data:${resolvedMime};base64,${direct}`;
         }
 
         if (answer?.audio && typeof answer.audio === 'object') {
@@ -2799,6 +2820,7 @@ https://is.gd/oL6gEO`;
             answerText: answer?.answerText || '',
             selectedOptionIndex: typeof answer?.selectedOptionIndex === 'number' ? answer.selectedOptionIndex : undefined,
             audioBase64: audioSource,
+            audioMimeType: answer?.audioMimeType || answer?.mimeType || undefined,
             grade: typeof answer?.grade === 'number' ? answer.grade : undefined,
             isCorrect: typeof answer?.isCorrect === 'boolean' ? answer.isCorrect : undefined,
             teacherNote: typeof answer?.teacherNote === 'string' ? answer.teacherNote : '',
@@ -2824,6 +2846,7 @@ https://is.gd/oL6gEO`;
             answerText: matchedAnswer.answerText || '',
             selectedOptionIndex: typeof matchedAnswer.selectedOptionIndex === 'number' ? matchedAnswer.selectedOptionIndex : undefined,
             audioBase64: matchedAnswer.audioBase64,
+            audioMimeType: matchedAnswer.audioMimeType,
             grade: typeof matchedAnswer.grade === 'number' ? matchedAnswer.grade : undefined,
             isCorrect: typeof matchedAnswer.isCorrect === 'boolean' ? matchedAnswer.isCorrect : undefined,
             teacherNote: matchedAnswer.teacherNote || '',
@@ -3068,7 +3091,8 @@ https://is.gd/oL6gEO`;
         if (!blob || !meta) return;
 
         const previewUrl = URL.createObjectURL(blob);
-        upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioPreviewUrl: previewUrl });
+        const mimeType = String(blob.type || '').trim();
+        upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioPreviewUrl: previewUrl, audioMimeType: mimeType || undefined });
 
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -3095,7 +3119,7 @@ https://is.gd/oL6gEO`;
         if (current?.audioPreviewUrl) {
           URL.revokeObjectURL(current.audioPreviewUrl);
         }
-        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined, audioPreviewUrl: undefined });
+        upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined, audioPreviewUrl: undefined, audioMimeType: undefined });
       };
 
       const submitTajweedQuiz = async () => {
