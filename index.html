@@ -2974,11 +2974,12 @@ https://is.gd/oL6gEO`;
         }
 
         try {
+          const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
           const preferredAudioConstraints = {
             audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
+              echoCancellation: isMobileDevice,
+              noiseSuppression: isMobileDevice,
+              autoGainControl: isMobileDevice,
               sampleRate: 48000,
               channelCount: 1
             }
