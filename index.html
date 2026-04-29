@@ -3277,6 +3277,14 @@ https://is.gd/oL6gEO`;
         if (Object.keys(nextErrors).length > 0) {
           setQuizValidationErrors(nextErrors);
           setQuizStatusMessage(t.allQuestionsRequired);
+          
+          const firstErrorKey = Object.keys(nextErrors)[0];
+          setTimeout(() => {
+            const errorElement = document.getElementById(firstErrorKey);
+            if (errorElement) {
+              errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 100);
           return;
         }
 
@@ -4830,6 +4838,7 @@ https://is.gd/oL6gEO`;
                               return (
                                 <div
                                   key={questionKey}
+                                  id={questionKey}
                                   className={`rounded-2xl border p-4 md:p-5 transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.15)] ${hasError ? 'border-rose-400/50 bg-rose-950/30' : 'border-slate-600/40 bg-slate-700/40'}`}
                                 >
                                   <div className="mb-3 md:mb-4">
