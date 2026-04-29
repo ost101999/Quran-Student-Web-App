@@ -683,6 +683,7 @@
       const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm, onCancel }
       const [quizSuccessOverlay, setQuizSuccessOverlay] = useState(false);
       const [isQuizSuccessExiting, setIsQuizSuccessExiting] = useState(false);
+      const [wasSubmitAttempted, setWasSubmitAttempted] = useState(false);
       const [tick, setTick] = useState(0); // updates every minute for countdown
 
       const mediaRecorderRef = useRef(null);
@@ -3022,6 +3023,7 @@ https://is.gd/oL6gEO`;
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(false);
         setSelectedTajweedQuiz(null);
+        setWasSubmitAttempted(false);
       };
 
       const stopQuizRecording = () => {
@@ -3218,6 +3220,9 @@ https://is.gd/oL6gEO`;
           upsertQuizDraftAnswer(meta.questionKey, meta.questionId, { audioBase64: dataUrl });
         };
         reader.readAsDataURL(blob);
+        if (wasSubmitAttempted) {
+          setTimeout(submitTajweedQuiz, 300);
+        }
       };
 
       const cleanupQuizRecording = () => {
@@ -3277,6 +3282,7 @@ https://is.gd/oL6gEO`;
         if (Object.keys(nextErrors).length > 0) {
           setQuizValidationErrors(nextErrors);
           setQuizStatusMessage(t.allQuestionsRequired);
+          setWasSubmitAttempted(true);
           
           const firstErrorKey = Object.keys(nextErrors)[0];
           setTimeout(() => {
@@ -3360,6 +3366,7 @@ https://is.gd/oL6gEO`;
           setTimeout(() => {
             setQuizSuccessOverlay(false);
             setIsQuizSuccessExiting(false);
+            setWasSubmitAttempted(false);
           }, 1600);
         } catch (err) {
           console.error(err);
@@ -4886,6 +4893,9 @@ https://is.gd/oL6gEO`;
                                               if (isReviewMode) return;
                                               upsertQuizDraftAnswer(questionKey, q.id || questionKey, { selectedOptionIndex: idx });
                                               setQuizStatusMessage('');
+                                              if (wasSubmitAttempted) {
+                                                setTimeout(submitTajweedQuiz, 100);
+                                              }
                                             }}
                                             className="accent-teal-400 shrink-0 mt-1 cursor-pointer"
                                           />
