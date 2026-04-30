@@ -749,10 +749,12 @@
       }, []);
 
       useEffect(() => {
-        if (!loading && window.lucide) {
+        if (loading || !window.lucide) return;
+        const rafId = window.requestAnimationFrame(() => {
           window.lucide.createIcons();
-        }
-      }, [loading, selectedTajweedQuiz, quizSuccessOverlay]);
+        });
+        return () => window.cancelAnimationFrame(rafId);
+      }, [loading, selectedReport, selectedTajweedQuiz, quizSuccessOverlay, showSchedule]);
 
 
       useEffect(() => {
