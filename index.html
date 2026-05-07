@@ -685,6 +685,7 @@
       const [isQuizSuccessExiting, setIsQuizSuccessExiting] = useState(false);
       const [wasSubmitAttempted, setWasSubmitAttempted] = useState(false);
       const [expandedVideoLessonId, setExpandedVideoLessonId] = useState('');
+      const [expandedHtmlLessonId, setExpandedHtmlLessonId] = useState('');
       const [tick, setTick] = useState(0); // updates every minute for countdown
 
       const mediaRecorderRef = useRef(null);
@@ -1294,6 +1295,7 @@ https://is.gd/oL6gEO`;
         previousSolutionSubmittedAt: "تاريخ الحل",
         previousSolutionPreviewText: "ملخص الإجابة",
         autoStartQuizIn: "سيبدأ اختبار قصير خلال",
+        watchLessonVideo: "شاهد الشرح",
         viewLessonExplanation: "عرض الشرح",
         downloadLessonPdf: "ملف الشرح",
         startCurrentQuiz: "اختبار قصير",
@@ -1418,6 +1420,7 @@ https://is.gd/oL6gEO`;
         previousSolutionSubmittedAt: "Submitted At",
         previousSolutionPreviewText: "Answer Preview",
         autoStartQuizIn: "Auto-starting short quiz in",
+        watchLessonVideo: "Watch Video",
         viewLessonExplanation: "View Explanation",
         downloadLessonPdf: "Explanation File",
         startCurrentQuiz: "Start Quiz",
@@ -4635,7 +4638,7 @@ https://is.gd/oL6gEO`;
                                   onClick={() => setExpandedVideoLessonId(expandedVideoLessonId === lessonId ? '' : lessonId)}
                                   className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
                                 >
-                                  <i data-lucide="play-circle" className="hidden md:block w-3.5 h-3.5"></i>
+                                  <i data-lucide="play-circle" className="w-3.5 h-3.5"></i>
                                   {expandedVideoLessonId === lessonId ? (isArabic ? 'إغلاق الفيديو' : 'Close Video') : t.watchLessonVideo}
                                 </button>
                               ) : (
@@ -4652,6 +4655,20 @@ https://is.gd/oL6gEO`;
                               {hasPdfResource ? (() => {
                                 const urlLower = pdfUrl.toLowerCase();
                                 const isHtmlOrWeb = urlLower.includes('.html') || urlLower.includes('.php') || urlLower.startsWith('data:text/html') || (urlLower.startsWith('http') && !urlLower.includes('.pdf') && !urlLower.includes('.pdf?'));
+                                
+                                if (isHtmlOrWeb) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedHtmlLessonId(expandedHtmlLessonId === lessonId ? '' : lessonId)}
+                                      className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
+                                    >
+                                      <i data-lucide={expandedHtmlLessonId === lessonId ? "x" : "book-open"} className="w-3.5 h-3.5"></i>
+                                      {expandedHtmlLessonId === lessonId ? (isArabic ? 'إغلاق الشرح' : 'Close View') : t.viewLessonExplanation}
+                                    </button>
+                                  );
+                                }
+
                                 return (
                                   <a
                                     href={pdfUrl}
@@ -4659,8 +4676,8 @@ https://is.gd/oL6gEO`;
                                     rel="noopener noreferrer"
                                     className="inline-flex min-w-0 flex-1 md:flex-none items-center justify-center gap-1 rounded-md border border-slate-500/35 bg-slate-800/45 px-2 py-1.5 text-[10px] md:text-xs font-semibold text-slate-100 hover:bg-slate-700/55 transition-colors whitespace-nowrap"
                                   >
-                                    <i data-lucide={isHtmlOrWeb ? "book-open" : "file-down"} className="hidden md:block w-3.5 h-3.5"></i>
-                                    {isHtmlOrWeb ? t.viewLessonExplanation : t.downloadLessonPdf}
+                                    <i data-lucide="file-down" className="w-3.5 h-3.5"></i>
+                                    {t.downloadLessonPdf}
                                   </a>
                                 );
                               })() : (
@@ -4710,6 +4727,22 @@ https://is.gd/oL6gEO`;
                                 />
                               </div>
                             )}
+
+                            {expandedHtmlLessonId === lessonId && pdfUrl && (() => {
+                              const isDataHtml = pdfUrl.startsWith('data:text/html');
+                              const htmlContent = isDataHtml ? decodeURIComponent(pdfUrl.split(',')[1]) : '';
+                              return (
+                                <div className="mt-3 animate-fade overflow-hidden rounded-xl border border-slate-500/30 shadow-xl bg-white h-[500px]">
+                                  <iframe
+                                    className="w-full h-full border-none"
+                                    src={!isDataHtml ? pdfUrl : undefined}
+                                    srcDoc={isDataHtml ? htmlContent : undefined}
+                                    title="شرح الدرس"
+                                    sandbox="allow-scripts allow-same-origin"
+                                  />
+                                </div>
+                              );
+                            })()}
 
                           </div>
 
