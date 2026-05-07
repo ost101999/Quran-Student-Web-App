@@ -881,6 +881,8 @@ function App() {
                           const urlLower = url.toLowerCase();
                           const isPdf = urlLower.startsWith('data:application/pdf') || urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
                           const isHtmlOrWeb = urlLower.startsWith('data:text/html') || urlLower.includes('.html') || urlLower.includes('.php') || (urlLower.startsWith('http') && !isPdf);
+                          const isDataHtml = urlLower.startsWith('data:text/html');
+                          const htmlContent = isDataHtml ? decodeURIComponent(url.substring(url.indexOf(',') + 1)) : '';
 
                           if (isHtmlOrWeb) {
                             return (
@@ -901,9 +903,11 @@ function App() {
                                   </a>
                                 </div>
                                 <iframe
-                                  src={selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl}
-                                  className="w-full h-[600px] border-none bg-white"
+                                  src={!isDataHtml ? (selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl) : undefined}
+                                  srcDoc={isDataHtml ? htmlContent : undefined}
+                                  className="w-full h-[600px] border-none bg-white rounded-xl shadow-inner"
                                   title="محتوى شرح الدرس"
+                                  sandbox="allow-scripts allow-same-origin"
                                 />
                               </div>
                             );

@@ -4730,7 +4730,7 @@ https://is.gd/oL6gEO`;
 
                             {expandedHtmlLessonId === lessonId && pdfUrl && (() => {
                               const isDataHtml = pdfUrl.startsWith('data:text/html');
-                              const htmlContent = isDataHtml ? decodeURIComponent(pdfUrl.split(',')[1]) : '';
+                              const htmlContent = isDataHtml ? decodeURIComponent(pdfUrl.substring(pdfUrl.indexOf(',') + 1)) : '';
                               return (
                                 <div className="mt-3 animate-fade overflow-hidden rounded-xl border border-slate-500/30 shadow-xl bg-white h-[500px]">
                                   <iframe
