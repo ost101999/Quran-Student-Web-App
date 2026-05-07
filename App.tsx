@@ -148,6 +148,22 @@ const getLocalizedQuestionText = (
   return question.textAr || question.text || question.textEn || '';
 };
 
+const getYouTubeEmbedUrl = (url?: string) => {
+  if (!url) return '';
+  let videoId = '';
+  try {
+    if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1].split('?')[0];
+    } else if (url.includes('youtube.com/watch')) {
+      const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+      videoId = urlObj.searchParams.get('v') || '';
+    } else if (url.includes('youtube.com/embed/')) {
+      return url;
+    }
+  } catch (e) {}
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+};
+
 const getLocalizedQuestionOptions = (
   question: TajweedQuestion,
   _lesson: TajweedLesson | null,
@@ -849,7 +865,7 @@ function App() {
                           <div className="mt-4 animate-fade">
                             <iframe
                               className="w-full aspect-video rounded-2xl shadow-lg border border-slate-200"
-                              src={(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl || '').replace('watch?v=', 'embed/')}
+                              src={getYouTubeEmbedUrl(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl || '')}
                               title="شرح الدرس مرئي"
                               allowFullScreen
                             />
