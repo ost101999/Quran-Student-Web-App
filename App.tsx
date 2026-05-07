@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock3, FileAudio, FileText, Mic, PauseCircle, PlayCircle, Send, Video } from 'lucide-react';
+import { AlertCircle, BookOpen, Calendar, CheckCircle2, Clock3, ExternalLink, FileAudio, FileText, Mic, PauseCircle, PlayCircle, Send, Video } from 'lucide-react';
 import './App.css';
 
 type QuestionType = 'multiple_choice' | 'text' | 'audio';
@@ -54,6 +54,8 @@ interface TajweedLesson {
   targetAge?: 'kids' | 'adults' | 'all';
   questions: TajweedQuestion[];
   examVersions?: TajweedExamVersion[];
+  videoUrl?: string;
+  pdfUrl?: string;
 }
 
 interface TajweedAssignment {
@@ -827,6 +829,71 @@ function App() {
                       <h3 className="text-2xl font-extrabold">{selectedLesson.title}</h3>
                       <p className="text-slate-500 mt-1">أجب على جميع الأسئلة ثم اضغط إرسال.</p>
                     </div>
+
+                    {(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl) && (
+                      <div className="mb-6">
+                        <iframe
+                          className="w-full aspect-video rounded-2xl shadow-sm border border-slate-200"
+                          src={(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl || '').replace('watch?v=', 'embed/')}
+                          title="شرح الدرس مرئي"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+
+                    {(selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl) && (
+                      <div className="mb-6">
+                        {(() => {
+                          const url = (selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl || '');
+                          const urlLower = url.toLowerCase();
+                          const isPdf = urlLower.startsWith('data:application/pdf') || urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
+                          const isHtmlOrWeb = urlLower.startsWith('data:text/html') || urlLower.includes('.html') || urlLower.includes('.php') || (urlLower.startsWith('http') && !isPdf);
+
+                          if (isHtmlOrWeb) {
+                            return (
+                              <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+                                <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText size={18} className="text-slate-500" />
+                                    <span className="font-bold text-slate-700 font-arabic">شرح الدرس</span>
+                                  </div>
+                                  <a 
+                                    href={selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="text-sky-600 text-sm font-bold flex items-center gap-1 hover:text-sky-700"
+                                  >
+                                    <span>فتح في نافذة جديدة</span>
+                                    <ExternalLink size={14} />
+                                  </a>
+                                </div>
+                                <iframe
+                                  src={selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl}
+                                  className="w-full h-[600px] border-none bg-white"
+                                  title="محتوى شرح الدرس"
+                                />
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <a
+                              href={selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
+                            >
+                              <FileText className="text-emerald-600" />
+                              <div className="flex-1 text-right">
+                                <p className="font-bold font-arabic text-lg">فتح ملف شرح الدرس (PDF)</p>
+                                <p className="text-sm opacity-80 font-arabic">اضغط هنا لمراجعة شرح الدرس قبل البدء</p>
+                              </div>
+                              <ExternalLink size={20} className="opacity-40" />
+                            </a>
+                          );
+                        })()}
+                      </div>
+                    )}
 
                     <div className="space-y-5">
                       {selectedLessonQuestionSections.map((section) => (
