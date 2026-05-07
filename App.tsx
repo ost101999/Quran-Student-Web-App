@@ -250,6 +250,7 @@ function App() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'history'>('overview');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [showVideo, setShowVideo] = useState(false);
   const [draftAnswersByAssignment, setDraftAnswersByAssignment] = useState<Record<string, Record<string, DraftAnswer>>>({});
   const [recordingQuestionId, setRecordingQuestionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -832,12 +833,28 @@ function App() {
 
                     {(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl) && (
                       <div className="mb-6">
-                        <iframe
-                          className="w-full aspect-video rounded-2xl shadow-sm border border-slate-200"
-                          src={(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl || '').replace('watch?v=', 'embed/')}
-                          title="شرح الدرس مرئي"
-                          allowFullScreen
-                        />
+                        <button
+                          onClick={() => setShowVideo(!showVideo)}
+                          className="flex items-center gap-3 p-4 w-full rounded-2xl bg-rose-50 border border-rose-100 text-rose-800 hover:bg-rose-100 transition-colors shadow-sm"
+                        >
+                          <Video className="text-rose-600" />
+                          <div className="flex-1 text-right">
+                            <p className="font-bold font-arabic text-lg">{showVideo ? 'إغلاق الفيديو' : 'شاهد شرح الدرس (فيديو)'}</p>
+                            <p className="text-sm opacity-80 font-arabic">{showVideo ? 'اضغط للإغلاق' : 'اضغط لمشاهدة شرح المعلم لهذا الدرس'}</p>
+                          </div>
+                          <PlayCircle size={20} className={showVideo ? 'rotate-180 transition-transform' : ''} />
+                        </button>
+                        
+                        {showVideo && (
+                          <div className="mt-4 animate-fade">
+                            <iframe
+                              className="w-full aspect-video rounded-2xl shadow-lg border border-slate-200"
+                              src={(selectedAssignmentVersion?.videoUrl || selectedLesson.videoUrl || '').replace('watch?v=', 'embed/')}
+                              title="شرح الدرس مرئي"
+                              allowFullScreen
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
 
