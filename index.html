@@ -1421,8 +1421,8 @@ https://is.gd/oL6gEO`;
         previousSolutionPreviewText: "Answer Preview",
         autoStartQuizIn: "Auto-starting short quiz in",
         watchLessonVideo: "Watch Video",
-        viewLessonExplanation: "View Explanation",
-        downloadLessonPdf: "Explanation File",
+        viewLessonExplanation: "Summary",
+        downloadLessonPdf: "Summary",
         startCurrentQuiz: "Start Quiz",
         reviewQuiz: "Review Quiz",
         openLearningRoadmap: "Open Learning Path",
@@ -4769,16 +4769,34 @@ https://is.gd/oL6gEO`;
                               </div>
                             )}
 
-                            {expandedHtmlLessonId === lessonId && pdfUrl && (
-                              <div className="mt-3 animate-fade overflow-hidden rounded-xl border border-slate-500/30 shadow-xl bg-white h-[500px]">
-                                <iframe
-                                  className="w-full h-full border-none"
-                                  src={getBlobUrl(pdfUrl)}
-                                  title="شرح الدرس"
-                                  sandbox="allow-scripts allow-same-origin"
-                                />
-                              </div>
-                            )}
+                            {expandedHtmlLessonId === lessonId && pdfUrl && (() => {
+                              const urlLower = pdfUrl.toLowerCase();
+                              const isImage = urlLower.startsWith('data:image/') || urlLower.endsWith('.svg') || urlLower.endsWith('.png') || urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg');
+                              
+                              if (isImage) {
+                                return (
+                                  <div className="mt-3 animate-fade overflow-hidden rounded-xl border border-slate-500/30 shadow-xl bg-white p-4 flex justify-center">
+                                    <img
+                                      src={pdfUrl}
+                                      className="max-w-full h-auto rounded-lg shadow-sm cursor-zoom-in"
+                                      alt="شرح الدرس"
+                                      onClick={() => window.open(pdfUrl, '_blank')}
+                                    />
+                                  </div>
+                                );
+                              }
+                              
+                              return (
+                                <div className="mt-3 animate-fade overflow-hidden rounded-xl border border-slate-500/30 shadow-xl bg-white h-[500px]">
+                                  <iframe
+                                    className="w-full h-full border-none"
+                                    src={getBlobUrl(pdfUrl)}
+                                    title="شرح الدرس"
+                                    sandbox="allow-scripts allow-same-origin"
+                                  />
+                                </div>
+                              );
+                            })()}
 
                           </div>
 
