@@ -882,22 +882,34 @@ function App() {
                           const isPdf = urlLower.startsWith('data:application/pdf') || urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
                           const isHtmlOrWeb = urlLower.startsWith('data:text/html') || urlLower.includes('.html') || urlLower.includes('.php') || (urlLower.startsWith('http') && !isPdf);
                           
+                          // Helper to create blob URL from data URL
+                          const getSafeUrl = (rawUrl: string) => {
+                            if (rawUrl.startsWith('data:text/html')) {
+                              try {
+                                const [meta, data] = rawUrl.split(',');
+                                const isBase64 = meta.includes('base64');
+                                const bin = isBase64 ? atob(data) : decodeURIComponent(data);
+                                const arr = new Uint8Array(bin.length);
+                                for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                                const blob = new Blob([arr], { type: 'text/html' });
+                                return URL.createObjectURL(blob);
+                              } catch (e) {
+                                console.error('Blob creation failed', e);
+                                return rawUrl;
+                              }
+                            }
+                            return rawUrl;
+                          };
+
                           const handleOpenNewTab = (e: React.MouseEvent) => {
                             if (url.startsWith('data:')) {
                               e.preventDefault();
-                              const [meta, data] = url.split(',');
-                              const isBase64 = meta.includes('base64');
-                              const mime = meta.split(':')[1].split(';')[0];
-                              const bin = isBase64 ? atob(data) : decodeURIComponent(data);
-                              const arr = new Uint8Array(bin.length);
-                              for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-                              const blob = new Blob([arr], { type: mime });
-                              const blobUrl = URL.createObjectURL(blob);
-                              window.open(blobUrl, '_blank');
+                              window.open(getSafeUrl(url), '_blank');
                             }
                           };
 
                           if (isHtmlOrWeb) {
+                            const safeUrl = getSafeUrl(url);
                             return (
                               <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
                                 <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
@@ -917,7 +929,7 @@ function App() {
                                   </a>
                                 </div>
                                 <iframe
-                                  src={url}
+                                  src={safeUrl}
                                   className="w-full h-[600px] border-none bg-white rounded-xl shadow-inner"
                                   title="محتوى شرح الدرس"
                                   sandbox="allow-scripts allow-same-origin"
