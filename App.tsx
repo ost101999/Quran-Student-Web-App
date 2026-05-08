@@ -881,8 +881,21 @@ function App() {
                           const urlLower = url.toLowerCase();
                           const isPdf = urlLower.startsWith('data:application/pdf') || urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
                           const isHtmlOrWeb = urlLower.startsWith('data:text/html') || urlLower.includes('.html') || urlLower.includes('.php') || (urlLower.startsWith('http') && !isPdf);
-                          const isDataHtml = urlLower.startsWith('data:text/html');
-                          const htmlContent = isDataHtml ? decodeURIComponent(url.substring(url.indexOf(',') + 1)) : '';
+                          
+                          const handleOpenNewTab = (e: React.MouseEvent) => {
+                            if (url.startsWith('data:')) {
+                              e.preventDefault();
+                              const [meta, data] = url.split(',');
+                              const isBase64 = meta.includes('base64');
+                              const mime = meta.split(':')[1].split(';')[0];
+                              const bin = isBase64 ? atob(data) : decodeURIComponent(data);
+                              const arr = new Uint8Array(bin.length);
+                              for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                              const blob = new Blob([arr], { type: mime });
+                              const blobUrl = URL.createObjectURL(blob);
+                              window.open(blobUrl, '_blank');
+                            }
+                          };
 
                           if (isHtmlOrWeb) {
                             return (
@@ -893,9 +906,10 @@ function App() {
                                     <span className="font-bold text-slate-700 font-arabic">شرح الدرس</span>
                                   </div>
                                   <a 
-                                    href={selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl} 
+                                    href={url} 
                                     target="_blank" 
                                     rel="noreferrer" 
+                                    onClick={handleOpenNewTab}
                                     className="text-sky-600 text-sm font-bold flex items-center gap-1 hover:text-sky-700"
                                   >
                                     <span>فتح في نافذة جديدة</span>
@@ -903,8 +917,7 @@ function App() {
                                   </a>
                                 </div>
                                 <iframe
-                                  src={!isDataHtml ? (selectedAssignmentVersion?.pdfUrl || selectedLesson.pdfUrl) : undefined}
-                                  srcDoc={isDataHtml ? htmlContent : undefined}
+                                  src={url}
                                   className="w-full h-[600px] border-none bg-white rounded-xl shadow-inner"
                                   title="محتوى شرح الدرس"
                                   sandbox="allow-scripts allow-same-origin"
