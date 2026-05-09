@@ -4604,9 +4604,14 @@ https://is.gd/oL6gEO`;
                     }
 
                     let lessonCounter = -1;
+                    let displayLessonCounter = 0;
 
                     const renderLessonCard = (lesson, sectionId, lessonIndex) => {
                       lessonCounter += 1;
+                      const isSubLesson = !!lesson.parentLessonId;
+                      if (!isSubLesson) {
+                        displayLessonCounter += 1;
+                      }
 
                       const isCurrent = lessonCounter === currentLessonIndex;
                       const lessonId = String(lesson?.id || '').trim() || `lesson_${sectionId}_${lessonIndex}_${lessonCounter}`;
@@ -4615,11 +4620,13 @@ https://is.gd/oL6gEO`;
                       const isSolvedByStudent = !!solvedState?.isSolved || solvedAttempts.length > 0;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
-                      const cardClass = isCurrent
-                        ? 'border-slate-400/55 bg-slate-900/75 text-slate-100 animate-roadmap-breathe'
-                        : (isSolvedByStudent
-                          ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
-                          : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200');
+                      const cardClass = isSubLesson
+                        ? 'border-0 bg-transparent text-slate-300'
+                        : (isCurrent
+                          ? 'border-slate-400/55 bg-slate-900/75 text-slate-100 animate-roadmap-breathe'
+                          : (isSolvedByStudent
+                            ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
+                            : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200'));
 
                       const currentRequestedVersionId = isCurrent
                         ? String(selectedTajweedQuiz?.versionId || '').trim()
@@ -4663,11 +4670,14 @@ https://is.gd/oL6gEO`;
                         <div
                           key={`roadmap_page_lesson_${lessonId}`}
                           data-current-roadmap={isCurrent ? 'true' : 'false'}
-                          className={`rounded-[18px] border p-3 transition-colors ${cardClass} ${lesson.parentLessonId ? 'mr-6' : ''}`}
+                          className={`rounded-[18px] ${isSubLesson ? 'p-1' : 'border p-3'} transition-colors ${cardClass} ${isSubLesson ? 'mr-6' : ''}`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className={`${isArabic ? 'text-lg md:text-xl' : 'text-xs md:text-sm'} font-bold truncate`}>{toArabicNums(lessonCounter + 1)}. {lessonDisplayTitle}</p>
+                              <p className={`${isSubLesson ? (isArabic ? 'text-base md:text-lg' : 'text-xs') : (isArabic ? 'text-lg md:text-xl' : 'text-xs md:text-sm')} font-bold truncate`}>
+                                {isSubLesson ? '↳ ' : `${toArabicNums(displayLessonCounter)}. `}
+                                {lessonDisplayTitle}
+                              </p>
                               <p className={`text-[10px] md:text-xs mt-1 ${isArabic ? 'opacity-80' : 'opacity-90'}`}>{t.questionsCount}: {toArabicNums(languageReadyLessonQuestions.length)}</p>
                             </div>
 
