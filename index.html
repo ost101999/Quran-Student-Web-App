@@ -4806,7 +4806,16 @@ https://is.gd/oL6gEO`;
                         </>
                       );
 
-                      if (isContentOnly) return content;
+                      if (isContentOnly) {
+                        return (
+                          <div
+                            data-current-roadmap={isCurrent ? 'true' : 'false'}
+                            className={cardClass}
+                          >
+                            {content}
+                          </div>
+                        );
+                      }
 
                       return (
                         <div
