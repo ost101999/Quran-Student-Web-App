@@ -4548,11 +4548,25 @@ https://is.gd/oL6gEO`;
                     ];
 
                     const groupedLessons = orderedGroupKeys
-                      .map((groupKey) => ({
-                        key: groupKey,
-                        label: getRoadmapLessonGroupLabel(groupKey),
-                        lessons: groupedMap.get(groupKey) || [],
-                      }))
+                      .map((groupKey) => {
+                        const rawLessons = groupedMap.get(groupKey) || [];
+                        const roots = rawLessons.filter(l => !l.parentLessonId);
+                        const children = rawLessons.filter(l => l.parentLessonId);
+                        const sortedInGroup = [];
+                        roots.forEach(root => {
+                          sortedInGroup.push(root);
+                          const rootChildren = children.filter(child => child.parentLessonId === root.id);
+                          sortedInGroup.push(...rootChildren);
+                        });
+                        const orphanedChildren = children.filter(child => !roots.some(root => root.id === child.parentLessonId));
+                        sortedInGroup.push(...orphanedChildren);
+
+                        return {
+                          key: groupKey,
+                          label: getRoadmapLessonGroupLabel(groupKey),
+                          lessons: sortedInGroup,
+                        };
+                      })
                       .filter((group) => group.lessons.length > 0);
 
                     const orderedSections = [
