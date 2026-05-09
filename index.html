@@ -1795,11 +1795,10 @@ https://is.gd/oL6gEO`;
       };
 
       const FloatingHelpButton = () => {
-        if (hideTourButton) return null;
         return (
           <button
             onClick={startTour}
-            className="fixed bottom-6 left-6 z-20 md:z-[100] bg-islamic-800 text-islamic-light p-3 md:p-4 rounded-full shadow-[0_4px_20px_rgba(217,119,6,0.5)] border border-islamic-gold/50 hover:bg-islamic-900 hover:scale-110 transition-all duration-300"
+            className={`fixed bottom-6 left-6 z-20 md:z-[100] bg-islamic-800 text-islamic-light p-3 md:p-4 rounded-full shadow-[0_4px_20px_rgba(217,119,6,0.5)] border border-islamic-gold/50 hover:bg-islamic-900 hover:scale-110 transition-all duration-300 ${hideTourButton ? 'opacity-0 pointer-events-none scale-0' : 'opacity-100 scale-100'}`}
             title="Start Tour"
           >
             <i data-lucide="help-circle" className="w-6 h-6 md:w-8 md:h-8"></i>
