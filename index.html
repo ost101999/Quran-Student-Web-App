@@ -4622,10 +4622,10 @@ https://is.gd/oL6gEO`;
                       const isSolvedByStudent = !!solvedState?.isSolved || solvedAttempts.length > 0;
                       const isExpanded = expandedRoadmapLessonId === lessonId;
 
-                      const cardClass = isSubLesson
-                        ? 'border-0 bg-transparent text-slate-300'
-                        : (isCurrent
-                          ? 'border-slate-400/55 bg-slate-900/75 text-slate-100 animate-roadmap-breathe'
+                      const cardClass = isCurrent
+                        ? 'border-slate-400/55 bg-slate-900/75 text-slate-100 animate-roadmap-breathe'
+                        : (isSubLesson
+                          ? 'border-0 bg-transparent text-slate-300'
                           : (isSolvedByStudent
                             ? 'border-slate-600/30 bg-slate-900/55 text-slate-300 opacity-60'
                             : 'border-slate-500/45 border-dashed bg-slate-900/70 text-slate-200'));
