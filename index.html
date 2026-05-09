@@ -4806,22 +4806,13 @@ https://is.gd/oL6gEO`;
                         </>
                       );
 
-                      if (isContentOnly) {
-                        return (
-                          <div
-                            data-current-roadmap={isCurrent ? 'true' : 'false'}
-                            className={isCurrent ? 'animate-roadmap-breathe' : ''}
-                          >
-                            {content}
-                          </div>
-                        );
-                      }
+                      if (isContentOnly) return content;
 
                       return (
                         <div
                           key={`roadmap_page_lesson_${lessonId}`}
                           data-current-roadmap={isCurrent ? 'true' : 'false'}
-                          className={`rounded-[18px] p-3 transition-colors ${isCurrent ? 'animate-roadmap-breathe' : `border ${cardClass}`}`}
+                          className={`rounded-[18px] border p-3 transition-colors ${cardClass}`}
                         >
                           {content}
                         </div>
@@ -4851,8 +4842,11 @@ https://is.gd/oL6gEO`;
                               <div className="space-y-3">
                                 {section.group.roots.map((rootLesson, rootIndex) => {
                                   const rootChildren = section.group.children.filter(child => child.parentLessonId === rootLesson.id);
+                                  const isParentCurrent = currentLessonIndex !== -1 && flatLessons[currentLessonIndex]?.id === rootLesson.id;
                                   return (
-                                    <div key={`roadmap_parent_card_${rootLesson.id}`} className="rounded-[18px] border border-slate-500/45 bg-slate-900/70 p-3 transition-colors">
+                                    <div key={`roadmap_parent_card_${rootLesson.id}`} 
+                                         data-current-roadmap={isParentCurrent ? 'true' : 'false'}
+                                         className={`rounded-[18px] border p-3 transition-colors ${isParentCurrent ? 'animate-roadmap-breathe border-slate-400/55 bg-slate-900/75' : 'border-slate-500/45 bg-slate-900/70'}`}>
                                       {/* Render Parent */}
                                       {renderLessonCard(rootLesson, section.id, rootIndex, true)}
                                       
@@ -4861,11 +4855,16 @@ https://is.gd/oL6gEO`;
                                         <div className="mt-3 mr-4 relative">
                                           
                                           <div className="flex flex-col bg-slate-950/40 rounded-xl overflow-hidden border border-slate-700/30">
-                                            {rootChildren.map((child, childIndex) => (
-                                              <div key={`roadmap_child_part_${child.id}`} className="relative p-3 border-b border-slate-700/40 last:border-b-0">
-                                                {renderLessonCard(child, section.id, childIndex, true)}
-                                              </div>
-                                            ))}
+                                            {rootChildren.map((child, childIndex) => {
+                                              const isChildCurrent = currentLessonIndex !== -1 && flatLessons[currentLessonIndex]?.id === child.id;
+                                              return (
+                                                <div key={`roadmap_child_part_${child.id}`} 
+                                                     data-current-roadmap={isChildCurrent ? 'true' : 'false'}
+                                                     className={`relative p-3 border-b border-slate-700/40 last:border-b-0 ${isChildCurrent ? 'animate-roadmap-breathe bg-slate-800/40' : ''}`}>
+                                                  {renderLessonCard(child, section.id, childIndex, true)}
+                                                </div>
+                                              );
+                                            })}
                                           </div>
                                         </div>
                                       )}
