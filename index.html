@@ -4821,7 +4821,7 @@ https://is.gd/oL6gEO`;
                         <div
                           key={`roadmap_page_lesson_${lessonId}`}
                           data-current-roadmap={isCurrent ? 'true' : 'false'}
-                          className={`rounded-[18px] border p-3 transition-colors ${cardClass}`}
+                          className={`rounded-[18px] p-3 transition-colors ${isCurrent ? 'animate-roadmap-breathe' : `border ${cardClass}`}`}
                         >
                           {content}
                         </div>
