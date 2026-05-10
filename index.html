@@ -358,6 +358,13 @@
         transform: translate(-50%, -50%) rotate(90deg) !important;
         transform-origin: center !important;
       }
+      .desktop-only-hint { display: none !important; }
+      .mobile-only-hint { display: block !important; }
+    }
+
+    @media (min-width: 769px) {
+      .desktop-only-hint { display: block !important; }
+      .mobile-only-hint { display: none !important; }
     }
   </style>
 </head>
@@ -700,6 +707,26 @@
         return () => clearTimeout(timer);
       }, []);
 
+      // Escape key listener
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'Escape') {
+            onClose();
+          }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [onClose]);
+
+      // Cleanup to update icons on parent when closed
+      useEffect(() => {
+        return () => {
+          if (window.lucide) {
+            setTimeout(() => window.lucide.createIcons(), 0);
+          }
+        };
+      }, []);
+
       const handleClick = () => {
         const now = Date.now();
         const DOUBLE_CLICK_DELAY = 350;
@@ -732,21 +759,35 @@
             {isHinting && (
               <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-fade pointer-events-none">
                 <div className="text-white text-center space-y-3 p-4">
-                  <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
-                    <div className="absolute inset-0 border-2 border-white rounded-full animate-ping"></div>
-                    <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
-                    <div className="absolute w-3 h-3 bg-amber-300 rounded-full left-1 top-1/2 animate-pinch-left"></div>
-                    <div className="absolute w-3 h-3 bg-amber-300 rounded-full right-1 top-1/2 animate-pinch-right"></div>
-                    <i data-lucide="maximize-2" className="w-6 h-6 text-white relative z-10"></i>
+                  {/* Mobile Hint */}
+                  <div className="mobile-only-hint space-y-3">
+                    <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+                      <div className="absolute inset-0 border-2 border-white rounded-full animate-ping"></div>
+                      <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
+                      <div className="absolute w-3 h-3 bg-amber-300 rounded-full left-1 top-1/2 animate-pinch-left"></div>
+                      <div className="absolute w-3 h-3 bg-amber-300 rounded-full right-1 top-1/2 animate-pinch-right"></div>
+                      <i data-lucide="maximize-2" className="w-6 h-6 text-white relative z-10"></i>
+                    </div>
+                    <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">يمكنك استخدام أصابعك للتقريب والتبعيد</p>
+                    <p className="text-xs text-slate-300">انقر مرتين سريعتين للتكبير والتصغير</p>
                   </div>
-                  <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">يمكنك استخدام أصابعك للتقريب والتبعيد</p>
-                  <p className="text-xs text-slate-300">انقر مرتين سريعتين للتكبير والتصغير</p>
+
+                  {/* Desktop Hint */}
+                  <div className="desktop-only-hint space-y-3">
+                    <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+                      <div className="absolute inset-0 border-2 border-white rounded-full animate-ping"></div>
+                      <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
+                      <i data-lucide="mouse" className="w-6 h-6 text-white relative z-10"></i>
+                    </div>
+                    <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">انقر مرتين متتاليتين للتكبير والتصغير</p>
+                    <p className="text-xs text-slate-300">استخدم الفأرة للسحب والتنقل بعد التكبير</p>
+                  </div>
                 </div>
               </div>
             )}
             <img
               src={src}
-              className={`transition-all duration-500 ${isZoomed ? 'max-w-none w-auto cursor-grab active:cursor-grabbing' : 'max-w-full max-h-full object-contain cursor-pointer'}`}
+              className={`transition-all duration-500 ${isZoomed ? 'w-[150%] max-w-none cursor-grab active:cursor-grabbing' : 'max-w-full max-h-full object-contain cursor-pointer'}`}
               alt="شرح الدرس"
               onClick={handleClick}
             />
