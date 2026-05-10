@@ -760,7 +760,7 @@
           {/* Rotation wrapper for mobile */}
           <div 
             ref={containerRef}
-            className={`relative w-full h-full flex items-center justify-center ${isZoomed ? 'overflow-auto' : 'overflow-hidden'} mobile-landscape-rotate`}
+            className={`relative w-full h-full ${isZoomed ? 'overflow-auto' : 'flex items-center justify-center overflow-hidden'} mobile-landscape-rotate`}
             onMouseDown={(e) => {
               if (!isZoomed) return;
               setDragStart({ x: e.clientX, y: e.clientY, scrollLeft: containerRef.current.scrollLeft, scrollTop: containerRef.current.scrollTop });
