@@ -759,13 +759,26 @@
           let newScale = scale + (delta < 0 ? zoomFactor : -zoomFactor);
           newScale = Math.max(1, Math.min(newScale, 3)); // Cap between 1 and 3
           
-          // If starting to zoom from 1, set target to cursor
-          if (scale === 1 && newScale > 1) {
+          if (newScale > 1) {
             const img = container.querySelector('img');
             if (img) {
               const rect = img.getBoundingClientRect();
               const rx = (e.clientX - rect.left) / rect.width;
               const ry = (e.clientY - rect.top) / rect.height;
+              
+              // If changing origin while zoomed, compensate translation to avoid jumping
+              if (scale > 1) {
+                const unscaledWidth = rect.width / scale;
+                const unscaledHeight = rect.height / scale;
+                const dx = (rx - zoomTarget.rx) * unscaledWidth;
+                const dy = (ry - zoomTarget.ry) * unscaledHeight;
+                
+                setTranslate(prev => ({
+                  x: prev.x - dx * (scale - 1),
+                  y: prev.y - dy * (scale - 1)
+                }));
+              }
+              
               setZoomTarget({ rx, ry });
             }
           }
@@ -779,7 +792,7 @@
 
         container.addEventListener('wheel', handleWheel, { passive: false });
         return () => container.removeEventListener('wheel', handleWheel);
-      }, [scale]);
+      }, [scale, zoomTarget]);
 
       const handleClick = (e) => {
         const now = Date.now();
@@ -883,7 +896,7 @@
             )}
             <img
               src={src}
-              className="max-w-full max-h-full object-contain cursor-pointer"
+              className="max-w-full max-h-full cursor-pointer"
               style={{
                 transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
