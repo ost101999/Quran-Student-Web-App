@@ -5187,7 +5187,7 @@ https://is.gd/oL6gEO`;
                                               return (
                                                 <div key={`roadmap_child_part_${child.id}`} 
                                                      data-current-roadmap={isChildCurrent ? 'true' : 'false'}
-                                                     className={`relative p-3 border-b border-slate-700/40 last:border-b-0 ${isChildCurrent ? 'animate-roadmap-breathe bg-slate-800/40' : ''}`}>
+                                                     className={`relative p-3 border-b border-slate-700/40 last:border-b-0 ${isChildCurrent ? 'animate-roadmap-breathe bg-slate-800/40 !border-b-slate-700/40' : ''}`}>
                                                   {renderLessonCard(child, section.id, childIndex, true)}
                                                 </div>
                                               );
