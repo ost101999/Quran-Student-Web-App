@@ -744,16 +744,31 @@
       // Center horizontally and scroll to target on zoom
       useEffect(() => {
         if (isZoomed && containerRef.current) {
-          setTimeout(() => {
-            const container = containerRef.current;
-            const contentWidth = container.scrollWidth;
-            const contentHeight = container.scrollHeight;
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
+          const container = containerRef.current;
+          const img = container.querySelector('img');
+          
+          if (img && img.naturalWidth) {
+            const aspectRatio = img.naturalWidth / img.naturalHeight;
+            const finalContentWidth = container.clientWidth * 1.5;
+            const finalContentHeight = finalContentWidth / aspectRatio;
             
-            container.scrollLeft = (contentWidth * zoomTarget.rx) - (containerWidth / 2);
-            container.scrollTop = (contentHeight * zoomTarget.ry) - (containerHeight / 2);
-          }, 100); // Small delay to let image render at 150%
+            container.scrollTo({
+              left: (finalContentWidth * zoomTarget.rx) - (container.clientWidth / 2),
+              top: (finalContentHeight * zoomTarget.ry) - (container.clientHeight / 2),
+              behavior: 'smooth'
+            });
+          } else {
+            // Fallback if image not fully loaded in DOM
+            setTimeout(() => {
+              const contentWidth = container.scrollWidth;
+              const contentHeight = container.scrollHeight;
+              container.scrollTo({
+                left: (contentWidth * zoomTarget.rx) - (container.clientWidth / 2),
+                top: (contentHeight * zoomTarget.ry) - (container.clientHeight / 2),
+                behavior: 'smooth'
+              });
+            }, 100);
+          }
         }
       }, [isZoomed, zoomTarget]);
 
