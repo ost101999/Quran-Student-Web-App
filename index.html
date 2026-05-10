@@ -660,6 +660,64 @@
       );
     };
 
+    const LessonImageViewer = ({ src }) => {
+      const [isZoomed, setIsZoomed] = useState(false);
+      const [isHinting, setIsHinting] = useState(false);
+
+      const handleClick = () => {
+        if (!isZoomed) {
+          setIsHinting(true);
+          setTimeout(() => {
+            setIsHinting(false);
+            setIsZoomed(true);
+          }, 1500);
+        } else {
+          setIsZoomed(false);
+        }
+      };
+
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [isHinting, isZoomed]);
+
+      return (
+        <div className={`mt-3 relative rounded-xl border border-slate-500/30 shadow-xl bg-white p-4 flex justify-center items-center ${isZoomed ? 'overflow-auto max-h-[70vh]' : 'overflow-hidden'}`}>
+          {isHinting && (
+            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-fade rounded-xl">
+              <div className="text-white text-center space-y-3 p-4">
+                <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+                  <div className="absolute inset-0 border-2 border-white rounded-full animate-ping"></div>
+                  <div className="absolute inset-2 border-2 border-amber-300 rounded-full animate-pulse"></div>
+                  <i data-lucide="maximize-2" className="w-6 h-6 text-white relative z-10"></i>
+                </div>
+                <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">يمكنك استخدام أصابعك للتقريب والتبعيد</p>
+              </div>
+            </div>
+          )}
+          <img
+            src={src}
+            className={`rounded-lg shadow-sm transition-all duration-500 cursor-pointer ${isZoomed ? 'max-w-none w-auto' : 'w-full max-w-full'}`}
+            alt="شرح الدرس"
+            onClick={handleClick}
+          />
+          {!isZoomed && !isHinting && (
+            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+              <i data-lucide="zoom-in" className="w-3 h-3"></i>
+              اضغط للتكبير
+            </div>
+          )}
+          {isZoomed && (
+            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+              <i data-lucide="zoom-out" className="w-3 h-3"></i>
+              اضغط للتصغير
+            </div>
+          )}
+        </div>
+      );
+    };
+
     function App() {
       const [data, setData] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -4792,14 +4850,7 @@ https://is.gd/oL6gEO`;
                               
                               if (isImage) {
                                 return (
-                                  <div className="mt-3 animate-fade overflow-hidden rounded-xl border border-slate-500/30 shadow-xl bg-white p-4 flex justify-center">
-                                    <img
-                                      src={pdfUrl}
-                                      className="max-w-full h-auto rounded-lg shadow-sm cursor-zoom-in"
-                                      alt="شرح الدرس"
-                                      onClick={() => window.open(pdfUrl, '_blank')}
-                                    />
-                                  </div>
+                                  <LessonImageViewer src={pdfUrl} />
                                 );
                               }
                               
