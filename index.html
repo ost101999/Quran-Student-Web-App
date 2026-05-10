@@ -708,15 +708,15 @@
       const [isZoomed, setIsZoomed] = useState(false);
       const [isHinting, setIsHinting] = useState(false);
       const [lastTap, setLastTap] = useState(0);
-      const containerRef = useRef(null);
+      const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0.5 });
+      const [translate, setTranslate] = useState({ x: 0, y: 0 });
       const [dragStart, setDragStart] = useState(null);
-      const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0 }); // Added state for zoom target
 
       useEffect(() => {
         setIsHinting(true);
         const timer = setTimeout(() => {
           setIsHinting(false);
-        }, 3000); // Changed to 3 seconds
+        }, 3000);
         return () => clearTimeout(timer);
       }, []);
 
@@ -725,10 +725,10 @@
         const handleKeyDown = (e) => {
           if (e.key === 'Escape') {
             onClose();
-            e.stopPropagation(); // Stop from reaching other listeners
+            e.stopPropagation();
           }
         };
-        window.addEventListener('keydown', handleKeyDown, true); // true for capture phase
+        window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
       }, [onClose]);
 
@@ -741,49 +741,41 @@
         };
       }, []);
 
-      // Center horizontally and scroll to target on zoom
-      useEffect(() => {
-        if (isZoomed && containerRef.current) {
-          const container = containerRef.current;
-          const img = container.querySelector('img');
-          
-          if (img && img.naturalWidth) {
-            const aspectRatio = img.naturalWidth / img.naturalHeight;
-            const finalContentWidth = container.clientWidth * 1.5;
-            const finalContentHeight = finalContentWidth / aspectRatio;
-            
-            // Set scroll instantly to avoid jumping
-            container.scrollLeft = (finalContentWidth * zoomTarget.rx) - (container.clientWidth / 2);
-            container.scrollTop = (finalContentHeight * zoomTarget.ry) - (container.clientHeight / 2);
-          } else {
-            // Fallback if image not fully loaded in DOM
-            setTimeout(() => {
-              const contentWidth = container.scrollWidth;
-              const contentHeight = container.scrollHeight;
-              container.scrollLeft = (contentWidth * zoomTarget.rx) - (container.clientWidth / 2);
-              container.scrollTop = (contentHeight * zoomTarget.ry) - (container.clientHeight / 2);
-            }, 100);
-          }
-        }
-      }, [isZoomed, zoomTarget]);
-
       const handleClick = (e) => {
         const now = Date.now();
         const DOUBLE_CLICK_DELAY = 350;
         if (now - lastTap < DOUBLE_CLICK_DELAY) {
           if (!isZoomed) {
-            // Calculate target position as fraction of image size
             const rect = e.target.getBoundingClientRect();
             const rx = (e.clientX - rect.left) / rect.width;
             const ry = (e.clientY - rect.top) / rect.height;
             setZoomTarget({ rx, ry });
+            setIsZoomed(true);
+          } else {
+            setIsZoomed(false);
+            setTranslate({ x: 0, y: 0 }); // Reset pan
           }
-          setIsZoomed(prev => !prev);
           setLastTap(0);
         } else {
           setLastTap(now);
         }
       };
+
+      const onMouseDown = (e) => {
+        if (!isZoomed) return;
+        setDragStart({ x: e.clientX, y: e.clientY, startX: translate.x, startY: translate.y });
+      };
+
+      const onMouseMove = (e) => {
+        if (!dragStart) return;
+        e.preventDefault();
+        setTranslate({
+          x: dragStart.startX + (e.clientX - dragStart.x),
+          y: dragStart.startY + (e.clientY - dragStart.y)
+        });
+      };
+
+      const onMouseUp = () => setDragStart(null);
 
       useEffect(() => {
         if (window.lucide) {
@@ -803,20 +795,11 @@
 
           {/* Rotation wrapper for mobile */}
           <div 
-            ref={containerRef}
-            className={`relative w-full h-full ${isZoomed ? 'overflow-auto' : 'flex items-center justify-center overflow-hidden'} mobile-landscape-rotate`}
-            onMouseDown={(e) => {
-              if (!isZoomed) return;
-              setDragStart({ x: e.clientX, y: e.clientY, scrollLeft: containerRef.current.scrollLeft, scrollTop: containerRef.current.scrollTop });
-            }}
-            onMouseMove={(e) => {
-              if (!dragStart) return;
-              e.preventDefault();
-              containerRef.current.scrollLeft = dragStart.scrollLeft - (e.clientX - dragStart.x);
-              containerRef.current.scrollTop = dragStart.scrollTop - (e.clientY - dragStart.y);
-            }}
-            onMouseUp={() => setDragStart(null)}
-            onMouseLeave={() => setDragStart(null)}
+            className="relative w-full h-full flex items-center justify-center overflow-hidden mobile-landscape-rotate"
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
             style={{ cursor: isZoomed ? (dragStart ? 'grabbing' : 'grab') : 'default' }}
           >
             {isHinting && (
@@ -848,8 +831,12 @@
             )}
             <img
               src={src}
-              className={`${isZoomed ? 'w-[150%] max-w-none' : 'max-w-full max-h-full object-contain cursor-pointer transition-all duration-500'}`}
-              alt="شرح الدرس"
+              className="max-w-full max-h-full object-contain cursor-pointer"
+              style={{
+                transform: `translate(${translate.x}px, ${translate.y}px) scale(${isZoomed ? 1.5 : 1})`,
+                transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
+                transition: dragStart ? 'none' : 'transform 0.5s ease'
+              }}
               onClick={handleClick}
               draggable="false"
             />
