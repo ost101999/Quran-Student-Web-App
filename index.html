@@ -1161,9 +1161,17 @@
           const containerRect = container.getBoundingClientRect();
           const elementRect = currentLessonEl.getBoundingClientRect();
           
-          // Calculate the scroll position to center the element within the container
+          // Calculate the scroll position
           const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
-          const targetScrollTop = relativeTop - (container.clientHeight / 2) + (elementRect.height / 2);
+          
+          let targetScrollTop;
+          if (window.innerWidth < 768) {
+            // On mobile, scroll to the top of the element with a small padding
+            targetScrollTop = relativeTop - 12;
+          } else {
+            // On desktop, center the element
+            targetScrollTop = relativeTop - (container.clientHeight / 2) + (elementRect.height / 2);
+          }
           
           container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
         });
@@ -4977,7 +4985,17 @@ https://is.gd/oL6gEO`;
                             <div className="min-w-0 flex-1">
                               <p className={`${isSubLesson ? (isArabic ? 'text-sm md:text-base font-medium' : 'text-[10px] md:text-xs font-medium') : (isArabic ? 'text-lg md:text-xl font-bold' : 'text-xs md:text-sm font-bold')} truncate`}>
                                 {isSubLesson ? '' : `${toArabicNums(displayLessonCounter)}. `}
-                                {lessonDisplayTitle}
+                                {(() => {
+                                  const parts = String(lessonDisplayTitle || '').split(/([\u0600-\u06FF]+)/g);
+                                  return parts.map((part, i) => {
+                                    const isAr = /[\u0600-\u06FF]/.test(part);
+                                    return (
+                                      <span key={i} className={isAr ? 'font-amiri' : ''}>
+                                        {part}
+                                      </span>
+                                    );
+                                  });
+                                })()}
                               </p>
                               <p className={`text-[10px] md:text-xs mt-1 ${isArabic ? 'opacity-80' : 'opacity-90'}`}>{t.questionsCount}: {toArabicNums(languageReadyLessonQuestions.length)}</p>
                             </div>
