@@ -752,21 +752,16 @@
             const finalContentWidth = container.clientWidth * 1.5;
             const finalContentHeight = finalContentWidth / aspectRatio;
             
-            container.scrollTo({
-              left: (finalContentWidth * zoomTarget.rx) - (container.clientWidth / 2),
-              top: (finalContentHeight * zoomTarget.ry) - (container.clientHeight / 2),
-              behavior: 'smooth'
-            });
+            // Set scroll instantly to avoid jumping
+            container.scrollLeft = (finalContentWidth * zoomTarget.rx) - (container.clientWidth / 2);
+            container.scrollTop = (finalContentHeight * zoomTarget.ry) - (container.clientHeight / 2);
           } else {
             // Fallback if image not fully loaded in DOM
             setTimeout(() => {
               const contentWidth = container.scrollWidth;
               const contentHeight = container.scrollHeight;
-              container.scrollTo({
-                left: (contentWidth * zoomTarget.rx) - (container.clientWidth / 2),
-                top: (contentHeight * zoomTarget.ry) - (container.clientHeight / 2),
-                behavior: 'smooth'
-              });
+              container.scrollLeft = (contentWidth * zoomTarget.rx) - (container.clientWidth / 2);
+              container.scrollTop = (contentHeight * zoomTarget.ry) - (container.clientHeight / 2);
             }, 100);
           }
         }
@@ -853,7 +848,7 @@
             )}
             <img
               src={src}
-              className={`transition-all duration-500 ${isZoomed ? 'w-[150%] max-w-none' : 'max-w-full max-h-full object-contain cursor-pointer'}`}
+              className={`${isZoomed ? 'w-[150%] max-w-none' : 'max-w-full max-h-full object-contain cursor-pointer transition-all duration-500'}`}
               alt="شرح الدرس"
               onClick={handleClick}
               draggable="false"
