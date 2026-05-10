@@ -711,6 +711,7 @@
       const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0.5 });
       const [translate, setTranslate] = useState({ x: 0, y: 0 });
       const [dragStart, setDragStart] = useState(null);
+      const [isWheelZooming, setIsWheelZooming] = useState(false);
       const containerRef = useRef(null);
 
       const isZoomed = scale > 1;
@@ -751,6 +752,7 @@
 
         const handleWheel = (e) => {
           e.preventDefault();
+          setIsWheelZooming(true);
           
           const delta = e.deltaY;
           const zoomFactor = 0.1;
@@ -783,11 +785,12 @@
         const now = Date.now();
         const DOUBLE_CLICK_DELAY = 350;
         if (now - lastTap < DOUBLE_CLICK_DELAY) {
-          const rect = e.target.getBoundingClientRect();
-          const rx = (e.clientX - rect.left) / rect.width;
-          const ry = (e.clientY - rect.top) / rect.height;
-
+          setIsWheelZooming(false); // Reset to slow transition for clicks
+          
           if (scale === 1) {
+            const rect = e.target.getBoundingClientRect();
+            const rx = (e.clientX - rect.left) / rect.width;
+            const ry = (e.clientY - rect.top) / rect.height;
             setZoomTarget({ rx, ry });
             setScale(1.5);
             
@@ -799,21 +802,9 @@
               });
             }
           } else {
-            // If already zoomed, check if clicking near center to zoom out
-            const dist = Math.sqrt(Math.pow(e.clientX - window.innerWidth / 2, 2) + Math.pow(e.clientY - window.innerHeight / 2, 2));
-            if (dist < 100) {
-              setScale(1);
-              setTranslate({ x: 0, y: 0 });
-            } else {
-              // Move to new point
-              setZoomTarget({ rx, ry });
-              if (containerRef.current) {
-                setTranslate(prev => ({
-                  x: prev.x + (containerRef.current.clientWidth / 2 - e.clientX),
-                  y: prev.y + (containerRef.current.clientHeight / 2 - e.clientY)
-                }));
-              }
-            }
+            // ALWAYS zoom out when already zoomed
+            setScale(1);
+            setTranslate({ x: 0, y: 0 }); // Reset pan
           }
           setLastTap(0);
         } else {
@@ -896,7 +887,7 @@
               style={{
                 transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
-                transition: dragStart ? 'none' : 'transform 0.5s ease'
+                transition: dragStart ? 'none' : (isWheelZooming ? 'transform 0.1s ease' : 'transform 0.5s ease')
               }}
               onClick={handleClick}
               draggable="false"
