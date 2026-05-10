@@ -790,9 +790,8 @@
               
               // If changing origin while zoomed, compensate translation
               if (scale > 1) {
-                // Move origin only 20% towards the mouse
-                const targetRx = zoomTarget.rx + (rx - zoomTarget.rx) * 0.2;
-                const targetRy = zoomTarget.ry + (ry - zoomTarget.ry) * 0.2;
+                const targetRx = rx;
+                const targetRy = ry;
                 
                 const unscaledWidth = rect.width / scale;
                 const unscaledHeight = rect.height / scale;
