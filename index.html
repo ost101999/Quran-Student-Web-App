@@ -931,7 +931,7 @@
               style={{
                 transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
-                transition: dragStart ? 'none' : (isWheelZooming ? 'transform 0.1s ease' : 'transform 0.5s ease')
+                transition: dragStart ? 'none' : 'transform 0.5s ease'
               }}
               onClick={handleClick}
               draggable="false"
