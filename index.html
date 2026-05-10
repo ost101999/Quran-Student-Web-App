@@ -710,6 +710,7 @@
       const [lastTap, setLastTap] = useState(0);
       const containerRef = useRef(null);
       const [dragStart, setDragStart] = useState(null);
+      const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0 }); // Added state for zoom target
 
       useEffect(() => {
         setIsHinting(true);
@@ -740,23 +741,33 @@
         };
       }, []);
 
-      // Center horizontally and scroll to top on zoom
+      // Center horizontally and scroll to target on zoom
       useEffect(() => {
         if (isZoomed && containerRef.current) {
           setTimeout(() => {
             const container = containerRef.current;
             const contentWidth = container.scrollWidth;
+            const contentHeight = container.scrollHeight;
             const containerWidth = container.clientWidth;
-            container.scrollLeft = (contentWidth - containerWidth) / 2;
-            container.scrollTop = 0;
+            const containerHeight = container.clientHeight;
+            
+            container.scrollLeft = (contentWidth * zoomTarget.rx) - (containerWidth / 2);
+            container.scrollTop = (contentHeight * zoomTarget.ry) - (containerHeight / 2);
           }, 100); // Small delay to let image render at 150%
         }
-      }, [isZoomed]);
+      }, [isZoomed, zoomTarget]);
 
-      const handleClick = () => {
+      const handleClick = (e) => {
         const now = Date.now();
         const DOUBLE_CLICK_DELAY = 350;
         if (now - lastTap < DOUBLE_CLICK_DELAY) {
+          if (!isZoomed) {
+            // Calculate target position as fraction of image size
+            const rect = e.target.getBoundingClientRect();
+            const rx = (e.clientX - rect.left) / rect.width;
+            const ry = (e.clientY - rect.top) / rect.height;
+            setZoomTarget({ rx, ry });
+          }
           setIsZoomed(prev => !prev);
           setLastTap(0);
         } else {
