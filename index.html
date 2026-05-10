@@ -348,6 +348,16 @@
       animation: pinchRight 1.5s ease-in-out infinite;
     }
 
+    @keyframes hintFadeInOut {
+      0% { opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .animate-hint-fade {
+      animation: hintFadeInOut 3s ease-in-out forwards;
+    }
+
     @media (max-width: 768px) {
       .mobile-landscape-rotate {
         position: absolute !important;
@@ -705,7 +715,7 @@
         setIsHinting(true);
         const timer = setTimeout(() => {
           setIsHinting(false);
-        }, 2000);
+        }, 3000); // Changed to 3 seconds
         return () => clearTimeout(timer);
       }, []);
 
@@ -729,6 +739,19 @@
           }
         };
       }, []);
+
+      // Center horizontally and scroll to top on zoom
+      useEffect(() => {
+        if (isZoomed && containerRef.current) {
+          setTimeout(() => {
+            const container = containerRef.current;
+            const contentWidth = container.scrollWidth;
+            const containerWidth = container.clientWidth;
+            container.scrollLeft = (contentWidth - containerWidth) / 2;
+            container.scrollTop = 0;
+          }, 100); // Small delay to let image render at 150%
+        }
+      }, [isZoomed]);
 
       const handleClick = () => {
         const now = Date.now();
@@ -776,7 +799,7 @@
             style={{ cursor: isZoomed ? (dragStart ? 'grabbing' : 'grab') : 'default' }}
           >
             {isHinting && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-fade pointer-events-none">
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-hint-fade pointer-events-none">
                 <div className="text-white text-center space-y-3 p-4">
                   {/* Mobile Hint */}
                   <div className="mobile-only-hint space-y-3">
@@ -787,8 +810,7 @@
                       <div className="absolute w-3 h-3 bg-amber-300 rounded-full right-1 top-1/2 animate-pinch-right"></div>
                       <i data-lucide="maximize-2" className="w-6 h-6 text-white relative z-10"></i>
                     </div>
-                    <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">يمكنك استخدام أصابعك للتقريب والتبعيد</p>
-                    <p className="text-xs text-slate-300">انقر مرتين سريعتين للتكبير والتصغير</p>
+                    <p className="text-xl font-bold text-amber-100 font-amiri">انقر مرتين للتقريب أو استخدم أصابعك</p>
                   </div>
 
                   {/* Desktop Hint */}
@@ -798,8 +820,7 @@
                       <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
                       <i data-lucide="mouse" className="w-6 h-6 text-white relative z-10"></i>
                     </div>
-                    <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">انقر مرتين متتاليتين للتكبير والتصغير</p>
-                    <p className="text-xs text-slate-300">استخدم الفأرة للسحب والتنقل بعد التكبير</p>
+                    <p className="text-xl font-bold text-amber-100 font-amiri">انقر مرتين للتكبير واسحب للتنقل</p>
                   </div>
                 </div>
               </div>
