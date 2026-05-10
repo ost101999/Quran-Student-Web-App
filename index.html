@@ -358,6 +358,30 @@
       animation: hintFadeInOut 3s ease-in-out forwards;
     }
 
+    @keyframes fadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    @keyframes hintShow {
+      0% { opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .animate-hint-show {
+      animation: hintShow 1.5s ease-in-out forwards;
+    }
+
+    @keyframes mobileRotate {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      30% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(90deg); }
+    }
+
     @media (max-width: 768px) {
       .mobile-landscape-rotate {
         position: absolute !important;
@@ -365,8 +389,9 @@
         left: 50% !important;
         width: 100vh !important;
         height: 100vw !important;
-        transform: translate(-50%, -50%) rotate(90deg) !important;
+        transform: translate(-50%, -50%) rotate(90deg);
         transform-origin: center !important;
+        animation: mobileRotate 1s ease-out forwards;
       }
       .desktop-only-hint { display: none !important; }
       .mobile-only-hint { display: block !important; }
@@ -711,23 +736,36 @@
       const [lastTap, setLastTap] = useState(0);
       const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0.5 });
       const [translate, setTranslate] = useState({ x: 0, y: 0 });
-      const [dragStart, setDragStart] = useState(null);
+      const [dragStart, setDragStart] = useState(false);
+      const [isInertia, setIsInertia] = useState(false);
       const [isWheelZooming, setIsWheelZooming] = useState(false);
+      
       const containerRef = useRef(null);
+      const pinchRef = useRef(null);
+      const imgRef = useRef(null);
+      const panRef = useRef({ x: 0, y: 0 });
+      const dragRef = useRef(null);
+      const inertiaFrameRef = useRef(null);
+
+      useEffect(() => { panRef.current = translate; }, [translate]);
 
       const isZoomed = scale > 1;
 
       useEffect(() => {
-        setIsHinting(true);
-        const fadeTimer = setTimeout(() => {
-          setIsHintFading(true);
-        }, 1000); // Start fade after 1s
-        
-        const removeTimer = setTimeout(() => {
-          setIsHinting(false);
-        }, 1500); // Remove after 1.5s
+        let fadeTimer, removeTimer;
+        const rotationDelay = setTimeout(() => {
+          setIsHinting(true);
+          fadeTimer = setTimeout(() => {
+            setIsHintFading(true);
+          }, 1000); // Start fade after 1s
+          
+          removeTimer = setTimeout(() => {
+            setIsHinting(false);
+          }, 1500); // Remove after 1.5s
+        }, 1000); // Wait for rotation to complete (1s)
         
         return () => {
+          clearTimeout(rotationDelay);
           clearTimeout(fadeTimer);
           clearTimeout(removeTimer);
         };
@@ -748,9 +786,7 @@
       // Cleanup to update icons on parent when closed
       useEffect(() => {
         return () => {
-          if (window.lucide) {
-            setTimeout(() => window.lucide.createIcons(), 0);
-          }
+          // No lucide refresh needed
         };
       }, []);
 
@@ -813,29 +849,79 @@
         return () => container.removeEventListener('wheel', handleWheel);
       }, [scale, zoomTarget]);
 
+      const applyTransform = () => {
+        if (imgRef.current) {
+          imgRef.current.style.transform = `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${scale})`;
+        }
+      };
+
+      const startInertia = (vx, vy) => {
+        if (inertiaFrameRef.current) cancelAnimationFrame(inertiaFrameRef.current);
+        setIsInertia(true);
+        
+        const friction = 0.94;
+        const stopThreshold = 0.5;
+        let currentVx = vx;
+        let currentVy = vy;
+        
+        const animate = () => {
+          if (Math.abs(currentVx) < stopThreshold && Math.abs(currentVy) < stopThreshold) {
+            setTranslate({ ...panRef.current });
+            setIsInertia(false);
+            return;
+          }
+          
+          panRef.current.x += currentVx;
+          panRef.current.y += currentVy;
+          applyTransform();
+          
+          currentVx *= friction;
+          currentVy *= friction;
+          
+          inertiaFrameRef.current = requestAnimationFrame(animate);
+        };
+        
+        inertiaFrameRef.current = requestAnimationFrame(animate);
+      };
+
       const handleClick = (e) => {
         const now = Date.now();
         const DOUBLE_CLICK_DELAY = 350;
         if (now - lastTap < DOUBLE_CLICK_DELAY) {
-          setIsWheelZooming(false); // Reset to slow transition for clicks
+          setIsWheelZooming(false);
+          if (inertiaFrameRef.current) {
+            cancelAnimationFrame(inertiaFrameRef.current);
+            setIsInertia(false);
+          }
           
           if (scale === 1) {
             const rect = e.currentTarget.getBoundingClientRect();
-            const rx = (e.clientX - rect.left) / rect.width;
-            const ry = (e.clientY - rect.top) / rect.height;
+            let rx = (e.clientX - rect.left) / rect.width;
+            let ry = (e.clientY - rect.top) / rect.height;
+            
+            let transX = window.innerWidth / 2 - e.clientX;
+            let transY = window.innerHeight / 2 - e.clientY;
+
+            if (window.innerWidth <= 768) {
+              const tempRx = ry;
+              const tempRy = 1 - rx;
+              rx = tempRx;
+              ry = tempRy;
+              
+              const tempTransX = transY;
+              const tempTransY = -transX;
+              transX = tempTransX;
+              transY = tempTransY;
+            }
+            
             setZoomTarget({ rx, ry });
             setScale(1.5);
-            
-            // Center the clicked point
-            if (containerRef.current) {
-              setTranslate({
-                x: containerRef.current.clientWidth / 2 - e.clientX,
-                y: containerRef.current.clientHeight / 2 - e.clientY
-              });
-            }
+            setTranslate({ x: transX, y: transY });
+            panRef.current = { x: transX, y: transY };
           } else {
             setScale(1);
-            setTranslate({ x: 0, y: 0 }); // Reset pan
+            setTranslate({ x: 0, y: 0 });
+            panRef.current = { x: 0, y: 0 };
           }
           setLastTap(0);
         } else {
@@ -843,53 +929,162 @@
         }
       };
 
-      const onMouseDown = (e) => {
+      const onDown = (clientX, clientY) => {
         if (!isZoomed) return;
-        setDragStart({ x: e.clientX, y: e.clientY, startX: translate.x, startY: translate.y });
-      };
-
-      const onMouseMove = (e) => {
-        if (!dragStart) return;
-        e.preventDefault();
-        setTranslate({
-          x: dragStart.startX + (e.clientX - dragStart.x),
-          y: dragStart.startY + (e.clientY - dragStart.y)
-        });
-      };
-
-      const onMouseUp = () => setDragStart(null);
-
-      useEffect(() => {
-        if (window.lucide) {
-          window.lucide.createIcons();
+        if (inertiaFrameRef.current) {
+          cancelAnimationFrame(inertiaFrameRef.current);
+          setIsInertia(false);
         }
-      }, []);
+        
+        dragRef.current = {
+          active: true,
+          startX: clientX,
+          startY: clientY,
+          lastX: clientX,
+          lastY: clientY,
+          startPanX: panRef.current.x,
+          startPanY: panRef.current.y,
+          time: Date.now(),
+          vx: 0,
+          vy: 0
+        };
+        setDragStart(true);
+      };
+
+      const onMove = (clientX, clientY) => {
+        if (!dragRef.current?.active) return;
+        
+        const now = Date.now();
+        const dt = Math.max(1, now - dragRef.current.time);
+        
+        const SPEED_MULT = window.innerWidth <= 768 ? 1.2 : 1;
+        const deltaX = (clientX - dragRef.current.startX) * SPEED_MULT;
+        const deltaY = (clientY - dragRef.current.startY) * SPEED_MULT;
+        
+        let transX = deltaX, transY = deltaY;
+        let velX = ((clientX - dragRef.current.lastX) / dt) * 16 * SPEED_MULT;
+        let velY = ((clientY - dragRef.current.lastY) / dt) * 16 * SPEED_MULT;
+        
+        if (window.innerWidth <= 768) {
+          transX = deltaY;
+          transY = -deltaX;
+          const tempVelX = velX;
+          velX = velY;
+          velY = -tempVelX;
+        }
+        
+        panRef.current = {
+          x: dragRef.current.startPanX + transX,
+          y: dragRef.current.startPanY + transY
+        };
+        applyTransform();
+        
+        dragRef.current.lastX = clientX;
+        dragRef.current.lastY = clientY;
+        dragRef.current.time = now;
+        dragRef.current.vx = velX;
+        dragRef.current.vy = velY;
+      };
+
+      const onUp = () => {
+        if (dragRef.current?.active) {
+          const timeSinceLastMove = Date.now() - dragRef.current.time;
+          if (timeSinceLastMove < 100) {
+            startInertia(dragRef.current.vx, dragRef.current.vy);
+          } else {
+            setTranslate({ ...panRef.current });
+          }
+          dragRef.current = null;
+          setDragStart(false);
+        }
+      };
+
+      const onMouseDown = (e) => onDown(e.clientX, e.clientY);
+      const onMouseMove = (e) => {
+        if (dragRef.current?.active) {
+          e.preventDefault();
+          onMove(e.clientX, e.clientY);
+        }
+      };
+      const onMouseUp = onUp;
+
+      const onTouchStart = (e) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          pinchRef.current = { startDist: dist, startScale: scale };
+          
+          if (dragRef.current?.active) {
+            dragRef.current = null;
+            setDragStart(false);
+          }
+        } else if (e.touches.length === 1 && scale > 1) {
+          onDown(e.touches[0].clientX, e.touches[0].clientY);
+          pinchRef.current = null;
+        }
+      };
+
+      const onTouchMove = (e) => {
+        if (e.touches.length === 2 && pinchRef.current) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          let newScale = pinchRef.current.startScale * (dist / pinchRef.current.startDist);
+          newScale = Math.min(Math.max(1, newScale), 4);
+          
+          setScale(newScale);
+          if (newScale === 1) {
+            setTranslate({ x: 0, y: 0 });
+            panRef.current = { x: 0, y: 0 };
+            applyTransform();
+          }
+        } else if (e.touches.length === 1 && dragRef.current?.active) {
+          e.preventDefault();
+          onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      };
+
+      const onTouchEnd = (e) => {
+        if (e.touches.length < 2) {
+          pinchRef.current = null;
+        }
+        if (e.touches.length === 0) {
+          onUp();
+        }
+      };
+
+
 
       const content = (
-        <div className="fixed inset-0 z-[9999] bg-black/90 flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-[9999] bg-black/90 flex flex-col items-center justify-center animate-fade-in">
           {/* X Button */}
           <button 
             onClick={onClose} 
             className="absolute top-4 right-4 text-white bg-white/20 p-2 rounded-full hover:bg-white/40 z-30 flex items-center justify-center"
           >
-            <i data-lucide="x" className="w-6 h-6"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
 
           {/* Rotation wrapper for mobile */}
           <div 
             ref={containerRef}
-            className="relative w-full h-full flex items-center justify-center overflow-hidden mobile-landscape-rotate"
+            className="relative w-full h-full flex items-center justify-center overflow-hidden mobile-landscape-rotate touch-none"
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseUp}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onTouchCancel={onTouchEnd}
             style={{ cursor: isZoomed ? (dragStart ? 'grabbing' : 'grab') : 'default' }}
           >
             {isHinting && (
-              <div 
-                className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 pointer-events-none"
-                style={{ opacity: isHintFading ? 0 : 1, transition: 'opacity 0.5s ease' }}
-              >
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 pointer-events-none animate-hint-show">
                 <div className="text-white text-center space-y-3 p-4">
                   {/* Mobile Hint */}
                   <div className="mobile-only-hint space-y-3">
@@ -898,7 +1093,7 @@
                       <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
                       <div className="absolute w-3 h-3 bg-amber-300 rounded-full left-1 top-1/2 animate-pinch-left"></div>
                       <div className="absolute w-3 h-3 bg-amber-300 rounded-full right-1 top-1/2 animate-pinch-right"></div>
-                      <i data-lucide="maximize-2" className="w-6 h-6 text-white relative z-10"></i>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-white relative z-10"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
                     </div>
                     <p className="text-xl font-bold text-amber-100 font-amiri">
                       {isArabic ? "انقر مرتين للتقريب أو استخدم أصابعك" : "Double click to zoom or use fingers"}
@@ -910,7 +1105,7 @@
                     <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
                       <div className="absolute inset-0 border-2 border-white rounded-full animate-ping"></div>
                       <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
-                      <i data-lucide="mouse" className="w-6 h-6 text-white relative z-10"></i>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-white relative z-10"><rect x="5" y="2" width="14" height="20" rx="7"></rect><line x1="12" y1="6" x2="12" y2="10"></line></svg>
                     </div>
                     <p className="text-xl font-bold text-amber-100 font-amiri">
                       {isArabic ? "انقر مرتين للتكبير واسحب للتنقل" : "Double click to zoom and drag to pan"}
@@ -920,13 +1115,16 @@
               </div>
             )}
             <img
+              ref={imgRef}
               src={src}
               className="max-w-full max-h-full cursor-pointer"
               style={{
                 transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
-                transition: dragStart ? 'none' : 'transform 1s ease',
-                willChange: 'transform'
+                transition: (dragStart || pinchRef.current || isInertia) ? 'none' : 'transform 0.3s ease-out',
+                willChange: 'transform',
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden'
               }}
               onClick={handleClick}
               draggable="false"
