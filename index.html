@@ -698,6 +698,8 @@
       const [isZoomed, setIsZoomed] = useState(false);
       const [isHinting, setIsHinting] = useState(false);
       const [lastTap, setLastTap] = useState(0);
+      const containerRef = useRef(null);
+      const [dragStart, setDragStart] = useState(null);
 
       useEffect(() => {
         setIsHinting(true);
@@ -707,15 +709,16 @@
         return () => clearTimeout(timer);
       }, []);
 
-      // Escape key listener
+      // Escape key listener in capture phase
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (e.key === 'Escape') {
             onClose();
+            e.stopPropagation(); // Stop from reaching other listeners
           }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', handleKeyDown, true); // true for capture phase
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
       }, [onClose]);
 
       // Cleanup to update icons on parent when closed
@@ -755,7 +758,23 @@
           </button>
 
           {/* Rotation wrapper for mobile */}
-          <div className={`relative w-full h-full flex items-center justify-center ${isZoomed ? 'overflow-auto' : 'overflow-hidden'} mobile-landscape-rotate`}>
+          <div 
+            ref={containerRef}
+            className={`relative w-full h-full flex items-center justify-center ${isZoomed ? 'overflow-auto' : 'overflow-hidden'} mobile-landscape-rotate`}
+            onMouseDown={(e) => {
+              if (!isZoomed) return;
+              setDragStart({ x: e.clientX, y: e.clientY, scrollLeft: containerRef.current.scrollLeft, scrollTop: containerRef.current.scrollTop });
+            }}
+            onMouseMove={(e) => {
+              if (!dragStart) return;
+              e.preventDefault();
+              containerRef.current.scrollLeft = dragStart.scrollLeft - (e.clientX - dragStart.x);
+              containerRef.current.scrollTop = dragStart.scrollTop - (e.clientY - dragStart.y);
+            }}
+            onMouseUp={() => setDragStart(null)}
+            onMouseLeave={() => setDragStart(null)}
+            style={{ cursor: isZoomed ? (dragStart ? 'grabbing' : 'grab') : 'default' }}
+          >
             {isHinting && (
               <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-fade pointer-events-none">
                 <div className="text-white text-center space-y-3 p-4">
@@ -787,9 +806,10 @@
             )}
             <img
               src={src}
-              className={`transition-all duration-500 ${isZoomed ? 'w-[150%] max-w-none cursor-grab active:cursor-grabbing' : 'max-w-full max-h-full object-contain cursor-pointer'}`}
+              className={`transition-all duration-500 ${isZoomed ? 'w-[150%] max-w-none' : 'max-w-full max-h-full object-contain cursor-pointer'}`}
               alt="شرح الدرس"
               onClick={handleClick}
+              draggable="false"
             />
             {!isZoomed && !isHinting && (
               <div className="absolute bottom-4 right-4 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
