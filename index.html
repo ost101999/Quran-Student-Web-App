@@ -753,6 +753,7 @@
 
       useEffect(() => {
         let fadeTimer, removeTimer;
+        const delay = window.innerWidth <= 768 ? 1000 : 0;
         const rotationDelay = setTimeout(() => {
           setIsHinting(true);
           fadeTimer = setTimeout(() => {
@@ -762,7 +763,7 @@
           removeTimer = setTimeout(() => {
             setIsHinting(false);
           }, 1500); // Remove after 1.5s
-        }, 1000); // Wait for rotation to complete (1s)
+        }, delay); // Wait for rotation on mobile, immediate on desktop
         
         return () => {
           clearTimeout(rotationDelay);
