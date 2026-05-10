@@ -332,6 +332,21 @@
       background: radial-gradient(125% 125% at 50% 50%, rgba(45, 212, 191, 0.36) 0%, rgba(45, 212, 191, 0.17) 40%, rgba(45, 212, 191, 0) 72%);
       animation: roadmapHaloPulse 2.6s ease-in-out infinite;
     }
+
+    @keyframes pinchLeft {
+      0%, 100% { transform: translateY(-50%) translateX(0); }
+      50% { transform: translateY(-50%) translateX(-20px); }
+    }
+    @keyframes pinchRight {
+      0%, 100% { transform: translateY(-50%) translateX(0); }
+      50% { transform: translateY(-50%) translateX(20px); }
+    }
+    .animate-pinch-left {
+      animation: pinchLeft 1.5s ease-in-out infinite;
+    }
+    .animate-pinch-right {
+      animation: pinchRight 1.5s ease-in-out infinite;
+    }
   </style>
 </head>
 
@@ -663,16 +678,24 @@
     const LessonImageViewer = ({ src }) => {
       const [isZoomed, setIsZoomed] = useState(false);
       const [isHinting, setIsHinting] = useState(false);
+      const [lastTap, setLastTap] = useState(0);
+
+      useEffect(() => {
+        setIsHinting(true);
+        const timer = setTimeout(() => {
+          setIsHinting(false);
+        }, 2000);
+        return () => clearTimeout(timer);
+      }, []);
 
       const handleClick = () => {
-        if (!isZoomed) {
-          setIsHinting(true);
-          setTimeout(() => {
-            setIsHinting(false);
-            setIsZoomed(true);
-          }, 1500);
+        const now = Date.now();
+        const DOUBLE_CLICK_DELAY = 350;
+        if (now - lastTap < DOUBLE_CLICK_DELAY) {
+          setIsZoomed(prev => !prev);
+          setLastTap(0);
         } else {
-          setIsZoomed(false);
+          setLastTap(now);
         }
       };
 
@@ -685,33 +708,36 @@
       return (
         <div className={`mt-3 relative rounded-xl border border-slate-500/30 shadow-xl bg-white p-4 flex justify-center items-center ${isZoomed ? 'overflow-auto max-h-[70vh]' : 'overflow-hidden'}`}>
           {isHinting && (
-            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-fade rounded-xl">
+            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-fade rounded-xl pointer-events-none">
               <div className="text-white text-center space-y-3 p-4">
-                <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+                <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
                   <div className="absolute inset-0 border-2 border-white rounded-full animate-ping"></div>
-                  <div className="absolute inset-2 border-2 border-amber-300 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-4 border-2 border-amber-300 rounded-full animate-pulse"></div>
+                  <div className="absolute w-3 h-3 bg-amber-300 rounded-full left-1 top-1/2 animate-pinch-left"></div>
+                  <div className="absolute w-3 h-3 bg-amber-300 rounded-full right-1 top-1/2 animate-pinch-right"></div>
                   <i data-lucide="maximize-2" className="w-6 h-6 text-white relative z-10"></i>
                 </div>
                 <p className="font-bold text-sm md:text-base text-amber-100 font-amiri">يمكنك استخدام أصابعك للتقريب والتبعيد</p>
+                <p className="text-xs text-slate-300">انقر مرتين سريعتين للتكبير والتصغير</p>
               </div>
             </div>
           )}
           <img
             src={src}
-            className={`rounded-lg shadow-sm transition-all duration-500 cursor-pointer ${isZoomed ? 'max-w-none w-auto' : 'w-full max-w-full'}`}
+            className={`rounded-lg shadow-sm transition-all duration-500 ${isZoomed ? 'max-w-none w-auto cursor-grab active:cursor-grabbing' : 'w-full max-w-full cursor-pointer'}`}
             alt="شرح الدرس"
             onClick={handleClick}
           />
           {!isZoomed && !isHinting && (
             <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
               <i data-lucide="zoom-in" className="w-3 h-3"></i>
-              اضغط للتكبير
+              انقر مرتين للتكبير
             </div>
           )}
           {isZoomed && (
             <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
               <i data-lucide="zoom-out" className="w-3 h-3"></i>
-              اضغط للتصغير
+              انقر مرتين للتصغير
             </div>
           )}
         </div>
