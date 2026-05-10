@@ -707,6 +707,7 @@
     const LessonImageViewer = ({ src, onClose, isArabic = true }) => {
       const [scale, setScale] = useState(1);
       const [isHinting, setIsHinting] = useState(false);
+      const [isHintFading, setIsHintFading] = useState(false);
       const [lastTap, setLastTap] = useState(0);
       const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0.5 });
       const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -718,10 +719,18 @@
 
       useEffect(() => {
         setIsHinting(true);
-        const timer = setTimeout(() => {
+        const fadeTimer = setTimeout(() => {
+          setIsHintFading(true);
+        }, 1000); // Start fade after 1s
+        
+        const removeTimer = setTimeout(() => {
           setIsHinting(false);
-        }, 1500); // Shorter hint animation
-        return () => clearTimeout(timer);
+        }, 1500); // Remove after 1.5s
+        
+        return () => {
+          clearTimeout(fadeTimer);
+          clearTimeout(removeTimer);
+        };
       }, []);
 
       // Escape key listener in capture phase
@@ -754,67 +763,50 @@
           e.preventDefault();
           
           const delta = e.deltaY;
+          setIsWheelZooming(false); // ALWAYS use slow transition (1s) for stepped zoom!
           
-          // If at normal size and scrolling up, act like double click
-          if (scale === 1 && delta < 0) {
-            setIsWheelZooming(false); // Use slow transition
-            const img = container.querySelector('img');
-            if (img) {
-              const rect = img.getBoundingClientRect();
-              const rx = (e.clientX - rect.left) / rect.width;
-              const ry = (e.clientY - rect.top) / rect.height;
-              setZoomTarget({ rx, ry });
-              setScale(1.5);
-              
-              if (containerRef.current) {
-                setTranslate({
-                  x: containerRef.current.clientWidth / 2 - e.clientX,
-                  y: containerRef.current.clientHeight / 2 - e.clientY
-                });
-              }
-            }
-            return;
+          const levels = [1, 1.5, 2];
+          
+          let currentLevel = 0;
+          if (scale >= 2) currentLevel = 2;
+          else if (scale >= 1.5) currentLevel = 1;
+          else currentLevel = 0;
+          
+          let newLevel = currentLevel;
+          if (delta < 0) {
+            newLevel = Math.min(levels.length - 1, currentLevel + 1);
+          } else {
+            newLevel = Math.max(0, currentLevel - 1);
           }
           
-          setIsWheelZooming(true);
-          const zoomFactor = 0.03; // Tiny zoom step
-          let newScale = scale + (delta < 0 ? zoomFactor : -zoomFactor);
-          newScale = Math.max(1, Math.min(newScale, 3)); // Cap between 1 and 3
+          if (newLevel === currentLevel) return; // No change
+          
+          const newScale = levels[newLevel];
           
           if (newScale > 1) {
             const img = container.querySelector('img');
             if (img) {
-              const rect = img.getBoundingClientRect();
-              const rx = (e.clientX - rect.left) / rect.width;
-              const ry = (e.clientY - rect.top) / rect.height;
-              
-              // If changing origin while zoomed, compensate translation
-              if (scale > 1) {
-                const targetRx = rx;
-                const targetRy = ry;
+              // Only update target and center when zooming in from normal size
+              if (scale === 1) {
+                const rect = img.getBoundingClientRect();
+                const rx = (e.clientX - rect.left) / rect.width;
+                const ry = (e.clientY - rect.top) / rect.height;
                 
-                const unscaledWidth = rect.width / scale;
-                const unscaledHeight = rect.height / scale;
-                const dx = (targetRx - zoomTarget.rx) * unscaledWidth;
-                const dy = (targetRy - zoomTarget.ry) * unscaledHeight;
-                
-                setTranslate(prev => ({
-                  x: prev.x - dx * (scale - 1),
-                  y: prev.y - dy * (scale - 1)
-                }));
-                
-                setZoomTarget({ rx: targetRx, ry: targetRy });
-              } else {
                 setZoomTarget({ rx, ry });
+                
+                if (containerRef.current) {
+                  setTranslate({
+                    x: containerRef.current.clientWidth / 2 - e.clientX,
+                    y: containerRef.current.clientHeight / 2 - e.clientY
+                  });
+                }
               }
+              setScale(newScale);
             }
-          }
-          
-          if (newScale === 1) {
+          } else {
+            setScale(1);
             setTranslate({ x: 0, y: 0 });
           }
-          
-          setScale(newScale);
         };
 
         container.addEventListener('wheel', handleWheel, { passive: false });
@@ -871,7 +863,7 @@
         if (window.lucide) {
           window.lucide.createIcons();
         }
-      }, [isHinting, isZoomed]);
+      }, []);
 
       const content = (
         <div className="fixed inset-0 z-[9999] bg-black/90 flex flex-col items-center justify-center">
@@ -894,7 +886,10 @@
             style={{ cursor: isZoomed ? (dragStart ? 'grabbing' : 'grab') : 'default' }}
           >
             {isHinting && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-hint-fade pointer-events-none">
+              <div 
+                className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 pointer-events-none"
+                style={{ opacity: isHintFading ? 0 : 1, transition: 'opacity 0.5s ease' }}
+              >
                 <div className="text-white text-center space-y-3 p-4">
                   {/* Mobile Hint */}
                   <div className="mobile-only-hint space-y-3">
@@ -930,20 +925,21 @@
               style={{
                 transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
-                transition: dragStart ? 'none' : 'transform 1s ease'
+                transition: dragStart ? 'none' : 'transform 1s ease',
+                willChange: 'transform'
               }}
               onClick={handleClick}
               draggable="false"
             />
             {!isZoomed && !isHinting && (
               <div className="absolute bottom-4 right-4 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                <i data-lucide="zoom-in" className="w-3 h-3"></i>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg>
                 {isArabic ? "انقر مرتين للتكبير" : "Double click to zoom"}
               </div>
             )}
             {isZoomed && (
               <div className="absolute bottom-4 right-4 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                <i data-lucide="zoom-out" className="w-3 h-3"></i>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg>
                 {isArabic ? "انقر مرتين للتصغير" : "Double click to zoom out"}
               </div>
             )}
@@ -5147,9 +5143,11 @@ https://is.gd/oL6gEO`;
                                   return (
                                     <div key={`roadmap_parent_card_${rootLesson.id}`} 
                                          data-current-roadmap={isParentCurrent ? 'true' : 'false'}
-                                         className={`rounded-[18px] border p-3 transition-colors ${isParentCurrent ? 'animate-roadmap-breathe border-slate-400/55 bg-slate-900/75' : 'border-slate-500/45 bg-slate-900/70'}`}>
+                                         className={`rounded-[18px] border p-3 transition-colors border-slate-500/45 bg-slate-900/70`}>
                                       {/* Render Parent */}
-                                      {renderLessonCard(rootLesson, section.id, rootIndex, true)}
+                                      <div className={`p-3 -m-3 ${rootChildren.length > 0 ? 'rounded-t-[18px]' : 'rounded-[18px]'} ${isParentCurrent ? 'animate-roadmap-breathe bg-slate-800/40' : ''}`}>
+                                        {renderLessonCard(rootLesson, section.id, rootIndex, true)}
+                                      </div>
                                       
                                       {/* Render Children */}
                                       {rootChildren.length > 0 && (
