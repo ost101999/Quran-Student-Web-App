@@ -755,7 +755,7 @@
           setIsWheelZooming(true);
           
           const delta = e.deltaY;
-          const zoomFactor = 0.1;
+          const zoomFactor = 0.03; // Tiny zoom step
           let newScale = scale + (delta < 0 ? zoomFactor : -zoomFactor);
           newScale = Math.max(1, Math.min(newScale, 3)); // Cap between 1 and 3
           
@@ -766,20 +766,26 @@
               const rx = (e.clientX - rect.left) / rect.width;
               const ry = (e.clientY - rect.top) / rect.height;
               
-              // If changing origin while zoomed, compensate translation to avoid jumping
+              // If changing origin while zoomed, compensate translation
               if (scale > 1) {
+                // Move origin only 20% towards the mouse
+                const targetRx = zoomTarget.rx + (rx - zoomTarget.rx) * 0.2;
+                const targetRy = zoomTarget.ry + (ry - zoomTarget.ry) * 0.2;
+                
                 const unscaledWidth = rect.width / scale;
                 const unscaledHeight = rect.height / scale;
-                const dx = (rx - zoomTarget.rx) * unscaledWidth;
-                const dy = (ry - zoomTarget.ry) * unscaledHeight;
+                const dx = (targetRx - zoomTarget.rx) * unscaledWidth;
+                const dy = (targetRy - zoomTarget.ry) * unscaledHeight;
                 
                 setTranslate(prev => ({
                   x: prev.x - dx * (scale - 1),
                   y: prev.y - dy * (scale - 1)
                 }));
+                
+                setZoomTarget({ rx: targetRx, ry: targetRy });
+              } else {
+                setZoomTarget({ rx, ry });
               }
-              
-              setZoomTarget({ rx, ry });
             }
           }
           
@@ -801,7 +807,7 @@
           setIsWheelZooming(false); // Reset to slow transition for clicks
           
           if (scale === 1) {
-            const rect = e.target.getBoundingClientRect();
+            const rect = e.currentTarget.getBoundingClientRect();
             const rx = (e.clientX - rect.left) / rect.width;
             const ry = (e.clientY - rect.top) / rect.height;
             setZoomTarget({ rx, ry });
@@ -900,7 +906,7 @@
               style={{
                 transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
-                transition: dragStart ? 'none' : (isWheelZooming ? 'transform 0.1s ease' : 'transform 0.5s ease')
+                transition: dragStart ? 'none' : (isWheelZooming ? 'transform 0.3s ease' : 'transform 0.5s ease')
               }}
               onClick={handleClick}
               draggable="false"
