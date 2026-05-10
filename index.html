@@ -705,12 +705,15 @@
     };
 
     const LessonImageViewer = ({ src, onClose }) => {
-      const [isZoomed, setIsZoomed] = useState(false);
+      const [scale, setScale] = useState(1);
       const [isHinting, setIsHinting] = useState(false);
       const [lastTap, setLastTap] = useState(0);
       const [zoomTarget, setZoomTarget] = useState({ rx: 0.5, ry: 0.5 });
       const [translate, setTranslate] = useState({ x: 0, y: 0 });
       const [dragStart, setDragStart] = useState(null);
+      const containerRef = useRef(null);
+
+      const isZoomed = scale > 1;
 
       useEffect(() => {
         setIsHinting(true);
@@ -741,18 +744,53 @@
         };
       }, []);
 
+      // Wheel zoom listener
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const handleWheel = (e) => {
+          e.preventDefault();
+          
+          const delta = e.deltaY;
+          const zoomFactor = 0.1;
+          let newScale = scale + (delta < 0 ? zoomFactor : -zoomFactor);
+          newScale = Math.max(1, Math.min(newScale, 3)); // Cap between 1 and 3
+          
+          // If starting to zoom from 1, set target to cursor
+          if (scale === 1 && newScale > 1) {
+            const img = container.querySelector('img');
+            if (img) {
+              const rect = img.getBoundingClientRect();
+              const rx = (e.clientX - rect.left) / rect.width;
+              const ry = (e.clientY - rect.top) / rect.height;
+              setZoomTarget({ rx, ry });
+            }
+          }
+          
+          if (newScale === 1) {
+            setTranslate({ x: 0, y: 0 });
+          }
+          
+          setScale(newScale);
+        };
+
+        container.addEventListener('wheel', handleWheel, { passive: false });
+        return () => container.removeEventListener('wheel', handleWheel);
+      }, [scale]);
+
       const handleClick = (e) => {
         const now = Date.now();
         const DOUBLE_CLICK_DELAY = 350;
         if (now - lastTap < DOUBLE_CLICK_DELAY) {
-          if (!isZoomed) {
+          if (scale === 1) {
             const rect = e.target.getBoundingClientRect();
             const rx = (e.clientX - rect.left) / rect.width;
             const ry = (e.clientY - rect.top) / rect.height;
             setZoomTarget({ rx, ry });
-            setIsZoomed(true);
+            setScale(1.5);
           } else {
-            setIsZoomed(false);
+            setScale(1);
             setTranslate({ x: 0, y: 0 }); // Reset pan
           }
           setLastTap(0);
@@ -795,6 +833,7 @@
 
           {/* Rotation wrapper for mobile */}
           <div 
+            ref={containerRef}
             className="relative w-full h-full flex items-center justify-center overflow-hidden mobile-landscape-rotate"
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
@@ -833,9 +872,9 @@
               src={src}
               className="max-w-full max-h-full object-contain cursor-pointer"
               style={{
-                transform: `translate(${translate.x}px, ${translate.y}px) scale(${isZoomed ? 1.5 : 1})`,
+                transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                 transformOrigin: `${zoomTarget.rx * 100}% ${zoomTarget.ry * 100}%`,
-                transition: dragStart ? 'none' : 'transform 0.5s ease'
+                transition: dragStart ? 'none' : 'transform 0.2s ease'
               }}
               onClick={handleClick}
               draggable="false"
