@@ -464,11 +464,11 @@
         { id: 'revision', type: 'classwork', match: ['revision', 'مراجعة', 'المراجعة'], icon: 'check-circle' },
         { id: 'noor', type: 'classwork', match: ['noor', 'نور', 'bayan', 'بيان'], icon: 'check-circle' },
         { id: 'islamic', type: 'classwork', match: ['islamic', 'اسلامية', 'إسلامية'], icon: 'check-circle' },
-        { id: 'arabic', type: 'classwork', match: ['arabic'], icon: 'book' },
+        { id: 'arabic', type: 'classwork', match: ['arabic', 'عربي', 'عربية', 'العربية', 'قاعدة', 'تأسيس', 'foundation'], icon: 'book' },
         { id: 'homework', type: 'homework', match: ['homework', 'واجب', 'الواجب', 'next', 'القادم', 'ما سيتم', 'سيتم'], icon: 'pen-tool' },
         { id: 'feedback', type: 'feedback', match: ['behavior', 'سلوك', 'السلوك'], icon: 'star' },
         { id: 'note', type: 'feedback', match: ['note', 'ملاحظة', 'ملاحظات'], icon: 'message-square' },
-        { id: 'audio', type: 'audio', match: ['🎧', 'للاستماع', 'audio correction'], icon: 'headphones' }
+        { id: 'audio', type: 'audio', match: ['🎧', 'للاستماع', 'audio correction', 'audio', 'صوت'], icon: 'headphones' }
       ];
 
       // Track repeated titles: same title twice → second becomes homework
@@ -513,10 +513,21 @@
         if (/^[-]+$/.test(line)) continue;
         if (!line) continue;
 
-        // Extract subject name from 📚/📖 (SubjectName) emoji headers, then skip
+        // Extract subject name from 📚/📖 (SubjectName) emoji headers
         if (line.includes('📚') || line.includes('📖')) {
           const subjectMatch = line.match(/\(([^)]+)\)/);
           if (subjectMatch) currentArabicSubject = subjectMatch[1].trim();
+
+          if (line.includes('📚')) {
+            // Treat 📚 as a section header since English Arabic format lacks sub-headers with colons
+            if (currentContent.length > 0 && currentTitle !== 'Summary') {
+              const meta = getSectionMeta(currentTitle, currentSectionScope);
+              sections.push({ title: currentTitle, content: currentContent.join('\n').trim(), ...meta });
+            }
+            currentTitle = line.replace(/📚/g, '').replace(/-/g, '').trim(); 
+            currentSectionScope = reportScope;
+            currentContent = [];
+          }
           continue;
         }
 
