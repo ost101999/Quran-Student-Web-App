@@ -278,6 +278,9 @@ function App() {
   const recordingMetaRef = useRef<{ assignmentId: string; questionId: string } | null>(null);
   const assignmentScrollRef = useRef<HTMLDivElement | null>(null);
 
+  const CACHE_KEY = `student_cache_${studentId}`;
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
   const fetchData = async () => {
     if (!studentId) {
       setError('رابط الطالب غير صالح. يرجى التأكد من الرابط.');
@@ -285,17 +288,123 @@ function App() {
       return;
     }
 
+    // ── Try cache first for instant display ──────────────────────────
     try {
-      const response = await axios.get(`${API_BASE}/appState.json`);
-      setData(response.data);
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { ts, payload } = JSON.parse(cached);
+        if (Date.now() - ts < CACHE_TTL) {
+          setData(payload);
+          setSelectedMonth(new Date().getMonth());
+          setSelectedYear(new Date().getFullYear());
+          setLoading(false);
+          // Still refresh in the background silently
+          refreshInBackground(studentId);
+          return;
+        }
+      }
+    } catch { /* ignore cache errors */ }
+
+    // ── No valid cache → fetch in parallel (targeted paths only) ─────
+    try {
+      const [
+        studentsRes,
+        attendanceRes,
+        lastReportsRes,
+        tajweedBankRes,
+        tajweedAssignmentsRes,
+      ] = await Promise.all([
+        axios.get(`${API_BASE}/appState/students.json`),
+        axios.get(`${API_BASE}/appState/attendance.json`),
+        axios.get(`${API_BASE}/appState/lastReports/${encodeURIComponent(studentId)}.json`),
+        axios.get(`${API_BASE}/appState/tajweedBank.json`),
+        axios.get(`${API_BASE}/appState/tajweedAssignments.json`),
+      ]);
+
+      // Submissions are only fetched lazily (see below), skip here to keep load fast
+      const payload: AppState = {
+        students: Array.isArray(studentsRes.data) ? studentsRes.data : Object.values(studentsRes.data || {}),
+        attendance: attendanceRes.data || {},
+        month: new Date().getMonth(),
+        year: new Date().getFullYear(),
+        lastReports: studentsRes.data
+          ? { [studentId]: lastReportsRes.data }
+          : {},
+        tajweedBank: tajweedBankRes.data || {},
+        tajweedAssignments: tajweedAssignmentsRes.data || {},
+        tajweedSubmissions: {},
+      };
+
+      setData(payload);
       setSelectedMonth(new Date().getMonth());
       setSelectedYear(new Date().getFullYear());
       setError('');
+
+      // Cache for next visit
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload }));
+      } catch { /* storage full – ignore */ }
+
+      // Lazily fetch submissions (can contain heavy audio base64)
+      fetchSubmissions(studentId, payload);
     } catch {
       setError('حدث خطأ أثناء جلب البيانات. الرجاء المحاولة لاحقاً.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchSubmissions = async (sid: string, existingData: AppState) => {
+    try {
+      const res = await axios.get(`${API_BASE}/appState/tajweedSubmissions.json`);
+      const submissions: Record<string, TajweedSubmission> = res.data || {};
+      // Only keep submissions belonging to this student
+      const filtered = Object.fromEntries(
+        Object.entries(submissions).filter(([, sub]) => sub.studentId === sid),
+      );
+      setData((prev) => prev ? { ...prev, tajweedSubmissions: filtered } : prev);
+      // Update cache with submissions
+      try {
+        const updatedPayload = { ...existingData, tajweedSubmissions: filtered };
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload: updatedPayload }));
+      } catch { /* ignore */ }
+    } catch { /* submissions failing is non-critical */ }
+  };
+
+  const refreshInBackground = async (sid: string) => {
+    try {
+      const [
+        studentsRes,
+        attendanceRes,
+        lastReportsRes,
+        tajweedBankRes,
+        tajweedAssignmentsRes,
+      ] = await Promise.all([
+        axios.get(`${API_BASE}/appState/students.json`),
+        axios.get(`${API_BASE}/appState/attendance.json`),
+        axios.get(`${API_BASE}/appState/lastReports/${encodeURIComponent(sid)}.json`),
+        axios.get(`${API_BASE}/appState/tajweedBank.json`),
+        axios.get(`${API_BASE}/appState/tajweedAssignments.json`),
+      ]);
+
+      const payload: AppState = {
+        students: Array.isArray(studentsRes.data) ? studentsRes.data : Object.values(studentsRes.data || {}),
+        attendance: attendanceRes.data || {},
+        month: new Date().getMonth(),
+        year: new Date().getFullYear(),
+        lastReports: { [sid]: lastReportsRes.data },
+        tajweedBank: tajweedBankRes.data || {},
+        tajweedAssignments: tajweedAssignmentsRes.data || {},
+        tajweedSubmissions: {},
+      };
+
+      setData(payload);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload }));
+      } catch { /* ignore */ }
+
+      fetchSubmissions(sid, payload);
+    } catch { /* background refresh – ignore errors */ }
   };
 
   useEffect(() => {
@@ -881,6 +990,7 @@ function App() {
                           const urlLower = url.toLowerCase();
                           const isPdf = urlLower.startsWith('data:application/pdf') || urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
                           const isHtmlOrWeb = urlLower.startsWith('data:text/html') || urlLower.includes('.html') || urlLower.includes('.php') || (urlLower.startsWith('http') && !isPdf);
+                          const isImage = urlLower.startsWith('data:image/') || urlLower.endsWith('.svg') || urlLower.endsWith('.png') || urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg');
                           
                           // Helper to create blob URL from data URL
                           const getSafeUrl = (rawUrl: string) => {
@@ -908,6 +1018,37 @@ function App() {
                             }
                           };
 
+                          if (isImage) {
+                            return (
+                              <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+                                <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText size={18} className="text-slate-500" />
+                                    <span className="font-bold text-slate-700 font-arabic">شرح الدرس (صورة)</span>
+                                  </div>
+                                  <a 
+                                    href={url} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    onClick={handleOpenNewTab}
+                                    className="text-sky-600 text-sm font-bold flex items-center gap-1 hover:text-sky-700"
+                                  >
+                                    <span>فتح في نافذة جديدة</span>
+                                    <ExternalLink size={14} />
+                                  </a>
+                                </div>
+                                <div className="p-4 flex justify-center bg-slate-50">
+                                  <img
+                                    src={url}
+                                    className="max-w-full h-auto rounded-lg shadow-sm cursor-zoom-in"
+                                    alt="شرح الدرس"
+                                    onClick={() => window.open(url, '_blank')}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          }
+
                           if (isHtmlOrWeb) {
                             const safeUrl = getSafeUrl(url);
                             return (
@@ -930,7 +1071,7 @@ function App() {
                                 </div>
                                 <iframe
                                   src={safeUrl}
-                                  className="w-full h-[600px] border-none bg-white rounded-xl shadow-inner"
+                                  className="w-full h-[50vh] border-none bg-white rounded-xl shadow-inner"
                                   title="محتوى شرح الدرس"
                                   sandbox="allow-scripts allow-same-origin"
                                 />
