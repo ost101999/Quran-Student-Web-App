@@ -5002,7 +5002,7 @@ https://is.gd/oL6gEO`;
                         )}
                         {renderSectionGroup(feedback, "text-blue-400/70", "border-blue-500/40", t.feedbackNotes, isTourMode ? "tour-feedback" : undefined)}
                         {renderSectionGroup(other, "text-slate-400/50", "border-slate-500/30", t.otherDetails)}
-                        {audio.length > 0 && (
+                        {audio.filter(s => s.content?.trim()).length > 0 && (
                           <div id={isTourMode ? "tour-audio" : undefined} className="mt-4 pt-4 border-t border-islamic-gold/10">
                             <h5 className="text-[10px] uppercase font-bold tracking-widest mb-3 flex items-center gap-2 text-slate-400/60">
                               <div className="h-px flex-1 bg-current opacity-20"></div>
