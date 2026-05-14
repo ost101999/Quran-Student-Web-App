@@ -4458,12 +4458,19 @@ https://is.gd/oL6gEO`;
                       })()}
                       {(() => {
                         const isContentArabic = /[\u0600-\u06FF]/.test(section.content);
+                        const lines = (section.content || '').split('\n');
                         return (
                           <div
-                            className={`text-slate-200 text-sm whitespace-pre-wrap leading-loose mt-1 ${isContentArabic ? 'font-amiri text-base text-right' : 'font-sans'}`}
-                            dir={isContentArabic ? 'rtl' : 'ltr'}
+                            className={`text-slate-200 text-sm leading-loose mt-1 ${isContentArabic ? 'font-amiri text-base' : 'font-sans'}`}
                           >
-                            {section.content || <span className="opacity-40 italic">{t.noDetails}</span>}
+                            {section.content
+                              ? lines.map((line, i) => (
+                                  <div key={i} dir="auto" className="whitespace-pre-wrap">
+                                    {line || '\u00A0'}
+                                  </div>
+                                ))
+                              : <span className="opacity-40 italic">{t.noDetails}</span>
+                            }
                           </div>
                         );
                       })()}
