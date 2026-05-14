@@ -605,12 +605,28 @@
 
         // Foundation Book Link Logic & UI Cleanup
         const hasFoundationLink = section.content.includes('audio-foundation-book');
-        if (hasFoundationLink || section.title.toLowerCase().includes('foundation') || section.title.includes('تأسيس')) {
+        const isFoundationText = section.title.toLowerCase().includes('foundation') || 
+                               section.title.includes('تأسيس');
+        const isArabicTitle = section.title.toLowerCase() === 'arabic' || section.title === 'العربية';
+        
+        // Auto-rename "Arabic" to "Foundation Book" if it's foundation content
+        if (hasFoundationLink && isArabicTitle) {
+            section.title = isArabic ? 'كتاب التأسيس' : 'Foundation Book';
+        }
+
+        const isRelevantTitle = isFoundationText || section.title.toLowerCase().includes('reading') || section.title.includes('قراءة') || isArabicTitle;
+        
+        // Only show button in relevant sections (not in the default "Daily Report" header section)
+        if (hasFoundationLink && isRelevantTitle && section.title !== 'Daily Report' && section.title !== 'تقرير الحصة') {
             const pageMatch = section.content.match(/(?:page|صفحة)\s*([0-9٠-٩]+)/i);
             if (pageMatch) {
                 const englishNumStr = pageMatch[1].replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
                 section.foundationPage = parseInt(englishNumStr, 10);
             }
+        }
+
+        // Always clean up the content if it contains the link, regardless of section title
+        if (hasFoundationLink) {
             // Remove Listening links/lines from the content shown in the UI for a cleaner view
             section.content = section.content.split('\n').filter(line => 
                 !line.toLowerCase().includes('listening') && 
