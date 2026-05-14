@@ -4484,7 +4484,10 @@ https://is.gd/oL6gEO`;
                           {isReviewQuizAction ? t.reviewQuiz : t.openQuiz}
                         </button>
                       )}
-                      {section.foundationPage && (
+                      {section.foundationPage && section.type === 'homework' && (
+                        section.title === 'Foundation Book' || section.title === 'كتاب التأسيس' ||
+                        section.title.toLowerCase().includes('foundation') || section.title.includes('تأسيس')
+                      ) && (
                         <a
                           href={`https://audio-foundation-book.vercel.app/?page=${section.foundationPage}`}
                           target="_blank"
