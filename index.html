@@ -451,6 +451,7 @@
       if (!text) return [];
       const lines = text.split('\n');
       const sections = [];
+      const isFoundationReport = text.includes('audio-foundation-book');
 
       let currentTitle = 'Summary';
       let currentContent = [];
@@ -605,24 +606,33 @@
 
         // Foundation Book Link Logic & UI Cleanup
         const hasFoundationLink = section.content.includes('audio-foundation-book');
-        const isFoundationText = section.title.toLowerCase().includes('foundation') || 
+        const isFoundationText = isFoundationReport || section.title.toLowerCase().includes('foundation') || 
                                section.title.includes('تأسيس');
         const isArabicTitle = section.title.toLowerCase() === 'arabic' || section.title === 'العربية';
         
         // Auto-rename "Arabic" to "Foundation Book" if it's foundation content
-        if (hasFoundationLink && isArabicTitle) {
+        if (isFoundationReport && isArabicTitle) {
             section.title = isArabic ? 'كتاب التأسيس' : 'Foundation Book';
         }
 
         const isRelevantTitle = isFoundationText || section.title.toLowerCase().includes('reading') || section.title.includes('قراءة') || isArabicTitle;
         
         // Only show button in relevant sections (not in the default "Daily Report" header section)
-        if (hasFoundationLink && isRelevantTitle && section.title !== 'Daily Report' && section.title !== 'تقرير الحصة') {
+        if ((hasFoundationLink || isFoundationReport) && isRelevantTitle && section.title !== 'Summary' && section.title !== 'Daily Report' && section.title !== 'تقرير الحصة') {
             const pageMatch = section.content.match(/(?:page|صفحة)\s*([0-9٠-٩]+)/i);
+            // If no page found in this specific section, try searching the whole report text for foundation page
+            let foundationPageNum = null;
             if (pageMatch) {
                 const englishNumStr = pageMatch[1].replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
-                section.foundationPage = parseInt(englishNumStr, 10);
+                foundationPageNum = parseInt(englishNumStr, 10);
+            } else if (isFoundationReport) {
+                const globalPageMatch = text.match(/(?:page|صفحة)\s*([0-9٠-٩]+)/i);
+                if (globalPageMatch) {
+                   const englishNumStr = globalPageMatch[1].replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+                   foundationPageNum = parseInt(englishNumStr, 10);
+                }
             }
+            if (foundationPageNum) section.foundationPage = foundationPageNum;
         }
 
         // Always clean up the content if it contains the link, regardless of section title
@@ -635,7 +645,9 @@
             ).join('\n').trim();
         }
 
-        filteredSections.push(section);
+        if (section.content.trim() || section.foundationPage) {
+            filteredSections.push(section);
+        }
       }
 
       return filteredSections.length > 0 ? filteredSections : [{ title: 'Report Overview', content: text.replace(/〰️/g, ''), icon: 'file-text', type: 'other' }];
