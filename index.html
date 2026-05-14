@@ -603,14 +603,20 @@
           sawTajweedInCompleted = true;
         }
 
-        // Foundation Book Link Logic
-        if (section.type === 'homework' && (section.title.toLowerCase().includes('foundation') || section.title.includes('تأسيس'))) {
+        // Foundation Book Link Logic & UI Cleanup
+        const hasFoundationLink = section.content.includes('audio-foundation-book');
+        if (hasFoundationLink || section.title.toLowerCase().includes('foundation') || section.title.includes('تأسيس')) {
             const pageMatch = section.content.match(/(?:page|صفحة)\s*([0-9٠-٩]+)/i);
             if (pageMatch) {
-                // Convert Arabic numerals to English before parsing
                 const englishNumStr = pageMatch[1].replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
                 section.foundationPage = parseInt(englishNumStr, 10);
             }
+            // Remove Listening links/lines from the content shown in the UI for a cleaner view
+            section.content = section.content.split('\n').filter(line => 
+                !line.toLowerCase().includes('listening') && 
+                !line.includes('الاستماع') && 
+                !line.includes('audio-foundation-book')
+            ).join('\n').trim();
         }
 
         filteredSections.push(section);
@@ -4459,6 +4465,7 @@ https://is.gd/oL6gEO`;
                           {isArabic ? "التطبيق العملي" : "Open Practice App"}
                         </a>
                       )}
+
                     </div>
                   </div>
                 );
