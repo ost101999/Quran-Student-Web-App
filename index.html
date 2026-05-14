@@ -609,10 +609,12 @@
         const isFoundationText = isFoundationReport || section.title.toLowerCase().includes('foundation') || 
                                section.title.includes('تأسيس');
         const isArabicTitle = section.title.toLowerCase() === 'arabic' || section.title === 'العربية';
+        // Detect report language from text content (can't use React isArabic here)
+        const reportIsArabic = /[\u0600-\u06FF]/.test(text) && /تقرير|واجب|الطالب/.test(text);
         
         // Auto-rename "Arabic" to "Foundation Book" if it's foundation content
         if (isFoundationReport && isArabicTitle) {
-            section.title = isArabic ? 'كتاب التأسيس' : 'Foundation Book';
+            section.title = reportIsArabic ? 'كتاب التأسيس' : 'Foundation Book';
         }
 
         const isRelevantTitle = isFoundationText || section.title.toLowerCase().includes('reading') || section.title.includes('قراءة') || isArabicTitle;
