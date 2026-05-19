@@ -238,6 +238,34 @@
       animation: scaleUp 0.2s ease-out forwards;
     }
 
+    @keyframes slideDownFade {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -15px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+    .animate-slide-down-fade {
+      animation: slideDownFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes slideUpFade {
+      from {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      to {
+        opacity: 0;
+        transform: translate(-50%, -15px);
+      }
+    }
+    .animate-slide-up-fade {
+      animation: slideUpFade 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+    }
+
     .delay-1 {
       animation-delay: 0.1s;
       opacity: 0;
@@ -1228,6 +1256,8 @@
       const [glowReportDay, setGlowReportDay] = useState(null);
       const [hideTourButton, setHideTourButton] = useState(false);
       const [passcodeToast, setPasscodeToast] = useState(false);
+      const [saveLaterToast, setSaveLaterToast] = useState(false);
+      const [isSaveLaterExiting, setIsSaveLaterExiting] = useState(false);
       const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm, onCancel }
       const [quizSuccessOverlay, setQuizSuccessOverlay] = useState(false);
       const [isQuizSuccessExiting, setIsQuizSuccessExiting] = useState(false);
@@ -1240,6 +1270,7 @@
       const streamRef = useRef(null);
       const chunksRef = useRef([]);
       const recordingMetaRef = useRef(null);
+      const saveLaterToastTimeoutRef = useRef(null);
       const quizScrollRef = useRef(null);
       const roadmapPageScrollRef = useRef(null);
 
@@ -1295,6 +1326,9 @@
             streamRef.current.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
           }
+          if (saveLaterToastTimeoutRef.current) {
+            clearTimeout(saveLaterToastTimeoutRef.current);
+          }
         };
       }, []);
 
@@ -1304,7 +1338,7 @@
           window.lucide.createIcons();
         });
         return () => window.cancelAnimationFrame(rafId);
-      }, [loading, selectedReport, selectedTajweedQuiz, quizSuccessOverlay, showSchedule, selectedMonth, selectedYear, isTourMode, showTajweedRoadmapPage]);
+      }, [loading, selectedReport, selectedTajweedQuiz, quizSuccessOverlay, showSchedule, selectedMonth, selectedYear, isTourMode, showTajweedRoadmapPage, saveLaterToast]);
 
 
       useEffect(() => {
@@ -3666,6 +3700,12 @@ https://is.gd/oL6gEO`;
         setShowTajweedRoadmapPage(false);
         setSelectedTajweedQuiz(null);
         setWasSubmitAttempted(false);
+
+        if (saveLaterToastTimeoutRef.current) {
+          clearTimeout(saveLaterToastTimeoutRef.current);
+        }
+        setSaveLaterToast(false);
+        setIsSaveLaterExiting(false);
       };
 
       const stopQuizRecording = () => {
@@ -3886,6 +3926,25 @@ https://is.gd/oL6gEO`;
         upsertQuizDraftAnswer(questionKey, questionId, { audioBase64: undefined, audioPreviewUrl: undefined });
       };
 
+      const triggerSaveLaterToast = () => {
+        if (saveLaterToastTimeoutRef.current) {
+          clearTimeout(saveLaterToastTimeoutRef.current);
+        }
+        setIsSaveLaterExiting(false);
+        setSaveLaterToast(true);
+
+        const dismissTimeout = setTimeout(() => {
+          setIsSaveLaterExiting(true);
+          const finishTimeout = setTimeout(() => {
+            setSaveLaterToast(false);
+            setIsSaveLaterExiting(false);
+          }, 350);
+          saveLaterToastTimeoutRef.current = finishTimeout;
+        }, 5500);
+
+        saveLaterToastTimeoutRef.current = dismissTimeout;
+      };
+
       const submitTajweedQuiz = async () => {
         if (!selectedTajweedQuiz || selectedTajweedQuiz.missing) return;
 
@@ -3925,6 +3984,8 @@ https://is.gd/oL6gEO`;
           setQuizValidationErrors(nextErrors);
           setQuizStatusMessage(t.allQuestionsRequired);
           setWasSubmitAttempted(true);
+
+          triggerSaveLaterToast();
           
           const firstErrorKey = Object.keys(nextErrors)[0];
           setTimeout(() => {
@@ -3968,6 +4029,12 @@ https://is.gd/oL6gEO`;
             status: 'submitted',
             submissionId,
           });
+
+          try {
+            localStorage.removeItem(`quiz_draft_${selectedTajweedQuiz.assignmentId}`);
+          } catch (e) {
+            console.warn('Error removing persisted draft:', e);
+          }
 
           setData((prev) => {
             if (!prev) return prev;
@@ -4079,8 +4146,8 @@ https://is.gd/oL6gEO`;
         );
         setExpandedRoadmapLessonId('');
         setShowTajweedRoadmapPage(!payload?.missing && !shouldOpenDirectToQuiz);
+        setQuizDraftAnswers(hydratedDrafts);
         if (reviewAttempt) {
-          setQuizDraftAnswers(hydratedDrafts);
           setQuizValidationErrors({});
           setQuizStatusMessage('');
         }
@@ -4114,6 +4181,17 @@ https://is.gd/oL6gEO`;
           setQuizStatusMessage('');
         } else {
           resetQuizDraftState();
+          if (selectedTajweedQuiz?.assignmentId) {
+            try {
+              const saved = localStorage.getItem(`quiz_draft_${selectedTajweedQuiz.assignmentId}`);
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                setQuizDraftAnswers(parsed);
+              }
+            } catch (e) {
+              console.warn('Error loading persisted draft:', e);
+            }
+          }
         }
 
         setSelectedTajweedQuiz((prev) => (prev ? {
@@ -5503,6 +5581,23 @@ https://is.gd/oL6gEO`;
                 >
                   <i data-lucide="x" className="w-5 h-5"></i>
                 </button>
+
+                {/* Save Later Toast / Alert Popup */}
+                {saveLaterToast && (
+                  <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[115] w-[92%] max-w-sm ${isSaveLaterExiting ? 'animate-slide-up-fade' : 'animate-slide-down-fade'}`}>
+                    <div className="glass-panel bg-slate-950/95 backdrop-blur border border-amber-500/40 text-amber-50 p-4 rounded-2xl shadow-[0_10px_25px_rgba(217,119,6,0.3)] flex gap-3">
+                      <i data-lucide="lightbulb" className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0 animate-pulse"></i>
+                      <div className="flex-1">
+                        <p className={`text-[13px] font-semibold leading-relaxed ${isArabic ? 'text-right font-amiri text-base' : 'text-left font-sans'}`} dir={isArabic ? 'rtl' : 'ltr'}>
+                          {isArabic 
+                            ? '💡 إذا كنت تريد إكمال الحل لاحقاً، يمكنك إغلاق الاختبار بالضغط على زر (X) في الأعلى، وسيتم حفظ إجاباتك تلقائياً!'
+                            : "💡 If you'd like to finish the quiz later, you can close it using the (X) button at the top. Your progress is saved automatically!"
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {quizSuccessOverlay && (
                   <div className={`absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] ${isQuizSuccessExiting ? 'animate-fade-out' : 'animate-fade'}`}>
